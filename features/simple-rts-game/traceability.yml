@@ -67,7 +67,7 @@ requirements:
     text: "All player intent enters the simulation as commands queued for a future tick"
     stories: []
     tasks: ["T010", "T020"]
-    code: ["src/sim/commands.ts"]
+    code: ["src/sim/commands.ts", "src/sim/step.ts"]
     tests: []
   - id: "FR-005"
     text: "All randomness derives from a seed held inside simulation state"
@@ -115,7 +115,7 @@ requirements:
     text: "Player may place additional Factories on valid ground"
     stories: ["US-006"]
     tasks: ["T035", "T039", "T055"]
-    code: []
+    code: ["src/sim/production.ts"]
     tests: []
   - id: "FR-013"
     text: "Invalid placement is indicated by ghost state, not an error dialog"
@@ -145,7 +145,7 @@ requirements:
     text: "Destroying the enemy Base wins; losing own Base loses"
     stories: ["US-008"]
     tasks: ["T038", "T041", "T065"]
-    code: []
+    code: ["src/sim/victory.ts"]
     tests: []
   - id: "FR-018"
     text: "Every friendly unit carries a persistent non-colour ownership cue"
@@ -163,13 +163,13 @@ requirements:
     text: "Units auto-acquire enemies in range; explicit orders override"
     stories: ["US-004"]
     tasks: ["T040"]
-    code: []
+    code: ["src/sim/combat.ts"]
     tests: []
   - id: "FR-021"
     text: "Target acquisition ties resolve by stable entity id"
     stories: []
     tasks: ["T034", "T040"]
-    code: []
+    code: ["src/sim/combat.ts"]
     tests: []
   - id: "FR-022"
     text: "A* open-set ties resolve by stable entity id"
@@ -181,7 +181,7 @@ requirements:
     text: "Screen-edge indicator + audio cue when an owned entity takes damage"
     stories: ["US-011"]
     tasks: ["T070"]
-    code: []
+    code: ["src/sim/combat.ts", "src/sim/state.ts"]
     tests: []
   - id: "FR-024"
     text: "Honest fallback message when WebGL is unavailable"
@@ -211,7 +211,7 @@ requirements:
     text: "Simultaneous Base destruction on one tick resolves as an explicit Draw"
     stories: ["US-008"]
     tasks: ["T036", "T038", "T041"]
-    code: []
+    code: ["src/sim/victory.ts", "src/sim/combat.ts"]
     tests: []
   - id: "FR-029"
     text: "Difficulty is a field of initial simulation state and appears in the replay header"
@@ -229,19 +229,19 @@ requirements:
     text: "Valid placement = full footprint passable, in-bounds, unoccupied by structure or unit"
     stories: ["US-006"]
     tasks: ["T037", "T039"]
-    code: []
+    code: ["src/sim/production.ts"]
     tests: []
   - id: "FR-032"
     text: "When every ore node is depleted, sudden death arms; after a grace period all Bases take escalating damage until the match resolves (CR-001)"
     stories: ["US-008"]
     tasks: ["T078", "T041", "T073"]
-    code: []
+    code: ["src/sim/victory.ts", "src/sim/constants.ts"]
     tests: []
   - id: "FR-033"
     text: "Sudden-death damage shows a distinct indicator and does NOT trigger the under-attack indicator (CR-001)"
     stories: ["US-008"]
     tasks: ["T079", "T041", "T070"]
-    code: []
+    code: ["src/sim/victory.ts", "src/sim/combat.ts"]
     tests: []
 
 

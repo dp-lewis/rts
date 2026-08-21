@@ -95,7 +95,7 @@ export function runEconomy(state: SimState): void {
 
     const base = findBase(state, worker.owner);
     const full = worker.progress >= WORKER_CARRY_CAPACITY;
-    const targetNode = worker.targetId >= 0 ? findNode(state, worker.targetId) : undefined;
+    const targetNode = worker.gatherNodeId >= 0 ? findNode(state, worker.gatherNodeId) : undefined;
     const targetExhausted = targetNode === undefined || targetNode.remaining <= 0;
 
     // Heading home: either full, or holding ore with nothing left to mine.
@@ -103,7 +103,7 @@ export function runEconomy(state: SimState): void {
       if (squaredDistance(worker.x, worker.y, base.x, base.y) <= DEPOSIT_RANGE * DEPOSIT_RANGE) {
         state.players[worker.owner]!.ore += worker.progress;
         worker.progress = 0;
-        worker.targetId = -1;
+        worker.gatherNodeId = -1;
         worker.destX = -1;
         worker.destY = -1;
         worker.state = ENTITY_STATE.IDLE;
@@ -122,16 +122,16 @@ export function runEconomy(state: SimState): void {
         // Nothing left anywhere. Come to a complete rest rather than re-deciding
         // every tick — a worker that re-picks and gives up forever would burn CPU
         // and, worse, would never reach a fixed point the hash could settle on.
-        worker.targetId = -1;
+        worker.gatherNodeId = -1;
         worker.destX = -1;
         worker.destY = -1;
         worker.state = ENTITY_STATE.IDLE;
         continue;
       }
-      worker.targetId = chosen;
+      worker.gatherNodeId = chosen;
     }
 
-    const node = findNode(state, worker.targetId)!;
+    const node = findNode(state, worker.gatherNodeId)!;
     if (squaredDistance(worker.x, worker.y, node.x, node.y) <= GATHER_RANGE * GATHER_RANGE) {
       const room = WORKER_CARRY_CAPACITY - worker.progress;
       const mined = Math.min(WORKER_GATHER_PER_TICK, room, node.remaining);

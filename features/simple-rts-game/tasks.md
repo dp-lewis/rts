@@ -182,48 +182,48 @@ asserting on state, not rendered output (Principle II).
 
 ### Tests (Red first)
 
-- [ ] T034 [P] [FR-021] Test **O-1 / TC-UNIT-005**: two enemies equidistant and in range — lowest entity id is targeted, every run
+- [x] T034 [P] [FR-021] Test **O-1 / TC-UNIT-005**: two enemies equidistant and in range — lowest entity id is targeted, every run
       Paths: tests/sim/combat.test.ts
       Test-first: true
       Size: S
-- [ ] T035 [P] [FR-012] Test **O-5**: two Factories complete on one tick with ore for only one — ascending factory id wins; the loser stays **queued**, not failed
+- [x] T035 [P] [FR-012] Test **O-5**: two Factories complete on one tick with ore for only one — ascending factory id wins; the loser stays **queued**, not failed
       Paths: tests/sim/production.test.ts
       Test-first: true
       Size: M
-- [ ] T036 [P] [FR-028] Test **O-6**: two units deal mutually lethal damage on one tick — **both die**. Damage is collected across the tick and applied atomically at its end
+- [x] T036 [P] [FR-028] Test **O-6**: two units deal mutually lethal damage on one tick — **both die**. Damage is collected across the tick and applied atomically at its end
       Paths: tests/sim/combat.test.ts
       Test-first: true
       Size: M
-- [ ] T037 [FR-031] Test: valid placement — full 64 px footprint passable, in bounds, unoccupied by structure or unit
+- [x] T037 [FR-031] Test: valid placement — full 64 px footprint passable, in bounds, unoccupied by structure or unit
       Paths: tests/sim/production.test.ts
       Test-first: true
       Size: S
-- [ ] T038 [FR-017, FR-028] Test **TC-UNIT-006**: victory, defeat, and **Draw** on simultaneous Base destruction
+- [x] T038 [FR-017, FR-028] Test **TC-UNIT-006**: victory, defeat, and **Draw** on simultaneous Base destruction
       Paths: tests/sim/victory.test.ts
       Test-first: true
       Size: M
-- [ ] T078 [FR-032] Test **TC-UNIT-011** *(CR-001)*: sudden death arms when every ore node is depleted; after the grace period escalating damage resolves the match in **bounded ticks**. Includes a deliberate stalemate scenario — both sides alive, neither able to win — which must terminate
+- [x] T078 [FR-032] Test **TC-UNIT-011** *(CR-001)*: sudden death arms when every ore node is depleted; after the grace period escalating damage resolves the match in **bounded ticks**. Includes a deliberate stalemate scenario — both sides alive, neither able to win — which must terminate
       Paths: tests/sim/victory.test.ts
       Test-first: true
       Size: M
-- [ ] T079 [FR-033] Test **TC-UNIT-012** *(CR-001)*: sudden-death damage sets the distinct sudden-death flag and does **NOT** set the under-attack flag — a base dying with no attacker must not be reported as under attack
+- [x] T079 [FR-033] Test **TC-UNIT-012** *(CR-001)*: sudden-death damage sets the distinct sudden-death flag and does **NOT** set the under-attack flag — a base dying with no attacker must not be reported as under attack
       Paths: tests/sim/victory.test.ts
       Test-first: true
       Size: S
-- [ ] T080 [FR-006] Test *(pre-impl F-6)*: a player with zero surviving Workers and less ore than a Worker costs can still produce one — the Base affords a Worker at zero cost. Removes a dead state in which a player can neither act nor lose
+- [x] T080 [FR-006] Test *(pre-impl F-6)*: a player with zero surviving Workers and less ore than a Worker costs can still produce one — the Base affords a Worker at zero cost. Removes a dead state in which a player can neither act nor lose
       Paths: tests/sim/production.test.ts
       Test-first: true
       Size: S
 
 ### Implementation
 
-- [ ] T039 [FR-012, FR-031, FR-006] Build queue, ore spend, placement validation — **O-5**. Includes the zero-cost Worker rule when a player has none surviving *(pre-impl F-6)*
+- [x] T039 [FR-012, FR-031, FR-006] Build queue, ore spend, placement validation — **O-5**. Includes the zero-cost Worker rule when a player has none surviving *(pre-impl F-6)*
       Paths: src/sim/production.ts
       Size: L
-- [ ] T040 [FR-020, FR-021] Target acquisition, damage collection, **atomic end-of-tick application** — O-1, O-6
+- [x] T040 [FR-020, FR-021] Target acquisition, damage collection, **atomic end-of-tick application** — O-1, O-6
       Paths: src/sim/combat.ts
       Size: L
-- [ ] T041 [FR-017, FR-028, FR-032, FR-033] Victory / defeat / draw resolution **+ sudden-death backstop** *(CR-001)* — arms on global node depletion, grace period, escalating Base damage, distinct sudden-death flag. **Adds no new verdict**: it forces one of the existing three, and reuses the Draw rule when both Bases fall on the same tick
+- [x] T041 [FR-017, FR-028, FR-032, FR-033] Victory / defeat / draw resolution **+ sudden-death backstop** *(CR-001)* — arms on global node depletion, grace period, escalating Base damage, distinct sudden-death flag. **Adds no new verdict**: it forces one of the existing three, and reuses the Draw rule when both Bases fall on the same tick
       Paths: src/sim/victory.ts, src/sim/constants.ts
       Size: M
 

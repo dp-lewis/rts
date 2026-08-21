@@ -31,6 +31,8 @@ function entity(overrides: Partial<Entity> = {}): Entity {
     progress: 0,
     destX: -1,
     destY: -1,
+    queuedKind: -1,
+    gatherNodeId: -1,
     ...overrides,
   };
 }
@@ -41,7 +43,11 @@ function state(overrides: Partial<SimState> = {}): SimState {
     rng: 987654321,
     difficulty: 1,
     verdict: VERDICT.NONE,
-    players: [{ ore: 150 }, { ore: 200 }],
+    players: [
+      { ore: 150, underAttack: false, suddenDeathDamage: false },
+      { ore: 200, underAttack: false, suddenDeathDamage: false },
+    ],
+    suddenDeathAt: -1,
     nodes: [
       { id: 0, x: 320, y: 320, remaining: 800 },
       { id: 1, x: 960, y: 960, remaining: 1500 },
@@ -76,6 +82,8 @@ describe('hash stability', () => {
     const shuffled: SimState = {
       nextEntityId: canonical.nextEntityId,
       entities: canonical.entities.map((e) => ({
+        gatherNodeId: e.gatherNodeId,
+        queuedKind: e.queuedKind,
         destY: e.destY,
         destX: e.destX,
         progress: e.progress,
@@ -90,7 +98,11 @@ describe('hash stability', () => {
         id: e.id,
       })),
       nodes: canonical.nodes.map((n) => ({ remaining: n.remaining, y: n.y, x: n.x, id: n.id })),
-      players: [{ ore: canonical.players[0].ore }, { ore: canonical.players[1].ore }],
+      players: [
+        { suddenDeathDamage: canonical.players[0].suddenDeathDamage, underAttack: canonical.players[0].underAttack, ore: canonical.players[0].ore },
+        { suddenDeathDamage: canonical.players[1].suddenDeathDamage, underAttack: canonical.players[1].underAttack, ore: canonical.players[1].ore },
+      ],
+      suddenDeathAt: canonical.suddenDeathAt,
       verdict: canonical.verdict,
       difficulty: canonical.difficulty,
       rng: canonical.rng,
@@ -107,8 +119,8 @@ describe('hash sensitivity — every hashed field must move the hash', () => {
     ['tick', state({ tick: 121 })],
     ['rng', state({ rng: 987654322 })],
     ['verdict', state({ verdict: VERDICT.VICTORY })],
-    ['player 0 ore', state({ players: [{ ore: 151 }, { ore: 200 }] })],
-    ['player 1 ore', state({ players: [{ ore: 150 }, { ore: 201 }] })],
+    ['player 0 ore', state({ players: [{ ore: 151, underAttack: false, suddenDeathDamage: false }, { ore: 200, underAttack: false, suddenDeathDamage: false }] })],
+    ['player 1 ore', state({ players: [{ ore: 150, underAttack: false, suddenDeathDamage: false }, { ore: 201, underAttack: false, suddenDeathDamage: false }] })],
     ['node id', state({ nodes: [{ id: 0, x: 320, y: 320, remaining: 800 }, { id: 2, x: 960, y: 960, remaining: 1500 }] })],
     ['node remaining', state({ nodes: [{ id: 0, x: 320, y: 320, remaining: 799 }, { id: 1, x: 960, y: 960, remaining: 1500 }] })],
     ['entity id', state({ entities: [entity({ id: 1 }), entity({ id: 3, owner: 1, x: 1024, y: 1024 })] })],
@@ -123,6 +135,12 @@ describe('hash sensitivity — every hashed field must move the hash', () => {
     ['entity progress', state({ entities: [entity({ id: 1, progress: 0.5 }), entity({ id: 2, owner: 1, x: 1024, y: 1024 })] })],
     ['entity destX', state({ entities: [entity({ id: 1, destX: 640 }), entity({ id: 2, owner: 1, x: 1024, y: 1024 })] })],
     ['entity destY', state({ entities: [entity({ id: 1, destY: 640 }), entity({ id: 2, owner: 1, x: 1024, y: 1024 })] })],
+    ['entity queuedKind', state({ entities: [entity({ id: 1, queuedKind: KIND.TANK }), entity({ id: 2, owner: 1, x: 1024, y: 1024 })] })],
+    ['entity gatherNodeId', state({ entities: [entity({ id: 1, gatherNodeId: 3 }), entity({ id: 2, owner: 1, x: 1024, y: 1024 })] })],
+    ['suddenDeathAt', state({ suddenDeathAt: 4000 })],
+    ['player 0 underAttack', state({ players: [{ ore: 150, underAttack: true, suddenDeathDamage: false }, { ore: 200, underAttack: false, suddenDeathDamage: false }] })],
+    ['player 1 underAttack', state({ players: [{ ore: 150, underAttack: false, suddenDeathDamage: false }, { ore: 200, underAttack: true, suddenDeathDamage: false }] })],
+    ['player 0 suddenDeathDamage', state({ players: [{ ore: 150, underAttack: false, suddenDeathDamage: true }, { ore: 200, underAttack: false, suddenDeathDamage: false }] })],
     ['nextEntityId', state({ nextEntityId: 4 })],
   ])('changes when %s changes', (_field, mutated) => {
     expect(hashState(mutated)).not.toBe(baseline);
@@ -145,7 +163,7 @@ describe('hash sensitivity — every hashed field must move the hash', () => {
   });
 
   it('distinguishes players whose ore values are exchanged', () => {
-    const exchanged = state({ players: [{ ore: 200 }, { ore: 150 }] });
+    const exchanged = state({ players: [{ ore: 200, underAttack: false, suddenDeathDamage: false }, { ore: 150, underAttack: false, suddenDeathDamage: false }] });
     expect(hashState(exchanged)).not.toBe(baseline);
   });
 
@@ -163,6 +181,19 @@ describe('hash ignores everything presentational', () => {
   it('is unchanged by fields that are not part of simulation state', () => {
     const withJunk = { ...state(), camera: { x: 12, y: 44 }, selection: [1, 2], alpha: 0.62 };
     expect(hashState(withJunk as SimState)).toBe(hashState(state()));
+  });
+});
+
+describe('the indicator flags are simulation state, not decoration', () => {
+  it('separates "hit by sudden death" from "under attack"', () => {
+    // FR-033 turns on precisely this distinction: a Base dying to the
+    // sudden-death backstop must NOT be reported as under attack, because there
+    // is no attacker. If the hash could not tell the two flags apart, a system
+    // that set the wrong one would replay identically and the corpus would never
+    // notice the indicator was lying.
+    const attacked = state({ players: [{ ore: 150, underAttack: true, suddenDeathDamage: false }, { ore: 200, underAttack: false, suddenDeathDamage: false }] });
+    const suddenDeath = state({ players: [{ ore: 150, underAttack: false, suddenDeathDamage: true }, { ore: 200, underAttack: false, suddenDeathDamage: false }] });
+    expect(hashState(attacked)).not.toBe(hashState(suddenDeath));
   });
 });
 

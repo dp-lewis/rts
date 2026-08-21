@@ -80,25 +80,25 @@ phases:
   implement:
     status: milestone_complete
     started_at: "2026-08-22T06:15:00Z"
-    milestone_completed_at: "2026-08-22T08:10:00Z"
+    milestone_completed_at: "2026-08-22T09:05:00Z"
     digest_path: "implement/digest.md"
     run_scope: "M0 only (T001-T006) — enforcement skeleton. User-scoped at the Phase 6 kickoff gate."
-    milestones_complete: ["M0", "M1", "M2"]
+    milestones_complete: ["M0", "M1", "M2", "M3"]
     red_gate:
       policy: per_milestone
       policy_rationale: "Greenfield repo: no package.json, no Vitest, no src/. The 27 Test-first tasks span M0-M9 and reference modules that will not exist for days, so a single upfront Red would be 27 bare import errors — a vacuous Red. Instead T001/T002 (pure INFRA, zero product code) scaffold the runner, then each milestone's test block must be observed failing before its implementation block runs. Chosen by the user at the Phase 6 kickoff gate 2026-08-22."
       status: confirmed_failing
-      tests: ["T003 (tests/lint/boundary.test.ts)", "T007-T014 (rng, hash, commands, determinism, roundtrip, headless)", "T026-T030 (pathfind, economy, ordering)"]
+      tests: ["T003 (tests/lint/boundary.test.ts)", "T007-T014 (rng, hash, commands, determinism, roundtrip, headless)", "T026-T030 (pathfind, economy, ordering)", "T034-T038 + T078-T080 (combat, production, victory)"]
       observed_at: "2026-08-22T06:17:37Z"
       evidence: "5 failed | 1 passed. Each failure read 'X was planted in src/sim/... and ESLint reported no error. Rules that did fire: (none)'. Green after T004: 6 passed (6). The one pass in the Red state is the scoping control, green by design in both states."
       m1_note: "Red rejected a SECOND time for the same reason: running the eight new test files against a repo with no src/sim modules produced bare 'Cannot find module' errors with zero new tests collected. Signature-only stubs (every export present, every body throwing) moved the failure to 43 collected tests failing on real calls. Writing the stubs also forced the whole M1 API surface to be settled before any logic existed. Green after T015-T025: 86 passed."
       note: "The first Red draft was REJECTED as insufficient — it failed with 'ESLint returned no result' (no config file, so ESLint matched nothing), which would have gone green on an empty eslint.config.js. Rewritten to lint against a parser-only rule-free fallback so a rule-less config still fails."
       skip_reason: null
-    tasks_completed: 33
+    tasks_completed: 44
     tasks_total: 82
-    tasks_in_scope_this_run: 33
-    progressive_checkpoints: 6
-    progressive_warnings: 3
+    tasks_in_scope_this_run: 44
+    progressive_checkpoints: 8
+    progressive_warnings: 5
     progressive_critical: 0
     dependencies:
       added: 11
@@ -106,12 +106,33 @@ phases:
       warned: 0
       blocked: 0
       log_path: "features/simple-rts-game/dependency-log.md"
-    sim_version: 3
+    sim_version: 5
     sim_version_history:
       - {version: 1, milestone: "M1", reason: "initial simulation behaviour"}
       - {version: 2, milestone: "M2 start", reason: "destX/destY added to Entity and the hash (ADR-001 Amendment 2). Deliberate regen, all 4 recorded hashes changed — the expected size for two new hashed fields per entity."}
+      - {version: 4, milestone: "M3", reason: "ADR-001 Amendment 3 — queuedKind per entity, suddenDeathAt on state, and the two per-player indicator flags. The flags are hashed deliberately: FR-033 requires sudden-death damage NOT to read as under-attack, so they record what happened in the simulation rather than how it is drawn."}
+      - {version: 5, milestone: "M3", reason: "ADR-001 Amendment 4 — gatherNodeId split out of targetId. targetId was holding two id spaces (entity ids and ore node ids) and combat cleared it out from under the economy the moment both existed."}
       - {version: 3, milestone: "M2", reason: "economy and movement wired into the tick. NOT bumped in the same edit at first: the corpus caught it as a REGRESSION (first divergence tick 100) rather than as staleness, which is the more useful failure. Bumped by hand, regenerated, hashes matched the regression's 'got' column exactly."}
     findings_for_gate:
+      - id: "M3-F1"
+        severity: "resolved"
+        title: "A test HUNG instead of failing"
+        detail: "victory.test.ts used `while (verdict === NONE)` with no budget. Against an unimplemented victory stage it spun forever, synchronously, stalling the whole suite. Vitest's testTimeout CANNOT save you from this — a synchronous infinite loop blocks the event loop so the timeout never fires. In CI it would have burned the job timeout and reported nothing: no failing test name, no assertion, a dead job. The irony is exact: these are the CR-001 tests, whose entire purpose is that a match must terminate in bounded time."
+        resolution: "Replaced with runToVerdict(state, budget), which throws a named error when the budget is exhausted, so non-termination is an assertion failure with a message rather than a hang."
+      - id: "M3-F2"
+        severity: "resolved"
+        title: "The regression suite caught a real defect two milestones later"
+        detail: "targetId held two different id spaces: M2 economy stored the worker's ore node in it, M3 combat stores an enemy entity id and clears it every tick for any unit with no enemy in range. Wiring combat into the tick made an M2 economy test fail. Entity ids start at 1 and the sentinel is -1, so in most configurations the collision would have HIDDEN — surfacing later as a rare seed-dependent worker stall rather than an obvious break."
+        resolution: "Split gatherNodeId out of targetId (ADR-001 Amendment 4) rather than teaching combat to tiptoe around the economy's use of the field."
+      - id: "M3-F3"
+        severity: "resolved"
+        title: "TC-UNIT-008 was an M3 exit criterion with no test, and step() did not enforce FR-004"
+        detail: "plan.md lists TC-UNIT-008 (a command applies at its target tick, not on issue) among M3's exit criteria and nothing asserted it at the step() level. Worse, step() applied whatever commands it was handed regardless of tick, so FR-004 held only because every caller happened to filter correctly."
+        resolution: "applyCommands now skips commands whose tick is not the current tick; a test offers the same command every tick and asserts it takes effect exactly once. The corpus did not go stale, confirming the guard changes nothing for correct callers."
+      - id: "M3-F4"
+        severity: "open — for M8 tuning or M9 playtest"
+        title: "Workers auto-attack, which can starve the economy"
+        detail: "ATTACK.worker exists and FR-020 says units auto-acquire enemies in range, so a worker beside an enemy flips to ATTACKING every tick and stops gathering for as long as the enemy stands there. Correct per the letter of FR-020, but a contested ore node could quietly halt a player's entire economy. Not speculating a fix."
       - id: "M2-F1"
         severity: "resolved"
         title: "The O-2 tie-break tests were passing for the wrong reason"

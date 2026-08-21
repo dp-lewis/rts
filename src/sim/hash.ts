@@ -21,7 +21,9 @@ import type { SimState } from './state';
  *     hashing one would launder a defect into a stable-looking value.
  *
  * Fields 7 and 8 (`difficulty`, `nextEntityId`) come from ADR-001 Amendment 1;
- * `destX`/`destY` on each entity come from Amendment 2.
+ * `destX`/`destY` on each entity come from Amendment 2; `queuedKind`, the two
+ * per-player indicator flags, and `suddenDeathAt` come from Amendment 3;
+ * `gatherNodeId` from Amendment 4.
  * The original field list omitted both despite the ADR opening with "exactly the
  * simulation state"; neither is presentational or derived, so neither fell under
  * its own exclusions. Two states differing only in `nextEntityId` diverge at the
@@ -90,8 +92,16 @@ export function hashState(state: SimState): string {
   h.uint(state.verdict, 1);
 
   // 4: per player, ordered by player id ascending (the array index IS the id).
-  h.uint(state.players[0].ore, 4);
-  h.uint(state.players[1].ore, 4);
+  // The two indicator flags are hashed because they are simulation state, not
+  // decoration: FR-033 requires sudden-death damage NOT to read as "under
+  // attack", and a system setting the wrong flag would otherwise replay
+  // identically and the corpus would never notice the indicator was lying.
+  for (let p = 0; p < 2; p += 1) {
+    const player = state.players[p]!;
+    h.uint(player.ore, 4);
+    h.uint(player.underAttack ? 1 : 0, 1);
+    h.uint(player.suddenDeathDamage ? 1 : 0, 1);
+  }
 
   // 5: per ore node, in array order — which is id order.
   h.uint(state.nodes.length, 4);
@@ -119,11 +129,15 @@ export function hashState(state: SimState): string {
     h.float(e.progress, `entities[${e.id}].progress`);
     h.float(e.destX, `entities[${e.id}].destX`);
     h.float(e.destY, `entities[${e.id}].destY`);
+    h.uint((e.queuedKind + 1) >>> 0, 4);
+    h.uint((e.gatherNodeId + 1) >>> 0, 4); // Amendment 4
   }
 
   // ADR-001 Amendment 1. Appended after the original six, never inserted.
   h.uint(state.difficulty, 1);
   h.uint(state.nextEntityId, 4);
+  // Amendment 3. suddenDeathAt is -1 until armed, so shift into unsigned space.
+  h.uint((state.suddenDeathAt + 1) >>> 0, 4);
 
   return h.digest();
 }

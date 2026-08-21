@@ -1,7 +1,7 @@
 import type { Command } from './commands';
 import { hashState } from './hash';
 import { step } from './step';
-import { createInitialState, type Difficulty, type EntitySeed, type OreNode, type PlayerState, type SimInit } from './state';
+import { createInitialState, type Difficulty, type EntitySeed, type OreNode, type PlayerSeed, type SimInit } from './state';
 import { SIM_VERSION } from './version';
 
 /**
@@ -31,7 +31,7 @@ export interface Checkpoint {
  * cheap one while the corpus holds a single case.
  */
 export interface ReplaySetup {
-  players?: [PlayerState, PlayerState];
+  players?: [PlayerSeed, PlayerSeed];
   nodes?: readonly OreNode[];
   entities?: readonly EntitySeed[];
 }

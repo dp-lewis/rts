@@ -1,6 +1,9 @@
 import { sortCommands, type Command } from './commands';
+import { acquireTargets, applyDamage, collectDamage } from './combat';
 import { ARRIVE_EPSILON, MAP_TILES_X, MAP_TILES_Y, SPEED } from './constants';
 import { runEconomy } from './economy';
+import { runProduction } from './production';
+import { armSuddenDeath, resolveVictory, suddenDeathDamage } from './victory';
 import { cellCentreX, cellCentreY, cellOf, createGrid, isPassable, type Grid } from './grid';
 import { findPath } from './pathfind';
 import { ENTITY_STATE, KIND, cloneState, type Entity, type SimState } from './state';
@@ -24,12 +27,12 @@ export const STAGES = [
   'applyCommands', //        1 — sorted by (issuer, seq)                    O-4
   'aiThink', //              2 — emits commands for tick+1; uses sim RNG     M4
   'economy', //              3 — gather, deposit, deplete nodes                 O-3
-  'production', //           4 — advance queues, spend ore                  O-5, M3
+  'production', //           4 — advance queues, spend ore                      O-5
   'movement', //             5 — pathfind + step positions                      O-2
-  'combatAcquire', //        6 — choose targets                             O-1, M3
-  'combatCollectDamage', //  7 — accumulate, do NOT apply                        M3
-  'combatApplyDamage', //    8 — atomic, end of tick                        O-6, M3
-  'victoryResolve', //       9 — win / lose / draw; sudden death     FR-017/028, M3
+  'combatAcquire', //        6 — choose targets                                 O-1
+  'combatCollectDamage', //  7 — accumulate, do NOT apply
+  'combatApplyDamage', //    8 — atomic, end of tick                            O-6
+  'victoryResolve', //       9 — win / lose / draw; sudden death         FR-017/028
   'advanceTick', //         10
 ] as const;
 
@@ -52,6 +55,14 @@ function applyCommands(state: SimState, commands: readonly Command[]): void {
 
   for (let i = 0; i < ordered.length; i += 1) {
     const command = ordered[i]!;
+
+    // FR-004 / TC-UNIT-008: a command takes effect on ITS tick, not whenever it
+    // is handed over. Enforced here rather than trusted to the caller — every
+    // caller filters correctly today, and that is exactly the kind of invariant
+    // that holds until the one place that forgets.
+    if (command.tick !== state.tick) {
+      continue;
+    }
 
     switch (command.type) {
       case 'attack': {
@@ -197,9 +208,20 @@ export function step(state: SimState, commands: readonly Command[]): SimState {
   applyCommands(next, commands); //    1
   //                                   2  aiThink — M4
   runEconomy(next); //                 3
-  //                                   4  production — M3
+  runProduction(next); //              4
   runMovement(next, gridFor(next)); // 5
-  //                                   6–9  combat and victory — M3
+  acquireTargets(next); //             6
+
+  // 7 and 8 are one decision split in two on purpose. Everything that fires is
+  // worked out first and NOTHING lands until the ledger is complete, so two units
+  // that kill each other both die — O-6. The sudden-death backstop writes into
+  // the same ledger so it lands atomically alongside real combat.
+  const ledger = collectDamage(next); //  7
+  armSuddenDeath(next);
+  suddenDeathDamage(next, ledger);
+  applyDamage(next, ledger); //           8
+
+  resolveVictory(next); //             9
   next.tick += 1; //                  10
 
   return next;

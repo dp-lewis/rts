@@ -53,8 +53,18 @@ export interface Entity {
   y: number;
   hp: number;
   state: EntityState;
-  /** -1 means none. Never null. */
+  /**
+   * The enemy ENTITY this unit is fighting; -1 for none. Never null.
+   *
+   * Combat owns this field exclusively. It used to double as the worker's ore
+   * node too, which worked right up until combat existed — `acquireTargets`
+   * then cleared it every tick for any worker with no enemy nearby, silently
+   * cancelling the gather order. Two id spaces in one field is the bug; see
+   * `gatherNodeId`.
+   */
   targetId: number;
+  /** The ore NODE this worker is working; -1 for none. Economy owns it. */
+  gatherNodeId: number;
   cooldown: number;
   progress: number;
   /**
@@ -71,6 +81,15 @@ export interface Entity {
    */
   destX: number;
   destY: number;
+  /**
+   * What this producer is currently building; -1 for nothing.
+   *
+   * Ore is spent on COMPLETION, not when the item is queued. That is what makes
+   * O-5 a real hazard — two Factories finishing on one tick with ore for only one
+   * — and resolving it in ascending entity id order, with the loser staying
+   * queued rather than failing, is the rule.
+   */
+  queuedKind: number;
 }
 
 /**
@@ -84,6 +103,9 @@ export interface Entity {
 export type EntitySeed = Pick<Entity, 'id' | 'kind' | 'owner' | 'x' | 'y'> &
   Partial<Omit<Entity, 'id' | 'kind' | 'owner' | 'x' | 'y'>>;
 
+/** Same idea for players: ore is the only thing a caller ever needs to set. */
+export type PlayerSeed = Partial<PlayerState> & Pick<PlayerState, 'ore'>;
+
 export interface OreNode {
   id: number;
   x: number;
@@ -93,6 +115,18 @@ export interface OreNode {
 
 export interface PlayerState {
   ore: number;
+  /**
+   * An owned entity took damage from an enemy this tick (FR-023). Reset every
+   * tick by the damage stage.
+   */
+  underAttack: boolean;
+  /**
+   * A Base took sudden-death damage this tick (FR-033, CR-001). Deliberately
+   * SEPARATE from `underAttack`: a Base dying to the backstop has no attacker,
+   * and reporting it as "under attack" would send the player looking for an
+   * enemy that is not there.
+   */
+  suddenDeathDamage: boolean;
 }
 
 export interface SimState {
@@ -102,6 +136,13 @@ export interface SimState {
   difficulty: Difficulty;
   verdict: Verdict;
   players: [PlayerState, PlayerState];
+  /**
+   * The tick sudden death armed on, or -1 while it has not (CR-001). Stored
+   * rather than recomputed because the grace period and the damage ramp are both
+   * measured from it, and "when did every node run dry" is not recoverable from a
+   * later state.
+   */
+  suddenDeathAt: number;
   /** Sorted by id, ascending. */
   nodes: OreNode[];
   /** Sorted by id, ascending — O-7. */
@@ -112,7 +153,7 @@ export interface SimState {
 export interface SimInit {
   seed: number;
   difficulty: Difficulty;
-  players?: [PlayerState, PlayerState];
+  players?: [PlayerSeed, PlayerSeed];
   nodes?: readonly OreNode[];
   entities?: readonly EntitySeed[];
 }
@@ -142,6 +183,16 @@ function hydrate(seed: EntitySeed): Entity {
     progress: seed.progress ?? 0,
     destX: seed.destX ?? -1,
     destY: seed.destY ?? -1,
+    queuedKind: seed.queuedKind ?? -1,
+    gatherNodeId: seed.gatherNodeId ?? -1,
+  };
+}
+
+function hydratePlayer(seed: PlayerSeed): PlayerState {
+  return {
+    ore: seed.ore,
+    underAttack: seed.underAttack ?? false,
+    suddenDeathDamage: seed.suddenDeathDamage ?? false,
   };
 }
 
@@ -170,9 +221,10 @@ export function createInitialState(init: SimInit): SimState {
     rng: seedRng(init.seed),
     difficulty: init.difficulty,
     verdict: VERDICT.NONE,
+    suddenDeathAt: -1,
     players: init.players
-      ? [{ ore: init.players[0].ore }, { ore: init.players[1].ore }]
-      : [{ ore: STARTING_ORE }, { ore: STARTING_ORE }],
+      ? [hydratePlayer(init.players[0]), hydratePlayer(init.players[1])]
+      : [hydratePlayer({ ore: STARTING_ORE }), hydratePlayer({ ore: STARTING_ORE })],
     nodes,
     entities,
     nextEntityId,
@@ -186,7 +238,8 @@ export function cloneState(state: SimState): SimState {
     rng: state.rng,
     difficulty: state.difficulty,
     verdict: state.verdict,
-    players: [{ ore: state.players[0].ore }, { ore: state.players[1].ore }],
+    suddenDeathAt: state.suddenDeathAt,
+    players: [{ ...state.players[0] }, { ...state.players[1] }],
     nodes: state.nodes.map((n) => ({ ...n })),
     entities: state.entities.map((e) => ({ ...e })),
     nextEntityId: state.nextEntityId,

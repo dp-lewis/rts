@@ -1,8 +1,8 @@
 # Phase Digest — Implement (M0 only)
 
-**Phase:** 6 · Implement · **Scope:** M0 Enforcement skeleton · M1 Determinism harness · M2 Grid, movement, economy
-**Date:** 2026-08-22 · **Tasks:** T001–T033 complete (33 / 82)
-**Status:** M0, M1 and M2 complete · `SIM_VERSION` 3 · 122 tests green
+**Phase:** 6 · Implement · **Scope:** M0 Enforcement · M1 Determinism · M2 Grid/movement/economy · M3 Production/combat/victory
+**Date:** 2026-08-22 · **Tasks:** 44 / 82 complete
+**Status:** M0–M3 complete · `SIM_VERSION` 5 · 179 tests green · a headless match runs to a verdict
 
 ---
 
@@ -258,3 +258,89 @@ Mutation-verified: deleting the tie-break was 10 passed before, 3 failed after.
 - **`runEconomy` is a single function with the whole worker state machine in it.** It
   reads linearly today; if M3 adds combat interactions to workers it will need
   splitting before it stops reading linearly.
+
+
+---
+
+# M3 — Production, combat, victory (+ CR-001)
+
+## Key decisions
+
+- **Ore is spent on completion, not at queue time.** Queuing should not lock up ore you
+  might need for defence — and it is exactly what creates O-5. Resolved in ascending
+  entity id order with the loser staying QUEUED, because a build that silently
+  evaporated for being ten ore short would be maddening and, with no error surface in
+  this game, completely invisible.
+
+- **Sudden-death damage goes through the same ledger as combat.** It lands atomically
+  with everything else (O-6), so a Base can be finished by a shell and the backstop on
+  the same tick, and it is tagged `suddenDeath` rather than `enemy` so FR-033 holds.
+  Both Bases take it, so the backstop cannot hand anyone a win by asymmetry — it
+  resolves the match on the hp the players earned.
+
+- **A settled verdict is never revised.** Without that, a Draw could be quietly
+  rewritten into a Defeat on the following tick as bodies were cleaned up.
+
+- **The indicator flags are hashed.** The one genuinely debatable call in ADR-001's
+  history, since this document says presentational things are not hashed. But FR-033
+  depends on sudden-death damage being distinguishable from an attack, so the flags
+  encode what *happened*, not how it is drawn. A system setting the wrong one would
+  replay identically and the corpus would stay green while the indicator lied.
+
+- **Build progress is capped, not accumulated, while waiting for ore.** Late ore
+  releases exactly one unit, never a backlog.
+
+## The three findings
+
+1. **A test hung instead of failing.** `while (verdict === NONE)` with no budget, in the
+   CR-001 tests — whose entire subject is that a match must terminate in bounded time.
+   Vitest's `testTimeout` cannot interrupt a synchronous loop, so in CI this would have
+   burned the job timeout and reported nothing at all.
+2. **The regression suite caught a real defect two milestones later.** `targetId` held
+   two id spaces; M3's combat cleared it out from under M2's economy. An M2 test caught
+   it. Entity ids start at 1 and the sentinel is -1, so the collision would otherwise
+   have hidden and surfaced much later as a rare, seed-dependent worker stall.
+3. **TC-UNIT-008 was an M3 exit criterion with no test**, and `step()` did not enforce
+   FR-004 at all — commands applied whenever handed over. Both closed.
+
+Three of my own tests were also wrong in ways that would have passed had the numbers
+lined up differently: a trooper that correctly shot a nearer tank instead of the Base,
+an escalation test measuring an already-dead Base, and a single-sample flag check
+landing on a non-firing tick.
+
+## Artifacts produced
+
+| Path | Task |
+|---|---|
+| `tests/sim/combat.test.ts` | T034, T036 |
+| `tests/sim/production.test.ts` | T035, T037, T080 |
+| `tests/sim/victory.test.ts` | T038, T078, T079 |
+| `src/sim/production.ts` | T039 |
+| `src/sim/combat.ts` | T040 |
+| `src/sim/victory.ts`, `src/sim/constants.ts` | T041 |
+
+## Open risks
+
+1. **🟠 Workers auto-attack, which can starve the economy.** A worker beside an enemy
+   flips to ATTACKING every tick and stops gathering. Correct per the letter of FR-020,
+   but a contested ore node could quietly halt a player's whole economy. For M8 tuning
+   or M9 playtest to judge — not worth speculating a fix now.
+2. **A Factory under construction reuses `progress`.** Safe because the uses are
+   strictly sequential and distinguished by `queuedKind === -1` — but it is one field
+   with two meanings, which is the exact shape of the `targetId` bug this milestone
+   just fixed. Worth watching.
+3. **Nothing has been tuned.** The 4.4-minute Draw in the smoke run is not a balance
+   signal: no AI, the sides never meet, nodes seeded at 600 rather than 1500.
+4. **Verdicts are from player 0's point of view** — a single field, fine for v1.
+5. **A boxed-in producer stacks its spawn on itself** after searching four rings.
+   Harmless while units do not collide.
+
+## Handoff notes
+
+- **Read `collectDamage` and `applyDamage` as one unit.** Their separation *is* O-6; a
+  reviewer who reads only one will not see why either is shaped the way it is.
+- **`runProduction` is the densest function in the codebase** — self-construction, queue
+  advance, affordability, the free-Worker floor, and spawn placement. If M4 or M8 adds
+  to it, split it first.
+- The `sim_version_history` block on `.forge-status.yml` records why each of the five
+  versions exists; read it before assuming a corpus hash changed by accident.

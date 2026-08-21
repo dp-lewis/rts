@@ -1,7 +1,7 @@
 # ADR-001: Canonical state hash
 
 > Status: **Accepted** · Date: 2026-08-21 · Feature: `simple-rts-game`
-> **Amended 2026-08-22 (Amendments 1 and 2)** — see the Amendments section.
+> **Amended 2026-08-22 (Amendments 1–4)** — see the Amendments section.
 > Discharges bridge-gate obligation 1. Required by Constitution §I and §IV.
 
 ## Context
@@ -24,11 +24,16 @@ Exactly the simulation state, in a fixed order:
 3. `verdict` (uint8 enum: 0 none, 1 victory, 2 defeat, 3 draw)
 4. Per player, ordered by player id ascending: `ore` (uint32)
 5. Per ore node, ordered by **node id ascending**: `id`, `remaining`
+4b. Per player, the two indicator flags `underAttack`, `suddenDeathDamage`
+   (uint8 each) — *added by Amendment 3*
 6. Per entity, ordered by **entity id ascending**: `id`, `kind`, `owner`, `x`, `y`,
-   `hp`, `stateEnum`, `targetId`, `cooldown`, `progress`, `destX`, `destY`
-   *(the last two added by Amendment 2)*
+   `hp`, `stateEnum`, `targetId`, `cooldown`, `progress`, `destX`, `destY`,
+   `queuedKind`, `gatherNodeId`
+   *(`destX`/`destY` added by Amendment 2, `queuedKind` by Amendment 3,
+   `gatherNodeId` by Amendment 4)*
 7. `difficulty` (uint8) — *added by Amendment 1*
 8. `nextEntityId` (uint32) — *added by Amendment 1*
+9. `suddenDeathAt` (int32, -1 until armed) — *added by Amendment 3*
 
 Entity and node collections are stored as arrays kept sorted by id, so "iterate in
 id order" is the natural traversal, not a sort performed at hash time. Sorting at
@@ -162,6 +167,55 @@ construction in the tests and every corpus case at once. `EntitySeed` was introd
 the same time: id, kind, owner, and position are required, everything else defaults.
 Future field additions are now additive for callers rather than a sweep.
 
+### Amendment 3 — production, sudden death, and the indicator flags (2026-08-22, M3)
+
+**What changed.** `queuedKind` per entity, `suddenDeathAt` on the state, and the two
+per-player flags `underAttack` / `suddenDeathDamage`. `SIM_VERSION` 3 → 4.
+
+**`queuedKind`.** Production needs to know *what* a producer is building, and
+`progress` only says how far along it is. Ore is spent on completion rather than at
+queue time, which is what makes O-5 real, so the queued item has to survive across
+ticks in hashed state.
+
+**`suddenDeathAt`.** The grace period and the damage ramp are both measured from the
+tick sudden death armed, and "when did every node run dry" is not recoverable from a
+later state — every node reads zero forever afterwards. It has to be recorded.
+
+**The two indicator flags, and why they are hashed.** These are the one genuinely
+debatable addition in this ADR's history, because they exist to drive a screen-edge
+indicator and this document says presentational things are not hashed.
+
+They are hashed anyway, and the reason is FR-033. A Base destroyed by the
+sudden-death backstop must NOT read as "under attack", because there is no attacker
+and the player would go looking for an enemy that does not exist — in a game with no
+camera to go looking with. The flags therefore encode *what happened in the
+simulation*, not how it is drawn. A system that set the wrong one would replay
+identically, the corpus would stay green, and the indicator would lie forever.
+
+The line this ADR draws is between presentational and simulated, not between
+"visible" and "invisible". These are simulated.
+
+### Amendment 4 — `gatherNodeId`, splitting an overloaded field (2026-08-22, M3)
+
+**What changed.** Workers gained a dedicated `gatherNodeId`; `targetId` now belongs to
+combat alone. `SIM_VERSION` 4 → 5.
+
+**Why.** In M2 the worker's ore node was stored in `targetId`, and that worked for
+exactly as long as nothing else used the field. The moment combat arrived,
+`acquireTargets` cleared `targetId` every tick for any worker with no enemy nearby —
+silently cancelling the gather order on the next tick.
+
+**How it was found.** An M2 economy test ("sends an idle worker toward a node without
+any command") started failing the moment combat was wired into the tick. It is the
+clearest return the regression suite has produced so far: a milestone-old test caught
+a defect introduced two milestones later, in a completely different file.
+
+**The real lesson** is that `targetId` was holding two different id spaces — entity ids
+and ore node ids — distinguishable only by which system last wrote to it. That the
+sentinel `-1` and the fact that entity ids start at 1 would have hidden the collision
+in most scenarios makes it worse, not better: it would have surfaced as a rare,
+seed-dependent stall rather than an obvious break.
+
 ## Alternatives rejected
 
 | Alternative | Why rejected |
@@ -174,3 +228,5 @@ Future field additions are now additive for callers rather than a sweep.
 | Omit `nextEntityId` and `difficulty` (the original field list) | Rejected by Amendment 1. Both are simulation state, neither is presentational or derived, and omitting them lets a genuine divergence go unreported until it surfaces far from its cause. |
 | Store the computed path on each entity | Rejected by Amendment 2. It is a cache keyed on a position that has since moved, and it would need hashing (identical positions with different remaining paths behave differently), forcing a variable-length array into a fixed-width per-entity encoding. Recomputing A\* over ~220 cells is microseconds. |
 | Use `0` or `null` for "no destination" | Rejected by Amendment 2. `0` is a legal coordinate, and `null` breaks the sentinels-not-optionals rule that keeps the hash encoding branch-free. |
+| Treat the under-attack / sudden-death flags as presentational and leave them unhashed | Rejected by Amendment 3. They record what happened in the simulation, not how it is drawn. FR-033 depends on the two being distinguishable, and an unhashed flag set wrongly would replay green forever while the indicator lied. |
+| Keep one `targetId` for both combat targets and ore nodes | Rejected by Amendment 4. Two id spaces in one field, distinguishable only by which system wrote last. Combat cleared it out from under the economy the moment both existed. |

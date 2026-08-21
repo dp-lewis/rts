@@ -141,7 +141,7 @@ describe('FR-006 — workers gather from tick 0 with no player input', () => {
     const state = run(1);
     const worker = state.entities.find((e) => e.id === 2)!;
     expect(worker.state).not.toBe(ENTITY_STATE.IDLE);
-    expect(worker.targetId).toBe(0);
+    expect(worker.gatherNodeId).toBe(0);
   });
 
   it('raises the player\'s ore within a reasonable number of ticks', () => {
@@ -210,8 +210,8 @@ describe('FR-016 / TC-UNIT-007 — depletion and retargeting', () => {
       a = step(a, []);
       b = step(b, []);
     }
-    expect(b.entities.find((e) => e.id === 2)!.targetId).toBe(
-      a.entities.find((e) => e.id === 2)!.targetId,
+    expect(b.entities.find((e) => e.id === 2)!.gatherNodeId).toBe(
+      a.entities.find((e) => e.id === 2)!.gatherNodeId,
     );
   });
 
@@ -233,7 +233,7 @@ describe('FR-016 / TC-UNIT-007 — depletion and retargeting', () => {
     const settled = state.entities.find((e) => e.id === 2)!;
     expect(state.nodes[0]!.remaining).toBe(0);
     expect(settled.state).toBe(ENTITY_STATE.IDLE);
-    expect(settled.targetId).toBe(-1);
+    expect(settled.gatherNodeId).toBe(-1);
     expect(settled.destX).toBe(-1);
     expect(settled.destY).toBe(-1);
 
@@ -248,7 +248,7 @@ describe('FR-016 / TC-UNIT-007 — depletion and retargeting', () => {
     expect(after.x).toBe(before.x);
     expect(after.y).toBe(before.y);
     expect(after.destX).toBe(-1);
-    expect(after.targetId).toBe(-1);
+    expect(after.gatherNodeId).toBe(-1);
     expect(after.state).toBe(ENTITY_STATE.IDLE);
   });
 });

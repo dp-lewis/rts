@@ -396,3 +396,143 @@ command collisions are preserved with the AI listed first so O-4 stays a real gu
 6. **Off-map entities simply cannot path.** `findPath` returns `[]` for out-of-bounds
    cells, so such units stand still — deterministic, no crash. Nothing on-map produces
    this now that the corpus case is fixed, but M3 building placement must not create it.
+
+---
+
+## Red gate — M3
+
+**Tasks:** T034–T038, T078–T080 · **Turned green by:** T039–T041 · **Status:** `confirmed_failing` → `green`
+
+Stub-first as before. Red: **44 failed**, all at assertion level.
+Green after T039–T041: **179 passed (179)**.
+
+### 🔴 A test HUNG instead of failing
+
+The first draft of `victory.test.ts` used `while (state.verdict === VERDICT.NONE)`
+with no budget. Against an unimplemented victory stage that does not fail — it spins
+forever, synchronously. The whole suite stalled and had to be killed.
+
+Two things make this worse than an ordinary bad test:
+
+1. **Vitest's `testTimeout` cannot save you.** A synchronous infinite loop blocks the
+   event loop, so the timeout never fires. The in-test budget is the *only* protection.
+2. In CI it would have burned the job timeout and reported nothing at all — no failing
+   test name, no assertion, just a dead job.
+
+The irony is exact: these are the tests for CR-001, whose entire purpose is that a
+match must terminate in bounded time. A test for "this terminates" that itself fails
+to terminate. Replaced with `runToVerdict(state, budget)`, which throws a named error
+when the budget is exhausted — so non-termination is now an assertion failure with a
+message rather than a hang.
+
+(Also discovered: `timeout` is not available on macOS by default, so the usual shell
+guard against this was not there either.)
+
+## 🔴 The regression suite caught a real defect two milestones later
+
+`targetId` was holding two different id spaces. M2's economy stored the worker's ore
+node in it; M3's `acquireTargets` stores an enemy entity id — and clears it every tick
+for any unit with no enemy in range. The moment combat was wired into the tick, an M2
+test failed:
+
+```
+FAIL tests/sim/economy.test.ts > sends an idle worker toward a node without any command
+AssertionError: expected -1 to be +0
+```
+
+A milestone-old test catching a defect introduced two milestones later, in a
+completely different file. The best return the suite has produced so far.
+
+What makes it worth dwelling on: entity ids start at 1 and the sentinel is -1, so in
+most configurations the collision would have hidden — surfacing much later as a rare,
+seed-dependent worker stall rather than an obvious break. Fixed properly by splitting
+`gatherNodeId` out (ADR-001 Amendment 4) rather than by teaching combat to tiptoe
+around the economy's use of the field.
+
+## Three of my own tests were wrong, and each was wrong in an instructive way
+
+| Test | What I assumed | What was actually true |
+|---|---|---|
+| "lets a dying unit land its blow" | The trooper would shoot the Base | A friendly tank was 20px away and *nearer* — the trooper correctly shot the tank. The geometry is load-bearing: the tank now sits at 110px, inside its own 128px reach but outside the trooper's 96px. |
+| "escalates — damage grows" | Sampling three ramp bands apart would show growth | By then the cumulative damage had already destroyed the Base. The test was measuring a corpse and read zero. Now samples two adjacent bands. |
+| "still reports a genuine attack during sudden death" | One sample would catch the tank firing | Flags reset every tick and the tank fires once per 30-tick cooldown, so a single sample almost always lands on a quiet tick. Now scans a cooldown-length window and asserts *both* that the flags co-occur and that sudden death fires alone. |
+
+None of these were failures of the implementation. All three were tests that would
+have passed for the wrong reason had the numbers happened to line up.
+
+## TC-UNIT-008 was an M3 exit criterion with no test
+
+plan.md lists TC-UNIT-008 (a command applies at its target tick, not on issue —
+FR-004) among M3's exit criteria, and nothing asserted it at the `step()` level.
+Worse, `step()` applied whatever commands it was handed regardless of their tick, so
+FR-004 held only because every caller happened to filter correctly.
+
+`applyCommands` now skips any command whose tick is not the current tick, and a test
+offers the same command on every tick and asserts it takes effect exactly once. The
+corpus did **not** go stale, confirming the guard changes nothing for correct callers.
+
+## A headless match now runs to a verdict
+
+```
+verdict      DRAW
+ticks        5237  (4.4 min of game time)
+armed at     3237  (2.7 min — nodes ran dry, backstop armed)
+ore          750 / 750       nodes 0 / 0      bases hp 0 / 0
+sim speed    5237 ticks in 28ms = 187,036 ticks/sec (needs 20)
+```
+
+A perfectly mirrored setup with no AI and no input, so both Bases die on the same tick
+and CR-001 resolves it as a Draw — reusing FR-028 rather than inventing a fourth
+verdict, exactly as specified. The 4.4 minutes is **not** a balance signal: there is no
+AI, the two sides never meet, and the nodes were seeded at 600 rather than the real
+1500. M8 owns duration.
+
+Performance headroom is ~9,000× real time, so recomputing A\* every tick (ADR-001
+Amendment 2) costs nothing worth reclaiming.
+
+## Checkpoint #7 — after T034–T038, T078–T080 (M3 test block)
+
+| Check | Status | Notes |
+|-------|:------:|-------|
+| Task-Code correspondence | ✅ | 8 test tasks → `combat.test.ts`, `production.test.ts`, `victory.test.ts`. |
+| Spec AC alignment | ✅ | TC-UNIT-005/006/011/012 named; O-1, O-5, O-6 each have a declaration-order test; pre-impl F-6 has five. |
+| Unplanned changes | ⚠️ 1 file | `tests/sim/hash.test.ts` — schema assertions for the four new hashed fields, written before the fields existed. |
+| Plan alignment | ✅ | |
+| Dependency / supply-chain | ✅ None added | |
+
+**Verdict:** CLEAN.
+
+## Checkpoint #8 — after T039–T041 (M3 implementation)
+
+| Check | Status | Notes |
+|-------|:------:|-------|
+| Task-Code correspondence | ✅ | `production.ts`, `combat.ts`, `victory.ts`. |
+| Spec AC alignment | ✅ | 179/179; headless match terminates; TC-UNIT-008 gap closed. |
+| Unplanned changes | ⚠️ 4 files | `step.ts` (stages 4, 6–9 + FR-004 guard), `state.ts`/`hash.ts` (Amendments 3–4), `commands.test.ts` (TC-UNIT-008), corpus regenerated twice. |
+| Plan alignment | ✅ | Pipeline order unchanged; `STAGES` test still pins it. |
+| Dependency / supply-chain | ✅ None added | |
+
+**Verdict:** CLEAN — M3 complete.
+
+## Deviations and open items carried out of M3
+
+1. **`SIM_VERSION` is 5.** Two more deliberate regenerations (4 and 5), both with
+   visible hash diffs. ADR-001 now carries four amendments.
+2. **🟠 Workers auto-attack, which can starve the economy.** `ATTACK.worker` exists and
+   FR-020 says units auto-acquire, so a worker beside an enemy flips to ATTACKING every
+   tick and stops gathering — for as long as the enemy stands there. Correct per the
+   letter of FR-020, but a contested node could quietly halt a player's whole economy.
+   Not speculating a fix; flagging it for M8 tuning or M9 playtest.
+3. **A boxed-in producer stacks its spawn on itself.** `spawnCell` searches four rings;
+   if every cell is taken it places the unit on the producer. Units do not collide in
+   v1 (pre-impl F-2), so this is harmless now, and a unit that was paid for must exist.
+   Revisit if collision is ever added.
+4. **Verdicts are from player 0's point of view.** `SimState.verdict` is a single field,
+   so VICTORY means "player 0 won". Fine for single-player v1; would need rethinking if
+   a spectator or second human ever existed.
+5. **A Factory under construction reuses `progress`.** Safe because the two uses are
+   strictly sequential — a Factory cannot produce before it exists — and distinguished
+   by `queuedKind === -1`. It is still one field with two meanings, which is the exact
+   shape of the `targetId` bug above. Worth watching.
+6. **Build progress is capped, not accumulated, while waiting for ore.** So ore arriving
+   late releases exactly one unit rather than a backlog.

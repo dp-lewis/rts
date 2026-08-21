@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { step } from '../../src/sim/step';
+import { KIND, createInitialState } from '../../src/sim/state';
 import {
   ISSUER,
   createCommandQueue,
@@ -146,6 +148,45 @@ describe('command queue drain', () => {
   it('returns an empty list for a tick with nothing scheduled', () => {
     const [drained] = drainCommands(createCommandQueue(), 42);
     expect(drained).toEqual([]);
+  });
+});
+
+describe('TC-UNIT-008 / FR-004 — a command lands on its own tick, not on issue', () => {
+  it('ignores a command handed to step() before its scheduled tick', () => {
+    const state = createInitialState({
+      seed: 1,
+      difficulty: 1,
+      entities: [
+        { id: 1, kind: KIND.TROOPER, owner: 0, x: 200, y: 200 },
+        { id: 2, kind: KIND.TROOPER, owner: 1, x: 1000, y: 600 },
+      ],
+    });
+    const future: Command = { tick: 50, issuer: ISSUER.PLAYER, seq: 0, type: 'attack', units: [1], targetId: 2 };
+
+    // Handed in on tick 0. step() must not act on it.
+    const next = step(state, [future]);
+    expect(next.entities.find((e) => e.id === 1)!.targetId).toBe(-1);
+  });
+
+  it('applies it on the scheduled tick when handed in then', () => {
+    let state = createInitialState({
+      seed: 1,
+      difficulty: 1,
+      entities: [
+        { id: 1, kind: KIND.TROOPER, owner: 0, x: 200, y: 200 },
+        { id: 2, kind: KIND.TROOPER, owner: 1, x: 1000, y: 600 },
+      ],
+    });
+    const scheduled: Command = { tick: 3, issuer: ISSUER.PLAYER, seq: 0, type: 'attack', units: [1], targetId: 2 };
+
+    // The same command is offered on EVERY tick. It must take effect exactly once,
+    // on tick 3 — which is the property a caller-side filter cannot guarantee.
+    for (let t = 0; t < 3; t += 1) {
+      state = step(state, [scheduled]);
+      expect(state.entities.find((e) => e.id === 1)!.targetId).toBe(-1);
+    }
+    state = step(state, [scheduled]);
+    expect(state.entities.find((e) => e.id === 1)!.targetId).toBe(2);
   });
 });
 
