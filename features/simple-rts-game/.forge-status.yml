@@ -2,7 +2,7 @@ schema_version: 3
 feature: simple-rts-game
 feature_description: "Make a simple RTS game — local single-player vs AI, client-side Phaser, deterministic fixed-timestep simulation."
 created_at: "2026-08-21"
-last_updated: "2026-08-22T06:35:00Z"
+last_updated: "2026-08-22T07:20:00Z"
 feature_mode: standard
 flow_mode: gated
 v2_native: true
@@ -80,31 +80,49 @@ phases:
   implement:
     status: milestone_complete
     started_at: "2026-08-22T06:15:00Z"
-    milestone_completed_at: "2026-08-22T06:35:00Z"
+    milestone_completed_at: "2026-08-22T07:20:00Z"
     digest_path: "implement/digest.md"
     run_scope: "M0 only (T001-T006) — enforcement skeleton. User-scoped at the Phase 6 kickoff gate."
-    milestones_complete: ["M0"]
+    milestones_complete: ["M0", "M1"]
     red_gate:
       policy: per_milestone
       policy_rationale: "Greenfield repo: no package.json, no Vitest, no src/. The 27 Test-first tasks span M0-M9 and reference modules that will not exist for days, so a single upfront Red would be 27 bare import errors — a vacuous Red. Instead T001/T002 (pure INFRA, zero product code) scaffold the runner, then each milestone's test block must be observed failing before its implementation block runs. Chosen by the user at the Phase 6 kickoff gate 2026-08-22."
       status: confirmed_failing
-      tests: ["T003 (tests/lint/boundary.test.ts)"]
+      tests: ["T003 (tests/lint/boundary.test.ts)", "T007-T014 (rng, hash, commands, determinism, roundtrip, headless)"]
       observed_at: "2026-08-22T06:17:37Z"
       evidence: "5 failed | 1 passed. Each failure read 'X was planted in src/sim/... and ESLint reported no error. Rules that did fire: (none)'. Green after T004: 6 passed (6). The one pass in the Red state is the scoping control, green by design in both states."
+      m1_note: "Red rejected a SECOND time for the same reason: running the eight new test files against a repo with no src/sim modules produced bare 'Cannot find module' errors with zero new tests collected. Signature-only stubs (every export present, every body throwing) moved the failure to 43 collected tests failing on real calls. Writing the stubs also forced the whole M1 API surface to be settled before any logic existed. Green after T015-T025: 86 passed."
       note: "The first Red draft was REJECTED as insufficient — it failed with 'ESLint returned no result' (no config file, so ESLint matched nothing), which would have gone green on an empty eslint.config.js. Rewritten to lint against a parser-only rule-free fallback so a rule-less config still fails."
       skip_reason: null
-    tasks_completed: 6
+    tasks_completed: 25
     tasks_total: 82
-    tasks_in_scope_this_run: 6
-    progressive_checkpoints: 2
-    progressive_warnings: 1
+    tasks_in_scope_this_run: 25
+    progressive_checkpoints: 4
+    progressive_warnings: 2
     progressive_critical: 0
     dependencies:
-      added: 10
-      vetted: 10
+      added: 11
+      vetted: 11
       warned: 0
       blocked: 0
       log_path: "features/simple-rts-game/dependency-log.md"
+    findings_for_gate:
+      - id: "M1-F1"
+        severity: "needs decision"
+        title: "ADR-001 amendment — hash covers difficulty and nextEntityId"
+        detail: "ADR-001 opens with 'exactly the simulation state' then lists fields omitting both. Neither is presentational or derived, so neither falls under the ADR's own 'what is NOT hashed' list — a drafting gap, not a deliberate exclusion. It matters: two states differing only in nextEntityId diverge at the next spawn, and difficulty is a field precisely so it can vary independently (FR-029). Implemented as a purely additive append AFTER the ADR's six fields; reverting is two lines plus one corpus:regen."
+      - id: "M1-F2"
+        severity: "needs decision"
+        title: "Data model has no destination field, so move orders cannot be recorded"
+        detail: "plan.md's Entity and ADR-001's hashed field list both omit one. step() handles attack and build; move hits an explicit commented case that does nothing. Inventing destX/destY in M1 would add a hashed field ahead of the milestone that owns movement, staling every corpus hash recorded in between. M2 must decide the field and amend ADR-001 in the same change."
+      - id: "M1-F3"
+        severity: "informational"
+        title: "The M0 boundary guard caught a real violation in M1 code"
+        detail: "src/sim/replay.ts:126 used new Date().toISOString() for createdAt — a wall-clock read inside the simulation, caught by no-restricted-globals one milestone after the rule was written. Fixed by making createdAt caller-supplied; corpus.test.ts now fails any case whose date is not an ISO date, because a caller-supplied field is a forgettable one."
+      - id: "M1-F4"
+        severity: "informational"
+        title: "navigator exists in Node 21+, so the lint ban on it is load-bearing"
+        detail: "headless.test.ts asserted typeof navigator === 'undefined'; it is 'object', reporting Node.js/24. A sim module reading navigator would not crash under test — it would silently return one value in Node and another in the browser. The runtime environment cannot catch this; only the lint rule can."
     accepted_risks:
       - id: "O-7-partial"
         title: "Map/Set for-of guard is partial"

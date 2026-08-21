@@ -68,72 +68,72 @@ asserting on state, not rendered output (Principle II).
 
 ### Tests (Red first)
 
-- [ ] T007 [P] [FR-005] Test: `mulberry32` produces a fixed sequence from a fixed seed, and its state round-trips through serialise/deserialise
+- [x] T007 [P] [FR-005] Test: `mulberry32` produces a fixed sequence from a fixed seed, and its state round-trips through serialise/deserialise
       Paths: tests/sim/rng.test.ts
       Test-first: true
       Size: S
-- [ ] T008 [P] [FR-005] Test: state hash is stable for identical state, and **changes** when any hashed field changes — including a field-order swap
+- [x] T008 [P] [FR-005] Test: state hash is stable for identical state, and **changes** when any hashed field changes — including a field-order swap
       Paths: tests/sim/hash.test.ts
       Test-first: true
       Size: M
-- [ ] T009 [P] [FR-005] Test: hash normalises `-0` to `0`, and **throws** on `NaN` rather than hashing it
+- [x] T009 [P] [FR-005] Test: hash normalises `-0` to `0`, and **throws** on `NaN` rather than hashing it
       Paths: tests/sim/hash.test.ts
       Test-first: true
       Size: S
-- [ ] T010 [FR-004] Test **O-4**: commands landing on the same tick apply in `(issuer, seq)` order regardless of arrival order; player before AI
+- [x] T010 [FR-004] Test **O-4**: commands landing on the same tick apply in `(issuer, seq)` order regardless of arrival order; player before AI
       Paths: tests/sim/commands.test.ts
       Test-first: true
       Size: M
-- [ ] T011 [FR-003] Test **TC-UNIT-001**: same seed + same command log ⇒ identical terminal state hash across repeated runs
+- [x] T011 [FR-003] Test **TC-UNIT-001**: same seed + same command log ⇒ identical terminal state hash across repeated runs
       Paths: tests/sim/determinism.test.ts
       Test-first: true
       Size: M
-- [ ] T012 [FR-005] Test **TC-UNIT-002**: PRNG state lives inside sim state — serialise mid-match, restore, and subsequent draws match an uninterrupted run
+- [x] T012 [FR-005] Test **TC-UNIT-002**: PRNG state lives inside sim state — serialise mid-match, restore, and subsequent draws match an uninterrupted run
       Paths: tests/sim/determinism.test.ts
       Test-first: true
       Size: S
-- [ ] T013 [FR-003] Test **TC-INT-001**: replay round-trip — record a run, replay from seed + log, terminal hash matches
+- [x] T013 [FR-003] Test **TC-INT-001**: replay round-trip — record a run, replay from seed + log, terminal hash matches
       Paths: tests/replay/roundtrip.test.ts
       Test-first: true
       Size: M
-- [ ] T014 [FR-003] Test **TC-INT-003**: the simulation runs under plain Node with no DOM and no graphics context
+- [x] T014 [FR-003] Test **TC-INT-003**: the simulation runs under plain Node with no DOM and no graphics context
       Paths: tests/sim/headless.test.ts
       Test-first: true
       Size: S
 
 ### Implementation
 
-- [ ] T015 [FR-003] `simVersion` integer, bumped by hand when simulation behaviour changes (ADR-002)
+- [x] T015 [FR-003] `simVersion` integer, bumped by hand when simulation behaviour changes (ADR-002)
       Paths: src/sim/version.ts
       Size: XS
-- [ ] T016 [FR-005] Vendored `mulberry32` — state held in `SimState`, never a module singleton
+- [x] T016 [FR-005] Vendored `mulberry32` — state held in `SimState`, never a module singleton
       Paths: src/sim/rng.ts
       Size: S
-- [ ] T017 [FR-003] `SimState` shapes — entities and nodes as **id-sorted arrays**, player id as array index, sentinels (`targetId: -1`) rather than optionals
+- [x] T017 [FR-003] `SimState` shapes — entities and nodes as **id-sorted arrays**, player id as array index, sentinels (`targetId: -1`) rather than optionals
       Paths: src/sim/state.ts
       Size: M
-- [ ] T018 [INFRA] `constants.ts` — `TICK_HZ = 20` plus the full tuning surface (costs, speeds, hp, ore per node). **Single file by design so M8 has one place to work**
+- [x] T018 [INFRA] `constants.ts` — `TICK_HZ = 20` plus the full tuning surface (costs, speeds, hp, ore per node). **Single file by design so M8 has one place to work**
       Paths: src/sim/constants.ts
       Size: S
-- [ ] T019 [FR-005] Canonical state hash per ADR-001 — fixed field order, id-ordered traversal, exact IEEE-754 bits via `DataView`, FNV-1a in two 32-bit lanes
+- [x] T019 [FR-005] Canonical state hash per ADR-001 — fixed field order, id-ordered traversal, exact IEEE-754 bits via `DataView`, FNV-1a in two 32-bit lanes
       Paths: src/sim/hash.ts
       Size: M
-- [ ] T020 [FR-004] Command types, queue, and `(issuer, seq)` ordering — **O-4**
+- [x] T020 [FR-004] Command types, queue, and `(issuer, seq)` ordering — **O-4**
       Paths: src/sim/commands.ts
       Size: M
-- [ ] T021 [FR-003] `step(state, commands) → state` — pure tick function, the 10-stage pipeline skeleton
+- [x] T021 [FR-003] `step(state, commands) → state` — pure tick function, the 10-stage pipeline skeleton
       Paths: src/sim/step.ts
       Size: M
-- [ ] T022 [FR-003] Replay record + playback
+- [x] T022 [FR-003] Replay record + playback
       Paths: src/sim/replay.ts
       Size: M
-- [ ] T023 [FR-003] Corpus runner with **mandatory checkpoint hashes**; reports the FIRST failing checkpoint, not just the terminal mismatch (ADR-002)
+- [x] T023 [FR-003] Corpus runner with **mandatory checkpoint hashes**; reports the FIRST failing checkpoint, not just the terminal mismatch (ADR-002)
       Paths: tests/replay/run-corpus.ts
       Size: M
-- [ ] T024 [FR-003] `corpus:regen` script + `simVersion` staleness gating — stale cases FAIL with a distinct message; **never auto-update** (ADR-002)
+- [x] T024 [FR-003] `corpus:regen` script + `simVersion` staleness gating — stale cases FAIL with a distinct message; **never auto-update** (ADR-002)
       Paths: scripts/corpus-regen.ts, package.json
       Size: M
-- [ ] T025 [FR-003] First corpus case + wire the corpus step into CI across all three platforms
+- [x] T025 [FR-003] First corpus case + wire the corpus step into CI across all three platforms
       Paths: tests/replay/corpus/001-baseline.json, .github/workflows/ci.yml
       Size: S
 

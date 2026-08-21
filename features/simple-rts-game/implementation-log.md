@@ -123,3 +123,141 @@ states by design — it is the control that proves the ban is scoped rather than
    exists now so the `build` step is real from the first milestone; `vite build` produces
    `dist/index.html` and the toolchain is proven end to end.
 7. **T006 CLOSED.** CI run 32523481346 — 4/4 jobs green (ubuntu + macOS x Node 22 + 24). Every runner logged `Lint correctly rejected a planted Math.random() in src/sim/__ci_canary__.ts`, so the boundary guard is proven on Linux as well as locally.
+
+---
+
+## Red gate — M1
+
+**Tasks:** T007–T014 (8 test tasks) · **Turned green by:** T015–T025 · **Status:** `confirmed_failing` → `green`
+
+**The first Red was rejected, for the second time and for the same reason.** Running
+the eight new test files against a repo with no `src/sim/` modules produced:
+
+```
+Error: Cannot find module '../../src/sim/commands'
+Test Files  6 failed | 1 passed (7)
+      Tests  6 passed (6)          ← zero new tests even collected
+```
+
+That is a module-resolution failure, not a behavioural one — precisely the vacuous
+Red rejected at the M0 gate. Signature-only stubs were written first (every export
+present, every body `throw new Error('not implemented')`), which moved the failure to
+where it belongs:
+
+```
+Test Files  6 failed | 1 passed (7)
+      Tests  43 failed | 8 passed (51)
+```
+
+43 tests collected, executed, and failing on real calls. Writing the stubs also forced
+the whole M1 API surface to be settled before a line of logic existed, which is the
+actual point of test-first and something the import-error Red would have skipped.
+
+Green after T015–T025: **86 passed (86)**.
+
+---
+
+## Checkpoint #3 — after T007–T014 (the M1 test block)
+
+| Check | Status | Notes |
+|-------|:------:|-------|
+| Task-Code correspondence | ✅ | 8 test tasks → 6 test files, paths exactly as tasks.md lists them. |
+| Spec AC alignment | ✅ | TC-UNIT-001/002 and TC-INT-001/003 all have a named test. O-4 covered by `commands.test.ts`. |
+| Unplanned changes | ✅ None | |
+| Plan alignment | ✅ | Hash test asserts ADR-001's field list; replay test asserts ADR-002's first-failing-checkpoint rule and the stale-version behaviour. |
+| Dependency / supply-chain | ✅ None added | |
+
+**Verdict:** CLEAN — Red gate satisfied, proceed to implementation.
+
+## Checkpoint #4 — after T015–T025 (the M1 implementation block)
+
+| Check | Status | Notes |
+|-------|:------:|-------|
+| Task-Code correspondence | ✅ | 11 tasks → `version.ts`, `rng.ts`, `state.ts`, `constants.ts`, `hash.ts`, `commands.ts`, `step.ts`, `replay.ts`, `run-corpus.ts`, `corpus-regen.ts`, `001-baseline.json`. |
+| Spec AC alignment | ✅ | 86/86 tests green, including the 13-test corpus suite. |
+| Unplanned changes | ⚠️ 2 files | `tests/replay/corpus.test.ts` (drives the runner inside the Vitest suite, as ADR-002 requires — `run-corpus.ts` is a plain module so `corpus-regen.ts` can import it); `scripts/make-baseline-case.ts` (one-off authoring helper, deleted after use). |
+| Plan alignment | ⚠️ 3 deviations | Hash extended beyond ADR-001's field list; corpus format carries `setup` until M2; `move` command deliberately unhandled. All three below. |
+| Dependency / supply-chain | ✅ 1 vetted | `tsx@4.23.12` — 348M downloads/month, first published 2015. Needed to run `corpus:regen`, which is a TypeScript script that must not be part of any test or CI command. |
+
+**Verdict:** CLEAN — M1 complete.
+
+---
+
+## The M0 guard caught a real violation in M1 code
+
+Within one milestone of being written, the boundary rule fired on genuine work:
+
+```
+src/sim/replay.ts
+  126:20  error  Unexpected use of 'Date'. Wall-clock read. The simulation's only
+                 notion of time is its tick counter   no-restricted-globals
+```
+
+`recordReplay` was stamping `createdAt` with `new Date().toISOString()`. Harmless in
+appearance, and it would have passed any review that was not looking for it. The fix
+is the right one rather than the convenient one: `createdAt` is now caller-supplied,
+so the simulation cannot read a clock at all. Because a caller-supplied field is a
+forgettable field, `corpus.test.ts` now fails any case whose date is not an ISO date.
+
+This is the clearest possible evidence that M0 was worth its milestone.
+
+## Corpus machinery verified by breaking it deliberately
+
+Trusting the runner was not sufficient — each failure path was exercised:
+
+| Scenario | Result |
+|---|---|
+| Corrupt tick-200 checkpoint **and** terminal hash | Reports **tick 200**, not tick 400 — the ADR-002 requirement that makes a failure diagnosable |
+| Case recorded at an older `simVersion` | Distinct *stale* message pointing at `corpus:regen`; never auto-updates |
+| Case recorded at a *newer* `simVersion` | Different message ("your working tree is behind"); refuses to regenerate over a more current record |
+| `corpus:regen --dry-run` | Prints the hash diff, writes nothing |
+| `corpus:regen` on a current case | **Refuses** — so it cannot be used to paper over a genuine regression |
+
+The restored case is byte-identical to the pre-experiment backup.
+
+## `navigator` exists in Node
+
+`headless.test.ts` originally asserted `typeof navigator === 'undefined'`. It is
+`'object'` — Node 21+ ships `globalThis.navigator`, reporting `Node.js/24`. The test
+was wrong, and the correction matters: a sim module reading `navigator` would **not**
+crash under test, it would silently return one value in Node and a different one in
+the browser. The lint ban on `navigator` is therefore load-bearing rather than
+redundant, and the test now says so.
+
+## Deviations and open items carried out of M1
+
+1. **🔴 ADR-001 amendment proposed — the hash covers `difficulty` and `nextEntityId`,
+   which the ADR's field list omits.** ADR-001 opens with "exactly the simulation
+   state" and then lists fields that leave both out. Neither is presentational or
+   derived, so neither falls under the ADR's own "what is NOT hashed" list — this
+   reads as a drafting gap. It matters: two states differing only in `nextEntityId`
+   diverge at the next spawn, and difficulty is a field precisely so it can vary
+   independently (FR-029). Both are appended **after** ADR-001's six fields, so the
+   change is purely additive and reverting is two lines plus one `corpus:regen`.
+   **Needs a decision at the gate.**
+2. **🔴 The data model has no destination field, so `move` orders cannot be recorded.**
+   plan.md's `Entity` and ADR-001's hashed field list both omit one. `step()` handles
+   `attack` and `build`; `move` hits an explicit, commented `case` that does nothing.
+   Inventing `destX`/`destY` in M1 would have added a hashed field ahead of the
+   milestone that owns movement, staling every corpus hash recorded in between. M2
+   must decide the field and amend ADR-001 in the same change.
+3. **Corpus cases carry their scenario inline via `input.setup`.** ADR-002's format
+   resolves the starting scenario from a named `map`, but no map system exists until
+   M2. `setup` is a documented, temporary superset of the ADR format; M2 replaces it
+   with a map id, bumps `simVersion`, and regenerates — a cheap, deliberate
+   regeneration while the corpus holds one case.
+4. **The tick pipeline is a skeleton.** Stages 1 and 10 are real; stages 2–9 are
+   declared, ordered, and empty. `STAGES` is asserted in a test so that reordering is
+   a visible diff rather than something that drifts while adding a system.
+5. **`step()` does not yet consume the RNG**, because nothing random happens until the
+   AI lands in M4. TC-UNIT-002 therefore proves the PRNG lives in state and survives
+   serialise/restore, but the *integration* of the RNG with the tick loop is unproven
+   until M4.
+6. **One test assertion was corrected during implementation.** T013's Red version
+   asserted the recorded file contained no `"entities"` key at all. Implementing it
+   showed that conflates the starting scenario (legitimate input) with a mid-run state
+   snapshot (which would mean the run was not reproducible). Only the second is
+   forbidden, and that is what the test now asserts.
+7. **The cross-platform half of Constitution IV is still unexercised.** The corpus is
+   green, but only on one machine so far. The first CI matrix run with a real corpus
+   case is the first genuine test of exact-bit hash agreement across engines.

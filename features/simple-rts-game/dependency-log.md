@@ -44,3 +44,20 @@ vetted. All ten resolve on the npm registry and every one was first published ye
   losing the `src/sim` boundary rules — the one thing M0 exists to establish.
 - **`@types/node` pinned to the 22 line**, matching the lower Node LTS in the CI matrix,
   so a Node 24-only API cannot be used locally and then fail on the 22 runners.
+
+## M1 (T007–T025)
+
+| Package | Version | Kind | Registry | First published | Downloads/mo | Verdict |
+|---|---|---|:--:|---|--:|:--:|
+| `tsx` | 4.23.12 | dev | ✅ exists | 2015-08-20 | 348,163,294 | pass |
+
+**Added: 1 · Vetted: 1 · Warned: 0 · Blocked: 0** — `npm audit`: 0 vulnerabilities.
+
+`tsx` runs `scripts/corpus-regen.ts`. ADR-002 requires regeneration to be a
+TypeScript script that is **never** part of a test or CI command, so it cannot ride
+on Vitest's transform. The zero-dependency alternative — Node's `--experimental-strip-types`
+— requires explicit `.ts` extensions on every import in the transitive graph, which
+would have meant changing the import style across all of `src/sim/` to avoid one dev
+dependency. Not worth it.
+
+Runtime dependencies remain exactly one: `phaser@4.2.1`.

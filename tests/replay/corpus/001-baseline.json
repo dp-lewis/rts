@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 1,
+  "id": "001-baseline",
+  "description": "M1 harness baseline. Player and AI commands land on the same tick in hostile arrival order (O-4); proves the recorded seed and log reproduce identical checkpoint and terminal hashes. Not a defect regression — it is the case that proves the corpus machinery itself works before any defect needs it.",
+  "defect": null,
+  "createdAt": "2026-08-22",
+  "simVersion": 1,
+  "input": {
+    "seed": 20260822,
+    "difficulty": 1,
+    "map": "inline",
+    "commands": [
+      {
+        "tick": 20,
+        "issuer": 1,
+        "seq": 0,
+        "type": "attack",
+        "units": [
+          6
+        ],
+        "targetId": 2
+      },
+      {
+        "tick": 20,
+        "issuer": 0,
+        "seq": 0,
+        "type": "attack",
+        "units": [
+          2,
+          3
+        ],
+        "targetId": 6
+      },
+      {
+        "tick": 60,
+        "issuer": 0,
+        "seq": 1,
+        "type": "build",
+        "builderId": 1,
+        "kind": 4
+      },
+      {
+        "tick": 60,
+        "issuer": 1,
+        "seq": 1,
+        "type": "build",
+        "builderId": 4,
+        "kind": 4
+      },
+      {
+        "tick": 140,
+        "issuer": 1,
+        "seq": 2,
+        "type": "attack",
+        "units": [
+          6
+        ],
+        "targetId": 1
+      },
+      {
+        "tick": 200,
+        "issuer": 0,
+        "seq": 2,
+        "type": "attack",
+        "units": [
+          2,
+          3
+        ],
+        "targetId": 4
+      }
+    ],
+    "setup": {
+      "players": [
+        {
+          "ore": 150
+        },
+        {
+          "ore": 150
+        }
+      ],
+      "nodes": [
+        {
+          "id": 0,
+          "x": 448,
+          "y": 448,
+          "remaining": 1500
+        },
+        {
+          "id": 1,
+          "x": 1472,
+          "y": 1472,
+          "remaining": 1500
+        }
+      ],
+      "entities": [
+        {
+          "id": 1,
+          "kind": 0,
+          "owner": 0,
+          "x": 256,
+          "y": 256,
+          "hp": 1500,
+          "state": 0,
+          "targetId": -1,
+          "cooldown": 0,
+          "progress": 0
+        },
+        {
+          "id": 2,
+          "kind": 2,
+          "owner": 0,
+          "x": 320,
+          "y": 320,
+          "hp": 40,
+          "state": 0,
+          "targetId": -1,
+          "cooldown": 0,
+          "progress": 0
+        },
+        {
+          "id": 3,
+          "kind": 2,
+          "owner": 0,
+          "x": 320,
+          "y": 384,
+          "hp": 40,
+          "state": 0,
+          "targetId": -1,
+          "cooldown": 0,
+          "progress": 0
+        },
+        {
+          "id": 4,
+          "kind": 0,
+          "owner": 1,
+          "x": 1664,
+          "y": 1664,
+          "hp": 1500,
+          "state": 0,
+          "targetId": -1,
+          "cooldown": 0,
+          "progress": 0
+        },
+        {
+          "id": 5,
+          "kind": 2,
+          "owner": 1,
+          "x": 1600,
+          "y": 1600,
+          "hp": 40,
+          "state": 0,
+          "targetId": -1,
+          "cooldown": 0,
+          "progress": 0
+        },
+        {
+          "id": 6,
+          "kind": 4,
+          "owner": 1,
+          "x": 1536,
+          "y": 1536,
+          "hp": 90,
+          "state": 0,
+          "targetId": -1,
+          "cooldown": 0,
+          "progress": 0
+        }
+      ]
+    }
+  },
+  "expected": {
+    "finalTick": 400,
+    "stateHash": "4bfba753aca714fa",
+    "checkpoints": [
+      {
+        "tick": 100,
+        "stateHash": "c73f4a9fee3c10da"
+      },
+      {
+        "tick": 200,
+        "stateHash": "df946e7887875779"
+      },
+      {
+        "tick": 300,
+        "stateHash": "10f1809790be9d4e"
+      }
+    ]
+  }
+}

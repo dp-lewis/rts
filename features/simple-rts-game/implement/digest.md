@@ -1,8 +1,8 @@
 # Phase Digest — Implement (M0 only)
 
-**Phase:** 6 · Implement · **Scope:** M0 — Enforcement skeleton
-**Date:** 2026-08-22 · **Tasks:** T001–T006 complete
-**Status:** M0 complete — the run was user-scoped to M0 at the Phase 6 kickoff gate
+**Phase:** 6 · Implement · **Scope:** M0 — Enforcement skeleton · M1 — Determinism harness
+**Date:** 2026-08-22 · **Tasks:** T001–T025 complete (25 / 82)
+**Status:** M0 and M1 complete
 
 ---
 
@@ -78,3 +78,87 @@ Phaser 4.2.1 is the only runtime dependency.
   What is *not* yet proven is cross-engine hash agreement — there are no hashes.
 - The `no-restricted-*` rule arrays are exported as named consts specifically so a
   reviewer can diff intent against plan.md §Enforcement line by line.
+
+
+---
+
+# M1 — Determinism harness
+
+## Key decisions
+
+- **The vacuous Red was rejected a second time.** Eight new test files against a repo
+  with no `src/sim/` produced bare `Cannot find module` errors and collected zero
+  tests. Signature-only stubs — every export present, every body throwing — moved the
+  failure to 43 collected tests failing on real calls. The side benefit was the real
+  one: writing the stubs forced the entire M1 API surface to be settled before a line
+  of logic existed, which is what test-first is actually for.
+
+- **The hash covers `difficulty` and `nextEntityId`, which ADR-001's field list omits.**
+  The ADR opens with "exactly the simulation state" and then lists fields that leave
+  both out, and neither is presentational or derived — so neither is covered by the
+  ADR's own exclusions. Treated as a drafting gap and implemented as a purely additive
+  append after the ADR's six fields. **This is a proposed amendment awaiting a
+  decision**, not a settled change; reverting is two lines plus one `corpus:regen`.
+
+- **`move` commands are explicitly unhandled rather than silently defaulted.** The data
+  model has no destination field, so a move order has nowhere to be recorded. Inventing
+  `destX`/`destY` here would have added a hashed field ahead of the milestone that owns
+  movement, staling every corpus hash recorded in between. The `case 'move':` sits there
+  empty with a comment naming M2 — greppable, not forgotten.
+
+- **The corpus runner has no `--update` flag, and adding one would be a mistake worth
+  reverting.** It would convert Constitution IV from a regression guard into a rubber
+  stamp. Regeneration lives in a separate script, refuses to touch cases at the current
+  `simVersion`, and prints the hash diff for the pull request.
+
+- **Stale and ahead are different failures with different messages.** A case from an
+  older `simVersion` is regeneratable. A case from a *newer* one means the checkout is
+  behind, and regenerating would overwrite a more current record with a staler one.
+  Conflating them would send someone to destroy the thing they should have pulled.
+
+- **`STAGES` is asserted in a test.** The tick order is part of the contract; pinning it
+  makes a reordering a visible, deliberate diff rather than something that drifts while
+  someone adds a system.
+
+## Artifacts produced
+
+| Path | Task |
+|---|---|
+| `tests/sim/{rng,hash,commands,determinism,headless}.test.ts`, `tests/replay/roundtrip.test.ts` | T007–T014 |
+| `src/sim/{version,rng,state,constants,hash,commands,step,replay}.ts` | T015–T022 |
+| `tests/replay/run-corpus.ts`, `tests/replay/corpus.test.ts` | T023 |
+| `scripts/corpus-regen.ts`, `package.json` (`corpus:regen`) | T024 |
+| `tests/replay/corpus/001-baseline.json`, `.github/workflows/ci.yml` | T025 |
+
+86 tests green. One dependency added (`tsx`), vetted, 0 vulnerabilities. Runtime
+dependencies remain exactly one.
+
+## Open risks
+
+1. **The cross-platform half of Constitution IV is still unexercised.** The corpus is
+   green on one machine. Exact-bit hash agreement across engines — the entire reason
+   ADR-001 rejects rounding — is untested until the matrix runs with a real case. A red
+   first run is expected and is a *finding*, never a reason to loosen the hash.
+2. **`step()` does not consume the RNG**, because nothing random happens until the AI
+   arrives in M4. TC-UNIT-002 proves the PRNG lives in state and survives
+   serialise/restore; the integration of RNG with the tick loop is unproven until M4.
+3. **The corpus holds one case, and it is not a regression case.** It proves the
+   machinery works before any defect needs it. Constitution IV's real value starts
+   accruing at the first fixed defect.
+4. **`input.setup` is a temporary superset of ADR-002's format** until M2 provides a map
+   system. Its removal is a scheduled, visible `simVersion` bump.
+5. **The tuning constants are placeholders**, explicitly M8's problem. Nothing in M1
+   depends on their values, but M2 and M3 will start behaving according to numbers
+   nobody has balanced.
+
+## Handoff notes
+
+- **Read `src/sim/hash.ts` first, and read it against ADR-001 line by line.** Everything
+  Constitution IV claims rests on it, and the two appended fields are a deliberate
+  deviation that needs a reviewer's agreement rather than a reviewer's assumption.
+- **`tests/sim/hash.test.ts`'s per-field mutation sweep is the load-bearing test**, not
+  the stability assertions. It is easy to write a hash that is stable; the hard part is
+  one that is stable *and* sensitive to every field it claims to cover.
+- The corpus failure paths were verified by deliberately breaking the case — first
+  divergence reporting, stale detection, ahead detection, dry run, and refusal to
+  regenerate a current case. See implementation-log.md for the transcript.

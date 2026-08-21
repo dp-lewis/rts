@@ -66,7 +66,7 @@ jobs:
       # runs green on an empty corpus, so the pipeline shape is real from M0
       # rather than bolted on later.
       - name: Replay corpus
-        run: npx vitest run tests/replay --passWithNoTests
+        run: npx vitest run tests/replay
 
       - name: Build
         run: npm run build

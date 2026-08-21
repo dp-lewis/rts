@@ -61,19 +61,19 @@ requirements:
     text: "Simulation advances in fixed-timestep ticks, decoupled from render frames"
     stories: []
     tasks: ["T011", "T013", "T014", "T015", "T021", "T022", "T023", "T024", "T025", "T028", "T045", "T048", "T075"]
-    code: []
+    code: ["src/sim/step.ts", "src/sim/replay.ts", "src/sim/version.ts", "tests/replay/run-corpus.ts", "scripts/corpus-regen.ts"]
     tests: []
   - id: "FR-004"
     text: "All player intent enters the simulation as commands queued for a future tick"
     stories: []
     tasks: ["T010", "T020"]
-    code: []
+    code: ["src/sim/commands.ts"]
     tests: []
   - id: "FR-005"
     text: "All randomness derives from a seed held inside simulation state"
     stories: []
     tasks: ["T007", "T008", "T009", "T012", "T016", "T019"]
-    code: []
+    code: ["src/sim/rng.ts", "src/sim/hash.ts"]
     tests: []
   - id: "FR-006"
     text: "Starting workers auto-gather from tick 0 with no player input"
@@ -258,3 +258,4 @@ dependencies:
   - {pkg: "@eslint/js", version: "10.0.1", ecosystem: npm, scope: dev, added_by_task: "T004", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
   - {pkg: "@playwright/test", version: "1.62.1", ecosystem: npm, scope: dev, added_by_task: "T005", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
   - {pkg: "@axe-core/playwright", version: "4.13.0", ecosystem: npm, scope: dev, added_by_task: "T005", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "tsx", version: "4.23.12", ecosystem: npm, scope: dev, added_by_task: "T024", registry_exists: true, age_days: 3990, downloads_last_month: 348163294, list: none, verdict: pass, confirmed_by_user: false}
