@@ -35,20 +35,20 @@ asserting on state, not rendered output (Principle II).
 
 **Purpose**: the guards, before anything they guard. Nothing here is game code.
 
-- [ ] T001 [INFRA] Initialise `package.json` (Phaser as the ONLY runtime dependency), TypeScript config, and Vite build
+- [x] T001 [INFRA] Initialise `package.json` (Phaser as the ONLY runtime dependency), TypeScript config, and Vite build
       Paths: package.json, tsconfig.json, vite.config.ts, index.html
       Size: S
-- [ ] T002 [INFRA] Vitest config + `src/sim`, `src/game`, `tests/` directory skeleton
+- [x] T002 [INFRA] Vitest config + `src/sim`, `src/game`, `tests/` directory skeleton
       Paths: vitest.config.ts, src/sim/.gitkeep, src/game/.gitkeep, tests/.gitkeep
       Size: XS
-- [ ] T003 [INFRA] **Test: the guard actually fires.** Run ESLint programmatically against fixture files containing a planted `Math.random()`, `Date.now()`, `Math.atan2()`, a `for...in`, and a `phaser` import inside `src/sim` — assert each produces a violation. **Written first, and it must FAIL** (with no rules configured ESLint reports nothing, so the assertions fail) — that failure is the Red step
+- [x] T003 [INFRA] **Test: the guard actually fires.** Run ESLint programmatically against fixture files containing a planted `Math.random()`, `Date.now()`, `Math.atan2()`, a `for...in`, and a `phaser` import inside `src/sim` — assert each produces a violation. **Written first, and it must FAIL** (with no rules configured ESLint reports nothing, so the assertions fail) — that failure is the Red step
       Paths: tests/lint/boundary.test.ts, tests/lint/fixtures/*.ts
       Test-first: true
       Size: M
-- [ ] T004 [INFRA] ESLint boundary config — the four rule groups over `src/sim/**`: `no-restricted-imports` (phaser, src/game, DOM libs), `no-restricted-globals` (Date, performance, window, document, navigator), `no-restricted-properties` (Math.random + all transcendentals), `no-restricted-syntax` (ForInStatement, for-of over Map/Set). Turns T003 green
+- [x] T004 [INFRA] ESLint boundary config — the four rule groups over `src/sim/**`: `no-restricted-imports` (phaser, src/game, DOM libs), `no-restricted-globals` (Date, performance, window, document, navigator), `no-restricted-properties` (Math.random + all transcendentals), `no-restricted-syntax` (ForInStatement, for-of over Map/Set). Turns T003 green
       Paths: eslint.config.js
       Size: M
-- [ ] T005 [INFRA] CI workflow — matrix over `ubuntu-latest` + `macos-latest` (Node LTS): lint → typecheck → unit → corpus → build → E2E
+- [x] T005 [INFRA] CI workflow — matrix over `ubuntu-latest` + `macos-latest` (Node LTS): lint → typecheck → unit → corpus → build → E2E
       Paths: .github/workflows/ci.yml
       Size: M
 - [ ] T006 [INFRA] Verify CI green on both OS runners; confirm the planted-violation fixtures do not leak into the real lint pass

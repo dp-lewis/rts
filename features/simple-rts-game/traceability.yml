@@ -1,6 +1,6 @@
 schema_version: 1
 feature: simple-rts-game
-last_updated: "2026-08-21"
+last_updated: "2026-08-22"
 
 # Owned by product-spec (Phase 2): the `journeys:` block below.
 # `tests` fields are intentionally empty — test-plan / test-run own that column.
@@ -244,3 +244,17 @@ requirements:
     code: []
     tests: []
 
+
+# Owned by implement (Phase 6, W5-C2): install-time supply-chain vetting.
+# Evidence and rationale in features/simple-rts-game/dependency-log.md.
+dependencies:
+  - {pkg: "phaser", version: "4.2.1", ecosystem: npm, scope: runtime, added_by_task: "T001", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "vite", version: "8.2.2", ecosystem: npm, scope: dev, added_by_task: "T001", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "typescript", version: "5.9.3", ecosystem: npm, scope: dev, added_by_task: "T001", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "@types/node", version: "22.20.1", ecosystem: npm, scope: dev, added_by_task: "T001", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "vitest", version: "4.1.11", ecosystem: npm, scope: dev, added_by_task: "T002", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "eslint", version: "10.9.0", ecosystem: npm, scope: dev, added_by_task: "T004", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "typescript-eslint", version: "8.67.0", ecosystem: npm, scope: dev, added_by_task: "T004", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "@eslint/js", version: "10.0.1", ecosystem: npm, scope: dev, added_by_task: "T004", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "@playwright/test", version: "1.62.1", ecosystem: npm, scope: dev, added_by_task: "T005", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "@axe-core/playwright", version: "4.13.0", ecosystem: npm, scope: dev, added_by_task: "T005", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}

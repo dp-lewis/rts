@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: ${{ matrix.os }} · node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Constitution IV: the determinism guarantee is only worth what the
+        # matrix proves. Two operating systems AND two Node LTS lines, because a
+        # hash that agrees with itself on one machine has demonstrated nothing.
+        os: [ubuntu-latest, macos-latest]
+        node: ['22', '24']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # The M0 exit criterion, asserted against a REAL file rather than a
+      # synthetic path. tests/lint/boundary.test.ts proves the rules fire via
+      # ESLint's API; this proves they fire through the same `npm run lint` a
+      # developer runs, on a file that genuinely lives in src/sim/.
+      - name: Boundary guard fires on a real src/sim file
+        shell: bash
+        run: |
+          set -uo pipefail
+          canary='src/sim/__ci_canary__.ts'
+          cleanup() { rm -f "$canary"; }
+          trap cleanup EXIT
+          printf 'export const roll = (): number => Math.random();\n' > "$canary"
+          if npm run --silent lint > /dev/null 2>&1; then
+            echo "::error::Lint PASSED with a planted Math.random() in $canary."
+            echo "The src/sim boundary rules are not firing. Constitution I is unenforced."
+            exit 1
+          fi
+          echo "Lint correctly rejected a planted Math.random() in $canary."
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      # The replay corpus (ADR-002) lands in M1. Until then the step exists and
+      # runs green on an empty corpus, so the pipeline shape is real from M0
+      # rather than bolted on later.
+      - name: Replay corpus
+        run: npx vitest run tests/replay --passWithNoTests
+
+      - name: Build
+        run: npm run build
+
+      - name: Check for E2E specs
+        id: e2e_specs
+        shell: bash
+        run: |
+          if compgen -G 'tests/e2e/*.spec.ts' > /dev/null; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No E2E specs yet (they arrive in Phase 8A) — skipping browser install."
+          fi
+
+      - name: Install Playwright browsers
+        if: steps.e2e_specs.outputs.present == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E + axe
+        if: steps.e2e_specs.outputs.present == 'true'
+        run: npm run e2e
