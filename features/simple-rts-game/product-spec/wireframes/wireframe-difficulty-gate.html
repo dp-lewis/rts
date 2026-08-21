@@ -1,0 +1,41 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Wireframe: Difficulty Gate — 8 Bit RTS</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+.gate{height:720px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;background:#2a2a2e;color:#fff}
+.title{font-size:28px;letter-spacing:2px;color:#ddd}
+.opts{display:flex;gap:20px}
+.opt{width:240px;height:150px;border:2px solid #888;background:#3a3a40;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+.opt b{font-size:18px}
+.opt span{font-size:12px;color:#aaa}
+.opt:focus,.opt:hover{border-color:#ff9a3c;outline:3px solid #ff9a3c;outline-offset:2px}
+</style></head><body>
+<div class="wireframe-nav"><strong>Screens:</strong>
+<a href="wireframe-difficulty-gate.html">1. Difficulty Gate</a>
+<a href="wireframe-match.html">2. Match + HUD</a>
+<a href="wireframe-result.html">3. Result</a></div>
+
+<div class="screen"><div class="gate" data-testid="difficulty-gate">
+  <div class="title">8 BIT RTS</div>
+  <div class="opts">
+    <div class="opt" tabindex="0" data-testid="difficulty-easy"><b>New to this</b><span>The AI takes it slow</span></div>
+    <div class="opt" tabindex="0" data-testid="difficulty-normal"><b>I've played RTS before</b><span>A fair fight</span></div>
+    <div class="opt" tabindex="0" data-testid="difficulty-hard"><b>Bring it</b><span>The AI does not wait</span></div>
+  </div>
+</div></div>
+
+<div class="note">
+<h3>Purpose</h3>
+<p>The <em>only</em> thing between page load and play. Every element not shown here is deliberately absent: no menu, no settings, no account, no "how to play", no scroll.</p>
+<h3>Why it exists at all</h3>
+<p>It costs us part of the cold-start advantage that is our main edge over every competitor (JRN-001 STEP-001/002). It earns its place by doing the job the absent tutorial would otherwise do: the labels let the player <strong>self-declare experience</strong> rather than decode abstract tiers, which is the onboarding pattern the research endorses.</p>
+<h3>Requirements</h3>
+<ul>
+<li>FR-001 / FR-002 — gate shown on load; selection starts the match immediately.</li>
+<li>FR-026 / EDGE-002 — fully keyboard operable, with a <strong>visible</strong> focus ring (shown above as the orange outline).</li>
+<li>Time budget: this screen plus the first meaningful action must fit inside 30 s total.</li>
+</ul>
+<h3>States</h3>
+<p>Default · Focused · Loading (first render &lt; 3 s) · <strong>WebGL unavailable</strong> — EDGE-001 replaces the canvas with a plain readable message, never a blank rectangle.</p>
+</div>
+</body></html>

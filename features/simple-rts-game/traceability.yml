@@ -1,0 +1,41 @@
+schema_version: 1
+feature: simple-rts-game
+last_updated: "2026-08-21"
+
+# Owned by product-spec (Phase 2): the `journeys:` block below.
+# `tests` fields are intentionally empty — test-plan / test-run own that column.
+# Row-level `status` is owned by tasks/implement onward and is absent here.
+journeys:
+  - id: "JRN-001"
+    title: "First match — load to victory"
+    stories: ["US-001","US-002","US-003","US-004","US-005","US-006","US-007","US-008","US-009","US-012"]
+    steps: ["STEP-001","STEP-002","STEP-003","STEP-004","STEP-005","STEP-006","STEP-007","STEP-008","STEP-009","STEP-010"]
+    smoke: true
+    edges:
+      - {id: EDGE-001, priority: P1, case: "WebGL unavailable", tests: []}
+      - {id: EDGE-002, priority: P2, case: "Keyboard-only difficulty selection", tests: []}
+      - {id: EDGE-003, priority: P1, case: "Player idle 60s", tests: []}
+      - {id: EDGE-004, priority: P1, case: "Insufficient ore", tests: []}
+      - {id: EDGE-005, priority: P2, case: "Invalid Factory placement", tests: []}
+      - {id: EDGE-006, priority: P1, case: "Own ore nodes exhausted", tests: []}
+      - {id: EDGE-007, priority: P0, case: "Own Base destroyed first", tests: []}
+      - {id: EDGE-008, priority: P1, case: "Ownership readable without colour", tests: []}
+    tests: []
+  - id: "JRN-002"
+    title: "Rematch loop"
+    stories: ["US-010"]
+    steps: ["STEP-001","STEP-002","STEP-003"]
+    smoke: true
+    edges:
+      - {id: EDGE-001, priority: P1, case: "Rematch after defeat", tests: []}
+      - {id: EDGE-002, priority: P0, case: "Rematch determinism hygiene", tests: []}
+    tests: []
+  - id: "JRN-003"
+    title: "Losing without noticing — base under attack"
+    stories: ["US-011"]
+    steps: ["STEP-001","STEP-002","STEP-003"]
+    smoke: false
+    edges:
+      - {id: EDGE-001, priority: P2, case: "Repeated damage events", tests: []}
+      - {id: EDGE-002, priority: P3, case: "Damage after resolution", tests: []}
+    tests: []

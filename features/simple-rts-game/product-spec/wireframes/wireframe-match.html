@@ -1,0 +1,75 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Wireframe: Match + HUD — 8 Bit RTS</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+.match{height:720px;position:relative;background:#c96a3f;overflow:hidden}
+.hud-top{position:absolute;top:0;left:0;right:0;height:44px;background:rgba(20,20,24,.85);color:#fff;display:flex;align-items:center;padding:0 16px;gap:24px;font-size:14px}
+.hud-top .ore{font-weight:700;color:#ffcf6b}
+.hud-bar{position:absolute;bottom:0;left:0;right:0;height:88px;background:rgba(20,20,24,.9);display:flex;align-items:center;gap:12px;padding:0 16px}
+.bbtn{width:104px;height:64px;border:2px solid #777;background:#3a3a40;color:#eee;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:12px;gap:2px}
+.bbtn .cost{color:#ffcf6b;font-size:11px}
+.bbtn.disabled{opacity:.45;border-style:dashed}
+.ent{position:absolute;border:1px solid #333;display:flex;align-items:center;justify-content:center;font-size:10px;color:#111;text-align:center}
+.mine{background:#7fb3ff}.theirs{background:#ff8a8a}
+.ring{border-radius:50%;box-shadow:0 0 0 3px #2b6cff}
+.ore-node{background:#9fd8c8;border-radius:6px}
+.edge-alert{position:absolute;left:0;top:44px;bottom:88px;width:10px;background:repeating-linear-gradient(45deg,#e33,#e33 6px,#a11 6px,#a11 12px)}
+</style></head><body>
+<div class="wireframe-nav"><strong>Screens:</strong>
+<a href="wireframe-difficulty-gate.html">1. Difficulty Gate</a>
+<a href="wireframe-match.html">2. Match + HUD</a>
+<a href="wireframe-result.html">3. Result</a></div>
+
+<div class="screen"><div class="match" data-testid="game-canvas">
+  <div class="hud-top">
+    <span>Ore <span class="ore" data-testid="ore-counter">240</span></span>
+    <span>Units 7</span>
+    <span style="margin-left:auto;color:#999">04:12</span>
+  </div>
+
+  <div class="edge-alert" data-testid="under-attack-indicator" title="JRN-003 STEP-002 — under attack"></div>
+
+  <!-- player side (left) -->
+  <div class="ent mine" style="left:90px;top:300px;width:80px;height:80px">BASE<br>(mine)</div>
+  <div class="ent mine" style="left:200px;top:420px;width:80px;height:80px">FACTORY</div>
+  <div class="ent mine ring" style="left:120px;top:220px;width:32px;height:32px">W</div>
+  <div class="ent mine ring" style="left:160px;top:250px;width:32px;height:32px">W</div>
+  <div class="ent mine ring" style="left:300px;top:300px;width:32px;height:32px">S</div>
+  <div class="ent mine ring" style="left:340px;top:330px;width:32px;height:32px">T</div>
+  <div class="ent ore-node" style="left:60px;top:150px;width:56px;height:56px">ORE<br>62%</div>
+
+  <!-- enemy side (right) -->
+  <div class="ent theirs" style="right:90px;top:300px;width:80px;height:80px">BASE<br>(enemy)</div>
+  <div class="ent theirs" style="right:200px;top:420px;width:80px;height:80px">FACTORY</div>
+  <div class="ent theirs" style="right:130px;top:230px;width:32px;height:32px">S</div>
+  <div class="ent theirs" style="right:300px;top:320px;width:32px;height:32px">T</div>
+  <div class="ent ore-node" style="right:60px;top:150px;width:56px;height:56px">ORE<br>71%</div>
+
+  <div class="hud-bar">
+    <div class="bbtn" data-testid="build-worker">Worker<span class="cost">50</span></div>
+    <div class="bbtn" data-testid="build-scout">Scout<span class="cost">75</span></div>
+    <div class="bbtn" data-testid="build-trooper">Trooper<span class="cost">150</span></div>
+    <div class="bbtn disabled" data-testid="build-tank">Tank<span class="cost">400</span></div>
+    <div style="margin-left:24px;border-left:1px solid #555;padding-left:24px">
+      <div class="bbtn" data-testid="build-factory">+ Factory<span class="cost">300</span></div>
+    </div>
+  </div>
+</div></div>
+
+<div class="note">
+<h3>Purpose</h3>
+<p>The whole game. <strong>Fixed single screen — no camera, no scroll, no zoom, no minimap, no fog</strong> (FR-014, FR-015). Both bases are visible from the first frame, so the objective never has to be searched for or explained.</p>
+<h3>Ownership without colour (FR-018, WCAG 1.4.1)</h3>
+<p>Blue and red alone would fail 1.4.1, because the Kenney sprites bake team colour in. Every friendly unit therefore carries a persistent <strong>underglow ring</strong> (the blue halo above); enemies never do. The ring doubles as the selection affordance we needed anyway.</p>
+<h3>Build bar (FR-010, FR-011)</h3>
+<p>Exactly four unit entries plus the single buildable structure. <strong>Always visible, never nested.</strong> Unaffordable entries are greyed with the cost still shown (Tank, above) — never hidden, never a dialog (EDGE-004).</p>
+<h3>Ore nodes are the pressure valve</h3>
+<p>Nodes show remaining percentage and visibly deplete (FR-016). When a side's ore is gone, production halts and the match resolves with what is on the field (EDGE-006). No timer, no UI chrome, no explanation needed.</p>
+<h3>Under-attack indicator</h3>
+<p>The striped screen-edge band (JRN-003 STEP-002, FR-023) plus an audio cue. Losing without noticing is the worst possible outcome; on a fixed screen everything is <em>visible</em>, but attention is still finite.</p>
+<h3>States</h3>
+<p>Default · Units selected · Placement ghost (valid / invalid — EDGE-005) · Insufficient ore · Under attack · Ore exhausted.</p>
+<h3>Not a design system</h3>
+<p>This is a canvas game. The <code>data-testid</code> hooks above are the stable selectors for Playwright; there is no component library and no <code>component-map.yml</code> by decision.</p>
+</div>
+</body></html>

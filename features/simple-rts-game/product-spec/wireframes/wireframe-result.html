@@ -1,0 +1,37 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Wireframe: Result — 8 Bit RTS</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+.result{height:720px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background:#1e1e22;color:#fff}
+.verdict{font-size:56px;letter-spacing:6px;color:#7fe0a8}
+.meta{font-size:15px;color:#aaa;display:flex;gap:28px}
+.rematch{width:340px;height:84px;background:#ff9a3c;color:#1e1e22;font-size:24px;font-weight:700;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer}
+.secondary{font-size:13px;color:#777;text-decoration:underline}
+</style></head><body>
+<div class="wireframe-nav"><strong>Screens:</strong>
+<a href="wireframe-difficulty-gate.html">1. Difficulty Gate</a>
+<a href="wireframe-match.html">2. Match + HUD</a>
+<a href="wireframe-result.html">3. Result</a></div>
+
+<div class="screen"><div class="result" data-testid="result-screen">
+  <div class="verdict">VICTORY</div>
+  <div class="meta"><span>7:41</span><span>Units built 23</span><span>Ore gathered 1,840</span></div>
+  <button class="rematch" data-testid="rematch">Rematch</button>
+  <a class="secondary" href="wireframe-difficulty-gate.html">Change difficulty</a>
+</div></div>
+
+<div class="note">
+<h3>Purpose</h3>
+<p>End the match unambiguously and get the player back in. <strong>For a bounded game the rematch button <em>is</em> the retention loop</strong> — we deliberately forgo the multiplayer retention mechanism every competitor leads with (RF-5), so this screen carries disproportionate weight.</p>
+<h3>Requirements</h3>
+<ul>
+<li>FR-019 — Rematch is the primary and largest action. Nothing competes with it for prominence.</li>
+<li>JRN-002 STEP-002 — Rematch restarts at the same difficulty <strong>without returning to the gate</strong>. "Change difficulty" is deliberately small and secondary.</li>
+<li>EDGE-001 — the defeat variant is identical in structure: no penalty, no extra step, <strong>no post-mortem</strong>. A player who just lost is the one most likely to leave.</li>
+</ul>
+<h3>Match stats</h3>
+<p>Duration is shown because it is a success criterion the player can feel (6–10 min target). The other two figures are flavour and feed the local counters in <a href="../metrics.md">metrics.md</a> — no analytics provider, no backend.</p>
+<h3>States</h3>
+<p>Victory (shown) · Defeat — identical layout, verdict text and colour differ. <strong>Verdict must not be conveyed by colour alone</strong>; the word carries the meaning.</p>
+</div>
+</body></html>

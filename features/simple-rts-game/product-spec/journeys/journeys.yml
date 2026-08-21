@@ -1,0 +1,240 @@
+schema_version: 1
+feature: simple-rts-game
+last_updated: "2026-08-21"
+runner: playwright-cli
+
+# NOTE: This is a canvas game with no in-code design system, so `cmp` fields are
+# null by design (design_system_harvest = not_applicable). UI steps instead carry a
+# `selector` — a stable DOM hook for DOM surfaces, or a canvas-relative interaction
+# for in-match steps. `api` is null throughout: v1 has no backend by scope decision.
+
+journeys:
+  - id: JRN-001
+    title: "First match — load to victory"
+    actor: "Casual browser player (first visit)"
+    stories: [US-001, US-002, US-003, US-004, US-005, US-006, US-007, US-008, US-009, US-012]
+    entry: "Game URL, cold load, no prior session"
+    success: "Victory screen shown after destroying the enemy Base"
+    smoke: true
+    preconditions:
+      - "No account, no stored state"
+      - "Browser supports WebGL"
+    steps:
+      - id: STEP-001
+        action: "Load the game URL"
+        selector: "[data-testid=difficulty-gate]"
+        expect: "Difficulty gate visible with exactly 3 options and no other content; first render < 3s"
+        cmp: null
+        api: null
+      - id: STEP-002
+        action: "Click the 'New to this' difficulty option"
+        selector: "[data-testid=difficulty-easy]"
+        expect: "Gate dismissed; match canvas visible; simulation tick 0 begins"
+        cmp: null
+        api: null
+      - id: STEP-003
+        action: "Observe without acting for 5 seconds"
+        selector: "[data-testid=ore-counter]"
+        expect: "Ore counter increases without any player input (workers auto-gather from tick 0)"
+        cmp: null
+        api: null
+      - id: STEP-004
+        action: "Confirm both bases and the enemy are visible without moving a camera"
+        selector: "canvas[data-testid=game-canvas]"
+        expect: "Own Base and enemy Base both on screen; no scroll, no minimap, no fog"
+        cmp: null
+        api: null
+      - id: STEP-005
+        action: "Drag a selection rectangle over own units"
+        selector: "canvas[data-testid=game-canvas]"
+        expect: "All own units intersecting the rectangle show selection state; enemy units unaffected"
+        cmp: null
+        api: null
+      - id: STEP-006
+        action: "Right-click on empty ground"
+        selector: "canvas[data-testid=game-canvas]"
+        expect: "Move marker appears within one rendered frame; selected units path toward the point"
+        cmp: null
+        api: null
+      - id: STEP-007
+        action: "Click a combat unit entry in the build bar"
+        selector: "[data-testid=build-trooper]"
+        expect: "Ore is deducted and a unit enters production at the Factory; bar remains visible and unnested"
+        cmp: null
+        api: null
+      - id: STEP-008
+        action: "Place an additional Factory on valid ground"
+        selector: "[data-testid=build-factory]"
+        expect: "Ghost preview follows cursor; click on valid ground commits placement and deducts ore"
+        cmp: null
+        api: null
+      - id: STEP-009
+        action: "Select the army and right-click the enemy Base"
+        selector: "canvas[data-testid=game-canvas]"
+        expect: "Units path to and attack the enemy Base; damage feedback visible"
+        cmp: null
+        api: null
+      - id: STEP-010
+        action: "Continue until the enemy Base is destroyed"
+        selector: "[data-testid=result-screen]"
+        expect: "Victory screen shown with match duration; Rematch is the primary action"
+        cmp: null
+        api: null
+    edges:
+      - id: EDGE-001
+        of_step: STEP-001
+        case: "WebGL unavailable"
+        given: "The browser or machine cannot initialise a WebGL context"
+        when: "The game attempts to start the renderer"
+        then: "A plain human-readable message replaces the canvas; no blank rectangle, no silent failure"
+        priority: P1
+        tests: []
+      - id: EDGE-002
+        of_step: STEP-002
+        case: "Keyboard-only difficulty selection"
+        given: "The player uses only a keyboard"
+        when: "They tab to a difficulty option and press Enter"
+        then: "The option activates and the match starts; focus is visible throughout"
+        priority: P2
+        tests: []
+      - id: EDGE-003
+        of_step: STEP-003
+        case: "Player is idle for 60 seconds"
+        given: "The player issues no commands for 60s after match start"
+        when: "The AI advances its own economy and army"
+        then: "The match remains recoverable — the player is not already defeated"
+        priority: P1
+        tests: []
+      - id: EDGE-004
+        of_step: STEP-007
+        case: "Insufficient ore"
+        given: "The player has less ore than the unit costs"
+        when: "They click that build-bar entry"
+        then: "The entry is greyed with its cost shown inline; no dialog, no error toast, nothing hidden"
+        priority: P1
+        tests: []
+      - id: EDGE-005
+        of_step: STEP-008
+        case: "Invalid Factory placement"
+        given: "The cursor is over terrain, a structure, or a unit"
+        when: "The player attempts to commit placement"
+        then: "The ghost shows an invalid state and the click is refused inline; no error dialog"
+        priority: P2
+        tests: []
+      - id: EDGE-006
+        of_step: STEP-003
+        case: "Own ore nodes exhausted"
+        given: "Every ore node on the player's side is depleted"
+        when: "Workers finish their current trip"
+        then: "Workers idle at the Base without thrashing or repathing; production halts; the match resolves with forces on the field"
+        priority: P1
+        tests: []
+      - id: EDGE-007
+        of_step: STEP-009
+        case: "Own Base destroyed instead"
+        given: "The AI reaches and destroys the player's Base first"
+        when: "The Base's hit points reach zero"
+        then: "Defeat screen shown; Rematch remains the primary action"
+        priority: P0
+        tests: []
+      - id: EDGE-008
+        of_step: STEP-005
+        case: "Ownership readable without colour"
+        given: "A viewer who cannot distinguish the two team colours"
+        when: "Friendly and enemy units are adjacent on screen"
+        then: "Friendly units are identifiable by their persistent underglow ring alone (WCAG 1.4.1)"
+        priority: P1
+        tests: []
+
+  - id: JRN-002
+    title: "Rematch loop"
+    actor: "Casual browser player (match just ended)"
+    stories: [US-010]
+    entry: "Result screen after a completed match"
+    success: "A fresh match is running at the same difficulty"
+    smoke: true
+    preconditions:
+      - "A match has reached a definitive win or loss"
+    steps:
+      - id: STEP-001
+        action: "Observe the result screen"
+        selector: "[data-testid=result-screen]"
+        expect: "Outcome is unambiguous; match duration shown; Rematch is the largest and primary action"
+        cmp: null
+        api: null
+      - id: STEP-002
+        action: "Click Rematch"
+        selector: "[data-testid=rematch]"
+        expect: "A fresh match starts at the same difficulty without returning to the gate"
+        cmp: null
+        api: null
+      - id: STEP-003
+        action: "Confirm the new match is genuinely fresh"
+        selector: "[data-testid=ore-counter]"
+        expect: "Ore, units, and structures are at starting values; a new seed is in effect"
+        cmp: null
+        api: null
+    edges:
+      - id: EDGE-001
+        of_step: STEP-002
+        case: "Rematch after defeat"
+        given: "The previous match ended in defeat"
+        when: "The player clicks Rematch"
+        then: "Behaviour is identical to rematch after victory — no penalty, no extra step, no post-mortem"
+        priority: P1
+        tests: []
+      - id: EDGE-002
+        of_step: STEP-003
+        case: "Rematch determinism hygiene"
+        given: "A rematch has started"
+        when: "The new match runs"
+        then: "No state leaks from the prior match — the simulation is constructed fresh from its seed"
+        priority: P0
+        tests: []
+
+  - id: JRN-003
+    title: "Losing without noticing — base under attack"
+    actor: "Casual browser player mid-match"
+    stories: [US-011]
+    entry: "Match in progress, player's attention on their own army"
+    success: "Player is alerted in time to respond"
+    smoke: false
+    preconditions:
+      - "A match is in progress"
+      - "The player's army is away from their Base"
+    steps:
+      - id: STEP-001
+        action: "Send the army away from the Base"
+        selector: "canvas[data-testid=game-canvas]"
+        expect: "Army pathfinds away; Base is left lightly defended"
+        cmp: null
+        api: null
+      - id: STEP-002
+        action: "Enemy units reach and damage an owned entity"
+        selector: "[data-testid=under-attack-indicator]"
+        expect: "Screen-edge indicator appears and an audio cue fires on the first damage event"
+        cmp: null
+        api: null
+      - id: STEP-003
+        action: "Recall the army"
+        selector: "canvas[data-testid=game-canvas]"
+        expect: "Units path back and engage the attackers"
+        cmp: null
+        api: null
+    edges:
+      - id: EDGE-001
+        of_step: STEP-002
+        case: "Repeated damage events"
+        given: "The base takes damage continuously"
+        when: "Many damage events fire in quick succession"
+        then: "The indicator and audio cue do not spam — they are rate-limited in the presentation layer only, never in simulation"
+        priority: P2
+        tests: []
+      - id: EDGE-002
+        of_step: STEP-002
+        case: "Damage while the result screen is open"
+        given: "The match has already resolved"
+        when: "A trailing damage event is processed"
+        then: "No indicator or audio fires over the result screen"
+        priority: P3
+        tests: []
