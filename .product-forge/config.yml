@@ -7,7 +7,7 @@
 # ─── Project Identity ──────────────────────────────────────────────────────────
 
 # Human-readable project name (used in research prompts and report headers)
-project_name: "8 Bit RTS"
+project_name: "Ten Minute War"
 
 # Brief tech stack description (helps research agents find relevant libraries)
 # Examples:

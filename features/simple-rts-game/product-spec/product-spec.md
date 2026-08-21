@@ -1,4 +1,4 @@
-# Product Spec: 8 Bit RTS — Simple Browser RTS
+# Product Spec: Ten Minute War — Simple Browser RTS
 
 > Status: DRAFT | Version: 1.0 | Date: 2026-08-21
 > Feature: `simple-rts-game` | Size: Medium | Detail: Standard
@@ -58,14 +58,14 @@ No secondary persona in v1. Competitive RTS players are explicitly not served.
 
 ### Must Have (v1)
 
-- [ ] **US-001** — As a player, I want the game to be playable within seconds of loading, so that I never have to invest before I know if I like it. **AC:** From page load to first issuable command is ≤30 s including the difficulty gate; no account, no lobby, no tutorial.
-- [ ] **US-002** — As a player, I want to declare my experience level before starting, so that the match is winnable for someone at my level. **AC:** A one-tap, three-option gate is the only thing between load and match; selection sets AI difficulty and is recorded in the match seed.
-- [ ] **US-003** — As a player, I want my workers to gather automatically from the start, so that I am never doing chores in the first thirty seconds. **AC:** Starting workers move to the nearest own-side ore node and begin gathering on tick 0 without any player input.
-- [ ] **US-004** — As a player, I want to select units by dragging and order them by right-clicking, so that I can play immediately using what I already know. **AC:** Drag-rectangle selects all own units intersecting it; right-click issues move (empty ground) or attack (enemy entity); both are acknowledged visually within one rendered frame.
-- [ ] **US-005** — As a player, I want to train combat units from a permanently visible build bar, so that I never hunt through menus. **AC:** Build bar shows exactly four entries (Worker, Scout, Trooper, Tank), always on screen, never nested; unaffordable entries are greyed with cost shown, never hidden and never a dialog.
-- [ ] **US-006** — As a player, I want to build additional factories, so that I can trade economy now for production later. **AC:** One placeable structure type; placement is a click on valid ground with a live ghost preview; invalid placement is shown inline, not as an error.
+- [ ] **US-001** — As a player, I want the game to be playable within seconds of loading, so that I never have to invest before I know if I like it. **AC:** From page load to an **interactive match** — commands issuable — is ≤10 s including the difficulty gate; no account, no lobby, no tutorial. *(Distinct from metric K2, which measures the player's **observed** first action from page load against a <30 s target. Both are measured from page load; they are different quantities with different thresholds — see [metrics.md](./metrics.md).)*
+- [ ] **US-002** — As a player, I want to declare my experience level before starting, so that the match is winnable for someone at my level. **AC:** A one-tap, three-option gate is the only thing between load and match. The chosen difficulty is a **field of the match's initial simulation state**, stored alongside the RNG seed — *not* encoded into the seed integer — and written into the replay header, so a replay reproduces AI behaviour exactly.
+- [ ] **US-003** — As a player, I want my workers to gather automatically from the start, so that I am never doing chores in the first thirty seconds. **AC:** Starting workers move to the nearest own-side ore node and begin gathering on tick 0 without any player input. **"Nearest" means least squared Euclidean distance** (no `sqrt` call needed), and **ties resolve by ascending ore-node id** — never by iteration or array order (Constitution §I).
+- [ ] **US-004** — As a player, I want to select units by dragging and order them by right-clicking, so that I can play immediately using what I already know. **AC:** Drag-rectangle selects every own unit whose **collision circle** (position + radius) intersects the rectangle — not its sprite bounds, so selection is independent of art. Right-click issues move (empty ground) or attack (enemy entity); both are acknowledged visually within one rendered frame.
+- [ ] **US-005** — As a player, I want to train combat units from a permanently visible build bar, so that I never hunt through menus. **AC:** Build bar shows exactly **five** entries — four unit entries (Worker, Scout, Trooper, Tank) plus one structure entry (Factory), with the structure **visually separated** from the units. Always on screen, never nested; unaffordable entries are greyed with cost shown, never hidden and never a dialog.
+- [ ] **US-006** — As a player, I want to build additional factories, so that I can trade economy now for production later. **AC:** One placeable structure type; placement is a click on valid ground with a live ghost preview; invalid placement is shown inline, not as an error. **Valid ground** = every tile in the structure's full 64 px footprint is passable terrain, wholly inside map bounds, and occupied by no other structure and no unit.
 - [ ] **US-007** — As a player, I want to see the whole battlefield at once, so that I never have to search for the enemy or manage a camera. **AC:** Fixed single-screen map, no scrolling, no minimap, no fog. Both bases visible from the first frame.
-- [ ] **US-008** — As a player, I want the match to end decisively in about ten minutes, so that it fits the time I actually have. **AC:** Destroying the enemy Base wins; losing your own Base loses. Ore nodes are finite, so production necessarily halts and the match resolves. Median duration 6–10 min; p90 < 15 min.
+- [ ] **US-008** — As a player, I want the match to end decisively in about ten minutes, so that it fits the time I actually have. **AC:** Destroying the enemy Base wins; losing your own Base loses. **If both Bases reach zero hit points on the same tick the match is a Draw** — an explicit third verdict rather than an arbitrary tie-break. Ore nodes are finite, so production necessarily halts and the match resolves. Median duration 6–10 min; p90 < 15 min.
 - [ ] **US-009** — As a player, I want to tell my units from the enemy's at a glance without relying on colour, so that the game is readable regardless of colour vision. **AC:** Every friendly unit carries a persistent non-colour ownership cue (underglow ring); enemies do not. Verified against WCAG 2.1 AA §1.4.1.
 - [ ] **US-010** — As a player, I want to restart instantly when the match ends, so that the good outcome is "again", not "leave". **AC:** Result screen's primary and largest action is Rematch; one click returns to a fresh match at the same difficulty.
 
@@ -92,9 +92,9 @@ No secondary persona in v1. Competitive RTS players are explicitly not served.
 ### 4.2 Economy
 
 **Description:** One resource, **Ore**. Workers walk to an ore node, extract for a fixed number of ticks, walk back to the Base, and deposit. Ore nodes hold a finite amount and visibly deplete.
-**Key interactions:** None required — workers auto-assign on spawn. Manual reassignment is possible but never necessary.
+**Key interactions:** None required — workers auto-assign on spawn to the node of least squared distance, ties resolved by ascending node id. Manual reassignment is possible but never necessary.
 **Why finite:** This is the match-length pressure valve. It is diegetic, needs no UI, requires no timer, and creates a natural three-act shape — boom, squeeze, decide. It is also the cheapest valve to make deterministic: a counter in simulation state.
-**Edge cases:** All own nodes exhausted → workers idle at Base (they must not thrash or pathfind endlessly). Node exhausted while a worker is en route → worker retargets to the nearest remaining own node, deterministically by node id.
+**Edge cases:** All own nodes exhausted → workers idle at Base (they must not thrash or pathfind endlessly). Node exhausted while a worker is en route → worker retargets to the remaining own node of least squared distance, ties by ascending node id.
 
 ### 4.3 Units — the cost/power ladder
 
@@ -145,8 +145,9 @@ in a stable, id-ordered way — not by iteration accident (Constitution §I).
 
 ### 4.6 Result & Rematch
 
-Full-screen, unambiguous **Victory** or **Defeat**, match duration shown, and one
-dominant action: **Rematch**. A bounded game's retention loop is the rematch
+Full-screen, unambiguous **Victory**, **Defeat**, or **Draw** (simultaneous Base
+destruction — rare but a real branch, so it is specified rather than left to an
+arbitrary tie-break), match duration shown, and one dominant action: **Rematch**. A bounded game's retention loop is the rematch
 button; nothing else competes with it for prominence.
 
 ## 5. Functional Requirements
@@ -162,7 +163,7 @@ button; nothing else competes with it for prominence.
 | FR-007 | Drag-rectangle selects all own units intersecting it | Must | US-004 |
 | FR-008 | Right-click issues move on ground, attack on enemy entity | Must | US-004 |
 | FR-009 | Command issue is visually acknowledged within one rendered frame | Must | Presentation-layer only; must not affect sim timing |
-| FR-010 | Build bar shows exactly 4 entries, always visible, never nested | Must | US-005 |
+| FR-010 | Build bar shows exactly 5 entries — 4 unit + 1 structure, visually separated — always visible, never nested | Must | US-005 |
 | FR-011 | Unaffordable build entries are greyed inline with cost shown | Must | Never a dialog |
 | FR-012 | Player may place additional Factories on valid ground | Must | US-006 |
 | FR-013 | Invalid placement is indicated by ghost state, not an error dialog | Must | US-006 |
@@ -170,6 +171,11 @@ button; nothing else competes with it for prominence.
 | FR-015 | No fog of war; both bases visible from the first frame | Must | US-007 |
 | FR-016 | Ore nodes hold finite amounts and visibly deplete | Must | US-008, pressure valve |
 | FR-017 | Destroying the enemy Base wins; losing own Base loses | Must | US-008 |
+| FR-027 | Ore-node selection resolves by least squared distance, ties by ascending node id | Must | US-003, Constitution §I |
+| FR-028 | Simultaneous Base destruction on one tick resolves as an explicit **Draw** | Must | US-008 |
+| FR-029 | Difficulty is a field of initial simulation state and appears in the replay header | Must | US-002 |
+| FR-030 | Selection tests against unit collision circles, not sprite bounds | Must | US-004 |
+| FR-031 | Valid placement = full footprint passable, in-bounds, unoccupied by structure or unit | Must | US-006 |
 | FR-018 | Every friendly unit carries a persistent non-colour ownership cue | Must | US-009, WCAG 1.4.1 |
 | FR-019 | Result screen's primary action is Rematch | Must | US-010 |
 | FR-020 | Units auto-acquire enemies in range; explicit orders override | Must | §4.5 |
@@ -248,7 +254,7 @@ appearing in project config) · localisation (English only) · analytics provide
 1. **Exact unit balance numbers** — deliberately deferred to a tuning pass. The spec fixes the ladder's shape, not its values.
 2. **Map layout** — symmetric mirrored bases is the safe default; the precise ore-node placement and count is a tuning variable that directly sets match length.
 3. **Final sprite selection** — the roster is specified by *role*; sprite ids get picked visually during implementation from the 48 available. Candidates observed: infantry ~`scifiUnit_01–04`, vehicles ~`05–09`, tanks ~`11`, worker ~`12`; structures ~`scifiStructure_01` (Base), `_05` (Factory).
-4. **Is the project name still right?** Config says *"8 Bit RTS"*, but the Kenney art is smooth-shaded top-down sci-fi, not 8-bit pixel art. Cosmetic, but worth a deliberate decision rather than an accident.
+4. ~~**Is the project name still right?**~~ **RESOLVED 2026-08-21 — renamed "8 Bit RTS" → "Ten Minute War".** The old name promised pixel art the Kenney sprites do not deliver. The new one states the differentiator: research found the vacant niche is *session length*, not genre, so the name now carries the positioning. See [review.md](../review.md).
 5. **Audio** — two functional cues are specified (US-011). Whether any further sound ships in v1 is unresolved.
 
 ## 11. Decision Log

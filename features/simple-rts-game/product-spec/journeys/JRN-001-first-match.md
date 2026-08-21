@@ -26,7 +26,7 @@
 | STEP-004 | Look for the enemy | `canvas[data-testid=game-canvas]` | Both bases on screen; no scroll, no minimap, no fog | — |
 | STEP-005 | Drag-select own units | `canvas[data-testid=game-canvas]` | All own units intersecting the rectangle show selection; enemy units unaffected | — |
 | STEP-006 | Right-click empty ground | `canvas[data-testid=game-canvas]` | Move marker appears **within one rendered frame**; units path toward it | — |
-| STEP-007 | Click a build-bar unit | `[data-testid=build-trooper]` | Ore deducted; unit enters production; bar stays visible and unnested | — |
+| STEP-007 | Click a build-bar unit | `[data-testid=build-trooper]` | Ore deducted; unit enters production; the 5-entry bar (4 unit + 1 structure) stays visible and unnested | — |
 | STEP-008 | Place another Factory | `[data-testid=build-factory]` | Ghost follows cursor; click on valid ground commits and deducts ore | — |
 | STEP-009 | Send army at enemy Base | `canvas[data-testid=game-canvas]` | Units path to and attack; damage feedback visible | — |
 | STEP-010 | Finish the enemy Base | `[data-testid=result-screen]` | Victory screen with duration; **Rematch is the primary action** | — |
@@ -43,6 +43,7 @@
 | EDGE-003 | STEP-003 | Player idle 60 s | GIVEN no commands for 60 s / WHEN the AI advances / THEN the match is still recoverable — the player is not already defeated | P1 |
 | EDGE-006 | STEP-003 | Own ore exhausted | GIVEN every own ore node is depleted / WHEN workers finish their trip / THEN they idle at the Base without thrashing, production halts, and the match resolves with forces on the field | P1 |
 | EDGE-007 | STEP-009 | Own Base destroyed first | GIVEN the AI reaches the player's Base first / WHEN its HP hits zero / THEN the Defeat screen shows, with Rematch still primary | P0 |
+| EDGE-009 | STEP-010 | Simultaneous Base destruction | GIVEN both Bases reach zero HP on the same tick / WHEN the tick resolves / THEN the match ends as an explicit **Draw** — not an arbitrary tie-break — with Rematch still primary | P2 |
 
 ## Error / boundary cases
 

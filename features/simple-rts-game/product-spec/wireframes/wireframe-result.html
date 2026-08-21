@@ -1,5 +1,5 @@
 <!DOCTYPE html><html><head><meta charset="utf-8">
-<title>Wireframe: Result — 8 Bit RTS</title>
+<title>Wireframe: Result — Ten Minute War</title>
 <link rel="stylesheet" href="_shared.css">
 <style>
 .result{height:720px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;background:#1e1e22;color:#fff}
@@ -32,6 +32,6 @@
 <h3>Match stats</h3>
 <p>Duration is shown because it is a success criterion the player can feel (6–10 min target). The other two figures are flavour and feed the local counters in <a href="../metrics.md">metrics.md</a> — no analytics provider, no backend.</p>
 <h3>States</h3>
-<p>Victory (shown) · Defeat — identical layout, verdict text and colour differ. <strong>Verdict must not be conveyed by colour alone</strong>; the word carries the meaning.</p>
+<p>Victory (shown) · Defeat · <strong>Draw</strong> — identical layout in all three; verdict text and colour differ. <strong>Verdict must not be conveyed by colour alone</strong>; the word carries the meaning. Draw occurs when both Bases reach zero HP on the same tick (FR-028, JRN-001 EDGE-009) — rare, but a real branch, so it is specified rather than resolved by an arbitrary tie-break.</p>
 </div>
 </body></html>

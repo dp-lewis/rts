@@ -59,7 +59,7 @@ journeys:
       - id: STEP-007
         action: "Click a combat unit entry in the build bar"
         selector: "[data-testid=build-trooper]"
-        expect: "Ore is deducted and a unit enters production at the Factory; bar remains visible and unnested"
+        expect: "Ore is deducted and a unit enters production at the Factory; the 5-entry bar (4 unit + 1 structure) remains visible and unnested"
         cmp: null
         api: null
       - id: STEP-008
@@ -136,6 +136,14 @@ journeys:
         when: "The Base's hit points reach zero"
         then: "Defeat screen shown; Rematch remains the primary action"
         priority: P0
+        tests: []
+      - id: EDGE-009
+        of_step: STEP-010
+        case: "Simultaneous Base destruction"
+        given: "Both Bases reach zero hit points on the same simulation tick"
+        when: "The tick resolves"
+        then: "The match ends as an explicit Draw verdict — not an arbitrary tie-break; Rematch remains the primary action"
+        priority: P2
         tests: []
       - id: EDGE-008
         of_step: STEP-005

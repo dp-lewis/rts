@@ -2,18 +2,20 @@ schema_version: 3
 feature: simple-rts-game
 feature_description: "Make a simple RTS game — local single-player vs AI, client-side Phaser, deterministic fixed-timestep simulation."
 created_at: "2026-08-21"
-last_updated: "2026-08-21T10:24:54Z"
+last_updated: "2026-08-21T10:48:14Z"
 feature_mode: standard
 flow_mode: gated
 v2_native: true
 backfilled: false
-speckit_mode: null
+speckit_mode: "classic"
 
 scope:
   summary: "Local single-player skirmish vs a simple AI opponent. Client-side only for v1."
   in_play: ["Phaser 4 client", "deterministic simulation core", "replay/command-log harness"]
   out_of_scope_v1: ["Node.js/Express backend", "MongoDB persistence", "online multiplayer / lockstep networking"]
   note: "Project config declares Express + MongoDB in project_tech_stack; the v1 scope chosen at intake excludes them. Config left unchanged."
+  product_name: "Ten Minute War"
+  product_name_note: "Renamed from '8 Bit RTS' 2026-08-21, resolving locked-spec open question 4. The old name promised pixel art the Kenney sprites do not deliver; the new one states the differentiator research identified (session length, not genre). Applied across 15 files including .product-forge/config.yml project_name. No requirement, story, journey, or non-goal changed - handled as a deferred-question resolution, not a change request."
 
 phases:
   problem_discovery:
@@ -34,8 +36,18 @@ phases:
   design_system_harvest:
     status: not_applicable
     note: "Canvas game with no in-code component library. Visual system is the Kenney CC0 sprite pack (research/assets.md). No mockups/ or component-map.yml produced; journey steps use data-testid selectors in place of CMP- ids."
-  revalidation:           { status: pending }
-  bridge:                 { status: pending }
+  revalidation:
+    status: approved
+    started_at: "2026-08-21T10:28:23Z"
+    completed_at: "2026-08-21T10:35:38Z"
+    digest_path: "review.md"
+    revisions: 1
+    locked: true
+  bridge:
+    status: completed
+    started_at: "2026-08-21T10:36:49Z"
+    completed_at: "2026-08-21T10:43:28Z"
+    digest_path: "spec.md"
   i18n_harvest:           { status: not_applicable }
   plan:                   { status: pending }
   tasks:                  { status: pending }
@@ -82,6 +94,15 @@ research_dimensions:
   metrics_roi: completed
 input_richness_score: 6
 
+delta_specs:
+  - "specs/simulation/spec.md"
+  - "specs/gameplay/spec.md"
+  - "specs/interface/spec.md"
+contracts:
+  openapi: not_applicable   # no HTTP surface; Express/MongoDB are v1 non-goals
+  asyncapi: not_applicable  # no EDA patterns detected (research/codebase-analysis.md)
+  note: "contracts/README.md records why, rather than emitting empty stubs that api-docs and sync-verify Layer 8 would validate against a fiction."
+
 task_log: []
 gates:
   - phase: problem_discovery
@@ -121,7 +142,40 @@ gates:
       - "Balance numbers deliberately unspecified — feel is tuned, not specified (R4). Plan must reserve a tuning pass and the K1 comprehension playtest as scheduled work."
       - "Fixed single screen (~20x11 tiles at 64px) may feel cramped; playtest decides. Escalating to a scrolling map would be a change request."
       - "Difficulty gate is now the only pre-play friction, in tension with the no-tutorial decision. Accepted trade-off; anti-metric added."
-      - "Open question: project name '8 Bit RTS' vs smooth-shaded sci-fi art direction."
+      - "Open question: project name 'Ten Minute War' vs smooth-shaded sci-fi art direction."
+  - phase: revalidation
+    decision: approved
+    at: "2026-08-21T10:35:38Z"
+    reviewed_sha: "93ec5861bf45d7e317936582ef72f8dca58d67f1"
+    risk: low
+    revisions: 1
+    notes: "Spec LOCKED after 1 revision. A determinism lens was applied to all 10 Must-Have acceptance criteria BEFORE the gate rather than at approval, asking of each: would two competent implementers build materially different things? Five would. All five resolved plus two minor ones. Final consistency pass clean: 16/16 cross-links, 3/3 wireframes, 12/12 Must+Should stories journey-covered, traceability edge counts matching."
+    findings_resolved:
+      - "D-1 HIGH — US-003 nearest ore node had no distance metric and no tie-break. Now least squared Euclidean distance, ties by ascending node id (FR-027). Third instance of the unspecified-ordering defect class in this feature, after FR-021 targeting and FR-022 A*."
+      - "D-2 HIGH — spec said the build bar has exactly four entries; the wireframe drew five. Resolved IN FAVOUR OF THE WIREFRAME (4 unit + 1 visually separated structure), because the drawing was the better design."
+      - "D-3 MED — US-001 and metrics K2 shared a 30s threshold while measuring different quantities, so one was guaranteed to be measured wrong. Split into <=10s time-to-interactive (guarantee) and <30s observed first action (playtest measure)."
+      - "D-4 MED — simultaneous Base destruction was an unspecified branch. Now an explicit Draw verdict (FR-028, EDGE-009) rather than an invisible arbitrary tie-break."
+      - "D-5 MED — difficulty is a field of initial simulation state alongside the RNG seed and appears in the replay header, not encoded into the seed integer (FR-029)."
+      - "MINOR — selection tests unit collision circles, not sprite bounds (FR-030), so art changes cannot change gameplay."
+      - "MINOR — valid placement defined: full 64px footprint passable, in bounds, unoccupied (FR-031)."
+    open_items:
+      - "5 open questions knowingly carried forward: unit balance numbers (tuning pass), map layout and ore-node placement (plan), final sprite ids (implementation), project name vs art direction (user, cosmetic), audio scope (plan). None block the bridge."
+      - "Expect a fourth unspecified-ordering instance during planning — it is this codebase characteristic defect class."
+  - phase: bridge
+    decision: approved
+    at: "2026-08-21T10:43:28Z"
+    reviewed_sha: "93ec5861bf45d7e317936582ef72f8dca58d67f1"
+    risk: low
+    notes: "spec.md 451 lines: 31 FR (all traced), 15 US, 10 NFR + an 11-row NFR Measurement Contract, 23 TC + 9 E2E, 13-row codebase constraints table. 3 delta specs (simulation 8 / gameplay 6 / interface 17 FRs) covering 31/31. SpecKit mode classic. 11/11 quality checks pass. Sync-verify Layer 2 clean: FR and US sets match product-spec exactly, non-goals carried, all four key thresholds agree."
+    decisions:
+      - "Conditional sections omitted on evidence, not by default: EDA Events (no EDA patterns), Prerequisites (no related features), Consumer Contract (end-user not shared infrastructure)."
+      - "contracts/openapi.yaml and asyncapi.yaml deliberately NOT generated. Empty stubs would be worse than absent: api-docs and sync-verify Layer 8 would validate real code against a fiction. contracts/README.md records the reasoning and names the command queue as the one internal contract, and as where asyncapi.yaml would begin if a backend ever arrives."
+      - "Delta specs split into three domains mirroring the constitution sim/presentation split. Canonical specs/ does not exist yet, so all requirements are ADDED and these deltas create the domains."
+    open_items:
+      - "Plan MUST resolve two constitutional obligations concretely: the canonical state-hash definition (field order, entity ordering, exact float bits) and the replay-corpus format. Both must exist before the first bug fix or Constitution IV is unmeetable in practice."
+      - "Plan MUST schedule the balance-tuning pass and the K1 comprehension playtest as real work. K1 is the only check on the fun goal and will otherwise be crowded out by the six machine-checkable criteria (RF-4)."
+      - "Plan Complexity Tracking table starts EMPTY — zero accepted violations so far. Every later entry is a visible deliberate decision rather than accumulated drift."
+      - "Expect a fourth unspecified-ordering determinism defect during planning; three found so far (FR-021, FR-022, FR-027)."
 sync_runs:
   - at: "2026-08-21T10:24:54Z"
     scope: "quick — Layer 1 (research <-> product-spec)"

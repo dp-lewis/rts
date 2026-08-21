@@ -1,4 +1,4 @@
-# User Interview Script: 8 Bit RTS — Simple RTS Game
+# User Interview Script: Ten Minute War — Simple RTS Game
 
 > **Goal:** Validate that "no maintained browser RTS delivers a complete match in
 > a short session" is a real, recurring gap — and, more importantly, that the

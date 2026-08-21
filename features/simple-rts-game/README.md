@@ -1,6 +1,6 @@
-# Feature: 8 Bit RTS — Simple Browser RTS
+# Feature: Ten Minute War — Simple Browser RTS
 
-> Created: 2026-08-21 | Status: Phase 2 (Product Spec) complete
+> Created: 2026-08-21 | Status: Phase 4 (Bridge) complete — spec.md generated
 > Slug: `simple-rts-game` | Mode: `standard` | Flow: `gated`
 
 ## Lifecycle Status
@@ -11,8 +11,8 @@
 | 1. Research | ✅ Complete | [research/](./research/README.md) |
 | 2. Product Spec | ✅ Complete | [product-spec/](./product-spec/README.md) |
 | 2H. Design System Harvest | ⛔ Not applicable | canvas game, no component library |
-| 3. Revalidation | ⏳ Pending | `review.md` |
-| 4. SpecKit Bridge | ⏳ Pending | `spec.md` |
+| 3. Revalidation | ✅ Approved | [review.md](./review.md) — spec LOCKED after 1 revision |
+| 4. SpecKit Bridge | ✅ Complete | [spec.md](./spec.md) · [delta specs](./specs/) · [contracts](./contracts/README.md) |
 | 4.5. i18n Harvest | ⛔ Not applicable | English only |
 | 5. Plan | ⏳ Pending | `plan.md` |
 | 5B. Tasks | ⏳ Pending | `tasks.md` |

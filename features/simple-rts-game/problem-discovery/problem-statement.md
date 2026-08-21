@@ -1,4 +1,4 @@
-# Problem Statement Canvas: 8 Bit RTS — Simple RTS Game
+# Problem Statement Canvas: Ten Minute War — Simple RTS Game
 
 > Phase 0 output · created 2026-08-21 · feature `simple-rts-game`
 

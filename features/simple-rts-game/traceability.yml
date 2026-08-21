@@ -20,6 +20,7 @@ journeys:
       - {id: EDGE-006, priority: P1, case: "Own ore nodes exhausted", tests: []}
       - {id: EDGE-007, priority: P0, case: "Own Base destroyed first", tests: []}
       - {id: EDGE-008, priority: P1, case: "Ownership readable without colour", tests: []}
+      - {id: EDGE-009, priority: P2, case: "Simultaneous Base destruction (Draw)", tests: []}
     tests: []
   - id: "JRN-002"
     title: "Rematch loop"

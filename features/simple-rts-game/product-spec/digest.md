@@ -74,7 +74,7 @@ in the journey steps.
 
 **Unresolved (5 open questions, all deliberate):** exact unit balance numbers ·
 map layout and ore-node placement · final sprite id selection · whether the
-project name "8 Bit RTS" still fits smooth-shaded sci-fi art · how much audio
+project name "Ten Minute War" still fits smooth-shaded sci-fi art · how much audio
 ships beyond the two functional cues.
 
 ## Handoff Notes

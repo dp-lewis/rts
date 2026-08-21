@@ -1,4 +1,4 @@
-# Metrics & Success Criteria: 8 Bit RTS
+# Metrics & Success Criteria: Ten Minute War
 
 > Feature: `simple-rts-game` | Related: [Product Spec](./product-spec.md) · [Research: metrics-roi.md](../research/metrics-roi.md)
 
@@ -39,7 +39,7 @@ which §V would need convincing of.
 | # | Metric | Baseline | Target | Measurement |
 |---|--------|----------|--------|-------------|
 | K1 | **Comprehension** — first-timer understands what to do, unaided | n/a | **≥ 4 of 5** playtesters | Playtest observation. Say nothing, watch. |
-| K2 | Time to first meaningful action | n/a | **< 30 s** incl. difficulty gate | Sim tick counter from match start to first player command |
+| K2 | Time to first meaningful action (**observed**) | n/a | **< 30 s** from page load | Wall time from page load to the first player-issued command, recorded in playtest. Distinct from US-001's ≤10 s **time-to-interactive**, which is the product guarantee that commands *can* be issued. |
 | K3 | Match completion rate (reached win or loss) | n/a | **≥ 70%** of started matches | Local counter |
 | K4 | Match duration | n/a | **median 6–10 min**, p90 < 15 min | Tick count at terminal state |
 | K5 | Rematch rate | n/a | **≥ 40%** of completed matches | Local counter |
@@ -64,6 +64,12 @@ slot, K1 will be quietly crowded out by the six criteria a machine *can* check.
 > Note that K2's `< 30 s` is a **self-imposed budget** derived from the ten-minute
 > session goal — not an industry benchmark. No comparable published figure exists.
 > The spec must not cite it as validated.
+>
+> **K2 and US-001 measure different things and must not be conflated.** US-001's
+> ≤10 s is *time-to-interactive* — a product guarantee we control. K2's <30 s is
+> *observed time to first action* — behaviour we can only watch. Both start at page
+> load; the gap between them is the player deciding what to do, which is exactly the
+> comprehension signal K1 is after.
 
 ## Leading Indicators
 

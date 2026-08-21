@@ -1,4 +1,4 @@
-# Product Spec Index: 8 Bit RTS — Simple Browser RTS
+# Product Spec Index: Ten Minute War — Simple Browser RTS
 
 > Status: DRAFT | Created: 2026-08-21 | Last updated: 2026-08-21
 > Feature slug: `simple-rts-game`

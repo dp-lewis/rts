@@ -1,4 +1,4 @@
-# Research Index: Simple RTS Game (8 Bit RTS)
+# Research Index: Simple RTS Game (Ten Minute War)
 
 > Generated: 2026-08-21 · Feature: `simple-rts-game`
 > Input richness: **6/8** · Interview mode: **CONFIRM**
