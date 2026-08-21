@@ -1,0 +1,28 @@
+# OS
+.DS_Store
+**/.DS_Store
+
+# Node
+node_modules/
+dist/
+build/
+*.log
+npm-debug.log*
+yarn-error.log*
+.pnpm-store/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Product Forge runtime
+**/.forge-status.yml.lock
+**/.forge-status.yml.tmp
+**/.forge-dry-run/
+.forge-tmp/
+
+# Test / coverage
+coverage/
+playwright-report/
+test-results/

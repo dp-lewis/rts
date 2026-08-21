@@ -1,0 +1,286 @@
+schema_version: 3
+feature: simple-rts-game
+feature_description: "Make a simple RTS game — local single-player vs AI, client-side Phaser, deterministic fixed-timestep simulation."
+created_at: "2026-08-21"
+last_updated: "2026-08-21T11:22:29Z"
+feature_mode: standard
+flow_mode: gated
+v2_native: true
+backfilled: false
+speckit_mode: "classic"
+
+scope:
+  summary: "Local single-player skirmish vs a simple AI opponent. Client-side only for v1."
+  in_play: ["Phaser 4 client", "deterministic simulation core", "replay/command-log harness"]
+  out_of_scope_v1: ["Node.js/Express backend", "MongoDB persistence", "online multiplayer / lockstep networking"]
+  note: "Project config declares Express + MongoDB in project_tech_stack; the v1 scope chosen at intake excludes them. Config left unchanged."
+  product_name: "Ten Minute War"
+  product_name_note: "Renamed from '8 Bit RTS' 2026-08-21, resolving locked-spec open question 4. The old name promised pixel art the Kenney sprites do not deliver; the new one states the differentiator research identified (session length, not genre). Applied across 15 files including .product-forge/config.yml project_name. No requirement, story, journey, or non-goal changed - handled as a deferred-question resolution, not a change request."
+
+phases:
+  problem_discovery:
+    status: completed
+    started_at: "2026-08-21T09:48:53Z"
+    completed_at: "2026-08-21T09:52:33Z"
+    digest_path: "problem-discovery/problem-statement.md"
+  research:
+    status: completed
+    started_at: "2026-08-21T09:56:32Z"
+    completed_at: "2026-08-21T10:04:26Z"
+    digest_path: "research/digest.md"
+  product_spec:
+    status: completed
+    started_at: "2026-08-21T10:09:38Z"
+    completed_at: "2026-08-21T10:23:01Z"
+    digest_path: "product-spec/digest.md"
+  design_system_harvest:
+    status: not_applicable
+    note: "Canvas game with no in-code component library. Visual system is the Kenney CC0 sprite pack (research/assets.md). No mockups/ or component-map.yml produced; journey steps use data-testid selectors in place of CMP- ids."
+  revalidation:
+    status: approved
+    started_at: "2026-08-21T10:28:23Z"
+    completed_at: "2026-08-21T10:35:38Z"
+    digest_path: "review.md"
+    revisions: 1
+    locked: true
+  bridge:
+    status: completed
+    started_at: "2026-08-21T10:36:49Z"
+    completed_at: "2026-08-21T10:43:28Z"
+    digest_path: "spec.md"
+  i18n_harvest:           { status: not_applicable }
+  plan:
+    status: completed
+    started_at: "2026-08-21T10:49:55Z"
+    completed_at: "2026-08-21T10:59:39Z"
+    digest_path: "plan/digest.md"
+    adrs: ["plan/adr/ADR-001-canonical-state-hash.md", "plan/adr/ADR-002-replay-corpus.md"]
+    complexity_tracking_entries: 0
+  tasks:
+    status: completed
+    started_at: "2026-08-21T11:05:50Z"
+    completed_at: "2026-08-21T11:12:04Z"
+    digest_path: "tasks/digest.md"
+    total: 82
+    groups: 10
+    story_coverage: "12/12"
+    requirement_coverage: "33/33"
+    test_first_tasks: 24
+    xl_tasks: 0
+  migration_plan:
+    status: not_applicable
+    note: "plan.md declares Storage: none. No database, no schema, no migrations (Express/MongoDB are explicit v1 non-goals). Conditional trigger not met."
+  pre_impl_review:
+    status: completed
+    started_at: "2026-08-21T11:12:41Z"
+    completed_at: "2026-08-21T11:22:29Z"
+    scope: "focused — untested assumptions + consolidated risk register; architecture deliberately not re-treaded (covered by two Constitution Check gates)"
+    digest_path: "pre-impl-review.md"
+    findings: {high: 3, medium: 3, low: 1}
+  implement:              { status: pending }
+  code_review:            { status: pending }
+  verify:                 { status: pending }
+  test_plan:              { status: pending }
+  test_run:               { status: pending }
+  release_readiness:      { status: pending }
+  monitoring_setup:       { status: pending }
+  experiment_design:      { status: pending }
+  spec_merge:             { status: pending }
+  api_docs:               { status: not_applicable }
+  security_check:         { status: pending }
+  tracking_plan:          { status: pending }
+
+problem:
+  statement: "A casual player wanting an RTS fix in a spare 15 minutes has no maintained browser RTS that delivers a complete match arc."
+  jtbd: "When I have 15 spare minutes and want something more strategic than a puzzle game, I want to jump straight into a complete RTS skirmish in a browser tab, so I can get the full build-up-and-win arc in one short sitting."
+  segment: "Casual desktop browser players with RTS familiarity or nostalgia; short opportunistic sessions; no install, no account."
+  severity: "4/10"
+  validation: "Weak"
+  go_decision: "go"
+  go_basis: "Craft/capability goals (playable fun match + clean extensible codebase), not validated market pain. Severity deliberately not the gating factor."
+  forces: { push: medium, pull: medium-high, inertia: high, anxiety: low-medium }
+  risks:
+    - "R1: Constitution mandates deterministic sim + replay regression (NON-NEGOTIABLE) but determinism was not a stated success outcome. Unbudgeted cost; must be resolved explicitly before Phase 5 Plan."
+    - "R2: The real competitor is 'play nothing' at zero cost. Time-to-comprehension dominates; onboarding is make-or-break."
+    - "R3: 'Simple' is undefined and RTS scope creeps. Needs a hard written v1 unit/resource/mechanic budget plus explicit non-goals."
+    - "R4: 'Fun' is not derivable from a spec; needs a playtest-and-tune loop the plan must protect."
+  hypotheses:
+    H1: "Quick-session browser RTS niche is genuinely underserved (competitor analysis)."
+    H2: "Radical mechanic reduction (~3 units, 1 resource, no fog of war) suffices for a satisfying match arc (UX research)."
+    H3: "Deterministic fixed-timestep sim + seeded RNG + command log is achievable in Phaser 4 without fixed-point math (tech research)."
+    H4: "Time-to-first-meaningful-action (<30s) and match-completion rate predict success better than strategic depth (metrics research)."
+
+research_dimensions:
+  competitors: completed
+  ux_patterns: completed
+  codebase: completed
+  tech_stack: completed
+  metrics_roi: completed
+input_richness_score: 6
+
+delta_specs:
+  - "specs/simulation/spec.md"
+  - "specs/gameplay/spec.md"
+  - "specs/interface/spec.md"
+contracts:
+  openapi: not_applicable   # no HTTP surface; Express/MongoDB are v1 non-goals
+  asyncapi: not_applicable  # no EDA patterns detected (research/codebase-analysis.md)
+  note: "contracts/README.md records why, rather than emitting empty stubs that api-docs and sync-verify Layer 8 would validate against a fiction."
+
+task_log: []
+gates:
+  - phase: problem_discovery
+    decision: approved_with_conditions
+    at: "2026-08-21T09:56:17Z"
+    reviewed_sha: "2ac8aa052237fa0befb28de08a33e3ae39a2d84e"
+    risk: low
+    notes: "Go on craft grounds (playable fun match + clean extensible codebase), not on validated market pain. Severity 4/10, validation Weak — recorded honestly, deliberately not the gating factor."
+    conditions:
+      - "R1 RESOLVED — comply fully with constitution Principles I (Deterministic Simulation Core), II (Simulation-Presentation Separation) and IV (Replay-Verified Regression). No constitution amendment, no Complexity Tracking violation. Determinism is designed in from tick zero; the replay corpus grows from fixed defects. Rationale: I and II are near-free at greenfield and ruinous to retrofit, and II directly delivers the stated 'clean, extensible codebase' outcome."
+      - "R2 CARRIED FORWARD — the real competitor is 'play nothing' at zero cost. Product spec must treat time-to-comprehension (<60s to legible play, <30s to first meaningful action) as a primary requirement, not a polish item."
+      - "R3 CARRIED FORWARD — 'simple' must be pinned to a hard written v1 budget (unit count, resource count, mechanic list) with explicit non-goals, before Phase 5 Plan."
+      - "R4 CARRIED FORWARD — plan must protect a playtest-and-tune loop; 'fun' is not verifiable by the traceability chain and will otherwise be dropped in favour of machine-checkable criteria."
+  - phase: research
+    decision: approved_with_conditions
+    at: "2026-08-21T10:08:47Z"
+    reviewed_sha: "2ac8aa052237fa0befb28de08a33e3ae39a2d84e"
+    risk: low
+    notes: "5/5 dimensions run (tech-stack + metrics opted in over config defaults to test H3/H4). All four hypotheses survived; H1 reframed (white space is session length, not genre), H4 split into sound-principle / unverifiable-measurement. 8 red flags raised."
+    conditions:
+      - "RF-1 RESOLVED — constitution amended to v1.1.0 (MINOR). Principle I now enumerates the supported-platform set: Node LTS on ubuntu-latest + macos-latest (headless) plus Chromium via Playwright; and states the deterministic/non-deterministic arithmetic boundary explicitly, forbidding transcendentals in sim code. Propagated to plan-template.md and tasks-template.md in the same change per the amendment procedure."
+      - "RF-2 OPEN — A* open-set tie-breaking must use a stable rule (entity id) and carry a dedicated determinism test. Highest-probability determinism defect in the project."
+      - "RF-3 OPEN — Phaser update(time, delta) idiom is unusable for sim per Principle I; mitigate by lint + explicit plan note, not vigilance."
+      - "RF-4 OPEN — the 'fun' goal has a single manual check (comprehension playtest); it needs a protected slot in the plan or machine-checkable criteria will crowd it out."
+      - "RF-5 OPEN — single-player-only forgoes the retention mechanism every competitor leads with; recorded as a knowing v1 trade-off, not an oversight."
+      - "RF-6 OPEN — WebGL-unsupported is newly reachable (Phaser 4 deprecated Canvas); needs an honest fallback state."
+      - "RF-7 OPEN — nothing instrumented (telemetry.* = none) and mobile benchmarks do not transfer; measure against ourselves via local counters + playtest."
+      - "RF-8 OPEN — Kenney sprites appear to bake team colour in; ownership conveyed by colour alone violates WCAG 1.4.1. Non-colour differentiator required as an explicit spec requirement."
+      - "ASSETS — Kenney 'RTS Pack: Sci-Fi' (CC0) added to repo at images/ mid-session: 48 unit / 16 structure / 42 tile / 20 environment sprites, uniform 64x64 (128x128 Retina). Settles art direction; supplies a natural 64px grid module for deterministic grid A*. Recorded in research/assets.md."
+  - phase: product_spec
+    decision: approved
+    at: "2026-08-21T10:25:27Z"
+    reviewed_sha: "2ac8aa052237fa0befb28de08a33e3ae39a2d84e"
+    risk: low
+    notes: "13 artifacts. R3 discharged — simple is now a hard written budget (1 resource, 4 unit types, 2 structures, 1 buildable, 1 fixed screen) with ~30 explicit non-goals. 26 FR-* minted; 3 journeys / 16 steps / 12 edges; traceability journeys block seeded. Sync-verify Layer 1 passed with one drift found and fixed (US-012 linked into JRN-001). 12/12 Must+Should stories journey-covered. design_system_harvest set not_applicable (canvas game, no component library) — no mockups or component-map produced, by decision."
+    open_items:
+      - "Balance numbers deliberately unspecified — feel is tuned, not specified (R4). Plan must reserve a tuning pass and the K1 comprehension playtest as scheduled work."
+      - "Fixed single screen (~20x11 tiles at 64px) may feel cramped; playtest decides. Escalating to a scrolling map would be a change request."
+      - "Difficulty gate is now the only pre-play friction, in tension with the no-tutorial decision. Accepted trade-off; anti-metric added."
+      - "Open question: project name 'Ten Minute War' vs smooth-shaded sci-fi art direction."
+  - phase: revalidation
+    decision: approved
+    at: "2026-08-21T10:35:38Z"
+    reviewed_sha: "93ec5861bf45d7e317936582ef72f8dca58d67f1"
+    risk: low
+    revisions: 1
+    notes: "Spec LOCKED after 1 revision. A determinism lens was applied to all 10 Must-Have acceptance criteria BEFORE the gate rather than at approval, asking of each: would two competent implementers build materially different things? Five would. All five resolved plus two minor ones. Final consistency pass clean: 16/16 cross-links, 3/3 wireframes, 12/12 Must+Should stories journey-covered, traceability edge counts matching."
+    findings_resolved:
+      - "D-1 HIGH — US-003 nearest ore node had no distance metric and no tie-break. Now least squared Euclidean distance, ties by ascending node id (FR-027). Third instance of the unspecified-ordering defect class in this feature, after FR-021 targeting and FR-022 A*."
+      - "D-2 HIGH — spec said the build bar has exactly four entries; the wireframe drew five. Resolved IN FAVOUR OF THE WIREFRAME (4 unit + 1 visually separated structure), because the drawing was the better design."
+      - "D-3 MED — US-001 and metrics K2 shared a 30s threshold while measuring different quantities, so one was guaranteed to be measured wrong. Split into <=10s time-to-interactive (guarantee) and <30s observed first action (playtest measure)."
+      - "D-4 MED — simultaneous Base destruction was an unspecified branch. Now an explicit Draw verdict (FR-028, EDGE-009) rather than an invisible arbitrary tie-break."
+      - "D-5 MED — difficulty is a field of initial simulation state alongside the RNG seed and appears in the replay header, not encoded into the seed integer (FR-029)."
+      - "MINOR — selection tests unit collision circles, not sprite bounds (FR-030), so art changes cannot change gameplay."
+      - "MINOR — valid placement defined: full 64px footprint passable, in bounds, unoccupied (FR-031)."
+    open_items:
+      - "5 open questions knowingly carried forward: unit balance numbers (tuning pass), map layout and ore-node placement (plan), final sprite ids (implementation), project name vs art direction (user, cosmetic), audio scope (plan). None block the bridge."
+      - "Expect a fourth unspecified-ordering instance during planning — it is this codebase characteristic defect class."
+  - phase: bridge
+    decision: approved
+    at: "2026-08-21T10:43:28Z"
+    reviewed_sha: "93ec5861bf45d7e317936582ef72f8dca58d67f1"
+    risk: low
+    notes: "spec.md 451 lines: 31 FR (all traced), 15 US, 10 NFR + an 11-row NFR Measurement Contract, 23 TC + 9 E2E, 13-row codebase constraints table. 3 delta specs (simulation 8 / gameplay 6 / interface 17 FRs) covering 31/31. SpecKit mode classic. 11/11 quality checks pass. Sync-verify Layer 2 clean: FR and US sets match product-spec exactly, non-goals carried, all four key thresholds agree."
+    decisions:
+      - "Conditional sections omitted on evidence, not by default: EDA Events (no EDA patterns), Prerequisites (no related features), Consumer Contract (end-user not shared infrastructure)."
+      - "contracts/openapi.yaml and asyncapi.yaml deliberately NOT generated. Empty stubs would be worse than absent: api-docs and sync-verify Layer 8 would validate real code against a fiction. contracts/README.md records the reasoning and names the command queue as the one internal contract, and as where asyncapi.yaml would begin if a backend ever arrives."
+      - "Delta specs split into three domains mirroring the constitution sim/presentation split. Canonical specs/ does not exist yet, so all requirements are ADDED and these deltas create the domains."
+    open_items:
+      - "Plan MUST resolve two constitutional obligations concretely: the canonical state-hash definition (field order, entity ordering, exact float bits) and the replay-corpus format. Both must exist before the first bug fix or Constitution IV is unmeetable in practice."
+      - "Plan MUST schedule the balance-tuning pass and the K1 comprehension playtest as real work. K1 is the only check on the fun goal and will otherwise be crowded out by the six machine-checkable criteria (RF-4)."
+      - "Plan Complexity Tracking table starts EMPTY — zero accepted violations so far. Every later entry is a visible deliberate decision rather than accumulated drift."
+      - "Expect a fourth unspecified-ordering determinism defect during planning; three found so far (FR-021, FR-022, FR-027)."
+  - phase: plan
+    decision: approved
+    at: "2026-08-21T10:59:39Z"
+    reviewed_sha: "c2ca5de4a474ca4cb08e85ea582f0e5695709ae9"
+    risk: low
+    notes: "plan.md 440 lines + 2 ADRs. Constitution Check 5/5 PASS at BOTH gates (before research, after design). Cross-validation 6/6. Coverage 12/12 stories, 31/31 FRs mapped to an owning milestone. Complexity Tracking EMPTY - zero accepted constitutional violations across five phases."
+    obligations_discharged:
+      - "OBLIGATION 1 - canonical state hash defined in ADR-001: fixed field order, id-ordered traversal, exact IEEE-754 bits via DataView. Rounding before hashing explicitly REJECTED (it would hide the sub-ulp divergence Principle I exists to detect). FNV-1a two 32-bit lanes to 64-bit hex, vendored, no dependency."
+      - "OBLIGATION 2 - replay corpus defined in ADR-002: one JSON file per case, MANDATORY checkpoint hashes so failures localise rather than merely register, simVersion gating, and a deliberately manual PR-visible regeneration procedure. Auto-updating hashes on mismatch REJECTED outright as converting the Principle IV guard into a rubber stamp."
+      - "OBLIGATION 3 - M8 (balance tuning) and M9 (K1 comprehension playtest) are numbered milestones with exit criteria, equal in standing to M0-M7. M9 BLOCKS completion. constants.ts exists as a single file so M8 has one tuning surface."
+      - "OBLIGATION 4 - ordering audit found FOUR more hazards, not one. O-4 command application order within a tick (issuer, seq). O-5 production completion when ore covers only one factory (ascending factory id). O-6 simultaneous lethal damage - collect across tick, apply atomically at end, which also makes FR-028 Draw reachable rather than theoretical. O-7 entity iteration order - the ROOT of the class, fixed structurally by an id-sorted array plus lint bans on for-in and Map/Set iteration in src/sim."
+    key_decisions:
+      - "Build order inverted: M0 is the ESLint boundary config and 3-platform CI matrix BEFORE any game code. Its acceptance test is that lint FAILS on a deliberately planted Math.random() in src/sim - a guard nobody verified is a guard nobody has."
+      - "Single package, not a monorepo. Principle II is about the dependency arrow, not package boundaries; a lint rule enforces it as strictly at a fraction of the ceremony."
+      - "Simulation at 20 Hz. Phaser delta never crosses into step() - it only counts whole ticks and produces an interpolation alpha. Isolated in src/game/loop.ts so it is easy to review."
+      - "One runtime dependency (Phaser). PRNG, A*, and hash vendored at ~50 lines total."
+    open_items:
+      - "Expect further ordering hazards as gameplay grows - seven catalogued, assume the list is incomplete. Any new pick-the-nearest/first/best needs a tie-break rule before the code is written."
+      - "Cross-platform float divergence may surface in M1. That is wanted, not feared: fix the divergence, never loosen the hash."
+      - "mulberry32 vs sfc32 decided in M1; plan recommends mulberry32 for its single-integer serialisable state."
+  - phase: tasks
+    decision: approved
+    at: "2026-08-21T11:12:04Z"
+    reviewed_sha: "7da597005ec4a5cb69cb1e73ca37795a8a558bdc"
+    risk: low
+    notes: "77 tasks across 10 milestones (M0-M9). Coverage 31/31 requirements, 12/12 Must+Should stories, 7/7 ordering hazards each with a dedicated test. Sizes 4 XS / 28 S / 37 M / 8 L / 0 XL. 24 tasks marked Test-first: true. Structural checks all pass: unique contiguous ids, every task carries Paths and Size, no orphans, no workspace prefixes (single-root)."
+    findings:
+      - "FIXED - adversarial ordering pass caught an inverted Red-Green cycle in M0: the ESLint boundary CONFIG preceded the test verifying it fires, in the very milestone whose point is that guards must be verified. Swapped - T003 is now the test (fails because no rules exist yet, so ESLint reports nothing) and T004 is the config that turns it green."
+      - "DEVIATION (deliberate) - grouped by milestone rather than by user story. Story-first grouping would be fiction here: US-001 requires the whole game to exist, and Constitution I/II force the enforcement config and determinism harness before all gameplay. Every task carries its story/requirement tag so traceability is unaffected; only the grouping axis differs."
+      - "traceability.yml requirements block seeded - 31 rows with stories and owning tasks. code and tests columns left to implement and test-plan."
+    open_items:
+      - "T040 (combat) is the L-sized task to watch - it carries TWO ordering hazards (O-1 acquisition, O-6 atomic damage) and is where a split would be least surprising if it grows."
+      - "T075 is the first real exercise of ADR-002 manual corpus regeneration - the moment that discipline is either established or quietly abandoned."
+      - "~51 of 77 tasks complete before a single pixel renders. Accepted in plan.md, but it will feel wrong around task 30."
+      - "Watch for an eighth ordering hazard. The plan predicted more would appear and has already been right once."
+  - phase: pre_impl_review
+    decision: approved_with_conditions
+    at: "2026-08-21T11:22:29Z"
+    reviewed_sha: "7da597005ec4a5cb69cb1e73ca37795a8a558bdc"
+    risk: low
+    notes: "Focused review on untested assumptions rather than re-treading architecture (already 5/5 at two Constitution Check gates). Ten assumptions interrogated: seven held, three did not. 3 HIGH / 3 MEDIUM / 1 LOW. Found three HIGH findings four prior passes missed - because every earlier pass verified artifacts were consistent WITH EACH OTHER, while F-1/F-2/F-3 are each a MISSING STATE rather than a contradiction."
+    conditions:
+      - "F-1 RESOLVED via CR-001 (accepted) - sudden-death backstop. Ore exhaustion halts production but does not force resolution; a stalemate had no terminator. Escalating Base damage after global node depletion bounds match length; adds no fourth verdict and reuses the FR-028 Draw rule."
+      - "F-2 ABSORBED - units do NOT collide in v1. No separation system, so A* stays a pure grid search and determinism is preserved; render-only jitter (T082) never touches sim state. A separation system would almost certainly be ordering hazard O-8. Legibility of the resulting pile becomes an explicit M9 question."
+      - "F-3 ABSORBED - M9 exit criterion extended: >=3 of 5 first-timers must WIN at least one match on New to this. M8 tuned duration and M9 tested comprehension, but NOTHING tested beatability - the most common way a solo project ships an unwinnable game."
+      - "F-4 ABSORBED into T048 - clamp accumulator to ~250ms and drop excess, so a player returning from a backgrounded tab does not watch the sim fast-forward through the match they just lost."
+      - "F-5 ABSORBED into T073 - tune toward a legibility ceiling of ~25-30 units per side. The ~60 figure arrived as a performance NFR and was never a design decision; 60 units on 220 cells is 27% map occupancy with no camera to zoom out of."
+      - "F-6 ABSORBED into T039/T080 - a Base with no surviving Workers affords one at zero cost, removing a dead state where a player can neither act nor lose."
+      - "F-7 ABSORBED as T081 - 30-minute greyscale spike before T051. The underglow ring is the entire WCAG 1.4.1 mitigation and the drawn sprite is materially smaller than its 64px canvas."
+sync_runs:
+  - at: "2026-08-21T11:22:29Z"
+    scope: "quick — full chain after CR-001 application"
+    verdict: "PASS (12/12, zero drift)"
+    findings:
+      - "spec.md 33 FRs; delta specs cover all 33; tasks coverage matrix covers all 33; traceability has 33 requirement rows."
+      - "82 task ids unique, every task carries Paths and Size."
+      - "journeys.yml and traceability.yml edge counts match exactly (JRN-001:10, JRN-002:2, JRN-003:2)."
+      - "CR-001 marker present in spec.md, plan.md, tasks.md, and product-spec.md."
+  - at: "2026-08-21T10:24:54Z"
+    scope: "quick — Layer 1 (research <-> product-spec)"
+    verdict: "PASS (1 drift found and resolved)"
+    findings:
+      - "All 8 research red flags (RF-1..RF-8) carried into product-spec."
+      - "RESOLVED: US-012 (WebGL fallback) was covered by JRN-001 EDGE-001 but absent from that journey's stories list. Linked across journeys.yml, JRN-001 markdown, and traceability.yml."
+      - "12/12 Must+Should user stories covered by a journey. US-013..015 are Could-Have/post-v1 and correctly uncovered."
+      - "traceability.yml journey ids and edge counts match journeys.yml exactly."
+change_requests:
+  - id: "CR-001"
+    title: "Sudden-death backstop for post-exhaustion stalemate"
+    status: "accepted"
+    timestamp: "2026-08-21T11:22:29Z"
+    requested_at_phase: "pre_impl_review"
+    artifacts_affected: 9
+    tasks_added: 2
+    phase_rollback: null
+    rationale: "Pre-impl review F-1. Ore exhaustion halts production but does not force resolution; a post-exhaustion stalemate had no terminator, so the ~10-minute promise was not guaranteed by anything in the simulation. Four earlier review passes missed it because each checked artifacts for consistency WITH EACH OTHER, and FR-016/FR-017 are consistent - the gap is BETWEEN them, a state the requirements jointly fail to cover."
+
+dependencies:
+  depends_on: []
+  depended_on_by: []
+
+role_approvals:
+  solo_mode: true
+  required_roles_per_phase: {}
