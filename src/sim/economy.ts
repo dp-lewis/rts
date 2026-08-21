@@ -1,4 +1,4 @@
-import { DEPOSIT_RANGE, GATHER_RANGE, WORKER_CARRY_CAPACITY, WORKER_GATHER_PER_TICK } from './constants';
+import { GATHER_RANGE, TILE_PX, WORKER_CARRY_CAPACITY, WORKER_GATHER_PER_TICK } from './constants';
 import { ENTITY_STATE, KIND, type Entity, type SimState } from './state';
 
 /**
@@ -16,6 +16,25 @@ import { ENTITY_STATE, KIND, type Entity, type SimState } from './state';
  * flip a tie, so the fewer operations between the coordinates and the comparison,
  * the better.
  */
+
+/**
+ * Deposit range is measured in CELLS, not pixels.
+ *
+ * Movement is cell-based and a Base occupies a blocked cell, so a worker's final
+ * standing position is the centre of an adjacent cell. Measuring the deposit
+ * distance in pixels to the Base's own x/y made the two disagree whenever a Base
+ * was not exactly cell-centred: the worker stood as close as it was allowed to
+ * get, was still "too far" to deposit, and oscillated between IDLE and MOVING
+ * forever holding a full load. A livelock, and a silent one — no error, no
+ * progress, just a worker that never banked anything again.
+ *
+ * Adjacency is the honest predicate because it is the same unit movement thinks in.
+ */
+function isAdjacentCell(ax: number, ay: number, bx: number, by: number): boolean {
+  const dx = Math.abs(Math.floor(ax / TILE_PX) - Math.floor(bx / TILE_PX));
+  const dy = Math.abs(Math.floor(ay / TILE_PX) - Math.floor(by / TILE_PX));
+  return dx <= 1 && dy <= 1;
+}
 
 function squaredDistance(ax: number, ay: number, bx: number, by: number): number {
   const dx = ax - bx;
@@ -89,7 +108,18 @@ export function runEconomy(state: SimState): void {
     // A worker under explicit orders is not doing economy this tick. Player
     // intent always outranks the automatic loop (FR-020's principle, applied
     // here rather than only to combat).
-    if (worker.state === ENTITY_STATE.ATTACKING || worker.state === ENTITY_STATE.BUILDING) {
+    //
+    // The `MOVING` case is the subtle one and it is what distinguishes a player's
+    // order from the loop's own: the loop only ever sets a destination together
+    // with a `gatherNodeId`, so a worker moving WITHOUT one is going somewhere a
+    // human sent it. Omitting this check made the economy silently re-target the
+    // worker on the same tick the order was issued, so move orders on workers
+    // looked like they were ignored.
+    if (
+      worker.state === ENTITY_STATE.ATTACKING ||
+      worker.state === ENTITY_STATE.BUILDING ||
+      (worker.state === ENTITY_STATE.MOVING && worker.gatherNodeId < 0)
+    ) {
       continue;
     }
 
@@ -100,7 +130,7 @@ export function runEconomy(state: SimState): void {
 
     // Heading home: either full, or holding ore with nothing left to mine.
     if (base !== undefined && (full || (targetExhausted && worker.progress > 0))) {
-      if (squaredDistance(worker.x, worker.y, base.x, base.y) <= DEPOSIT_RANGE * DEPOSIT_RANGE) {
+      if (isAdjacentCell(worker.x, worker.y, base.x, base.y)) {
         state.players[worker.owner]!.ore += worker.progress;
         worker.progress = 0;
         worker.gatherNodeId = -1;

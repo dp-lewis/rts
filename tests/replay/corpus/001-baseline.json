@@ -4,7 +4,7 @@
   "description": "M1/M2 harness baseline on the real 20x11 map, mirrored across x=640. Player and AI commands land on the same tick twice with the AI listed first, so applying arrival order instead of (issuer, seq) changes the hash (O-4). Both sides gather from tick 0 with no player input (FR-006). Not a defect regression: this is the case that proves the corpus machinery works before any defect needs it.",
   "defect": null,
   "createdAt": "2026-08-22",
-  "simVersion": 5,
+  "simVersion": 6,
   "input": {
     "seed": 20260822,
     "difficulty": 1,
@@ -126,19 +126,19 @@
   },
   "expected": {
     "finalTick": 400,
-    "stateHash": "4ca277bb2a4aa23a",
+    "stateHash": "a866214ad7cbe3d1",
     "checkpoints": [
       {
         "tick": 100,
-        "stateHash": "49824e2ccc67cd0d"
+        "stateHash": "9c03ae840557785d"
       },
       {
         "tick": 200,
-        "stateHash": "b2f9460ca141b335"
+        "stateHash": "116372578b452760"
       },
       {
         "tick": 300,
-        "stateHash": "38cc1ba9dce0eb2c"
+        "stateHash": "b984f167382b8a08"
       }
     ]
   }

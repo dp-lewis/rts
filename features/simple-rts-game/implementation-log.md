@@ -536,3 +536,85 @@ Amendment 2) costs nothing worth reclaiming.
    shape of the `targetId` bug above. Worth watching.
 6. **Build progress is capped, not accumulated, while waiting for ore.** So ore arriving
    late releases exactly one unit rather than a backlog.
+
+---
+
+## Corrective pass — clearing the code-review conditions
+
+**Gate:** `code_review` → `approved_with_conditions`, all conditions now cleared.
+**Tests:** 179 → **197** green. `SIM_VERSION` 5 → 6, corpus regenerated deliberately.
+
+Not a new milestone: this repairs M1–M3 tasks rather than adding to them, so the task
+count stays at 44/82.
+
+### What the review found, and how
+
+Ten findings, but really one: **no test drove the system through the command layer.**
+`runProduction` had sixteen tests and every one hand-wrote `queuedKind` into a fixture,
+so nothing ever asked whether the only real-world producer of that field set it. It did
+not. The production system was exhaustively verified and completely unreachable —
+95% statements and 100% functions, with the entry point to three of them broken.
+
+Because I wrote the code under review, every CRITICAL/HIGH finding was established with
+a **runnable probe** rather than by reading for intent. Reading would have found none of
+them; the code looks right.
+
+### The fixes, and the three defects they exposed
+
+Fixing REV-004 meant deleting a straight-line movement fallback. That fallback turned
+out to be load-bearing in ways nobody had noticed:
+
+1. **Workers were trapped inside their own Base.** `findPath` required a passable
+   *start*, and units stand in a Base's blocked cell constantly. With the beeline gone
+   they could not path anywhere — every worker in the suite stopped gathering, and three
+   M2 economy tests went red at once. "Blocked" must mean a cell cannot be **entered**,
+   not that a unit already there is stuck.
+
+2. **A pixel deposit range livelocked against cell-based movement.** A Base occupies a
+   blocked cell, so a worker's closest legal position is an adjacent cell *centre* — but
+   deposit distance was measured in pixels to the Base's own x/y. With a Base at
+   (128,128) the worker stood at (224,160), 101px away against a 72px range: as close as
+   it was permitted to get, still "too far", oscillating IDLE↔MOVING forever holding ten
+   ore. No error, no progress, no signal. Deposit is now cell adjacency — the same unit
+   movement thinks in.
+
+3. **The economy cancelled move orders on the tick they were issued.** Commands apply at
+   stage 1, the economy runs at stage 3, so it re-targeted the worker immediately and the
+   order appeared ignored. The loop only ever sets a destination *together with* a
+   `gatherNodeId`, so a worker moving without one is under human orders — that is the
+   predicate now. Arriving clears the order so the worker rejoins the workforce rather
+   than being retired by a single click.
+
+**Removing a lenient fallback is how you find out what it was hiding.** All three were
+invisible while the beeline existed, and none would have been caught by a test written
+against the old behaviour.
+
+### The corpus had been recording broken behaviour since M1
+
+`001-baseline.json` carries three `build` commands that were silent no-ops. Every hash
+recorded against it — across five `simVersion` regenerations — encoded a simulation in
+which production could not happen. The corpus was faithfully reproducing the wrong
+thing, exactly as designed: it guards against *change*, not against *being wrong to
+begin with*. Only a test that entered through the command layer could tell the
+difference.
+
+### Checkpoint #9 — corrective pass
+
+| Check | Status | Notes |
+|-------|:------:|-------|
+| Task-Code correspondence | ✅ | Repairs to `step.ts`, `economy.ts`, `pathfind.ts`, `production.ts`, `state.ts`, `constants.ts`. |
+| Spec AC alignment | ✅ | FR-011/FR-012/US-004/US-005/US-006 reachable for the first time. |
+| Unplanned changes | ⚠️ 1 file | `tests/sim/command-layer.test.ts` — new, 17 tests, no task owns it; it is the review's test-gap condition. |
+| Plan alignment | ✅ | Pipeline order unchanged; `STAGES` test still pins it. |
+| Dependency / supply-chain | ✅ 1 vetted | `@vitest/coverage-v8@4.1.11` — same version as vitest, added to measure the review's coverage gate. |
+
+**Verdict:** CLEAN — conditions cleared.
+
+### Still open from the review (MEDIUM, not blocking)
+
+- **REV-005** — `STAGES` omits `armSuddenDeath` / `suddenDeathDamage`, so reordering them
+  is invisible to the test written to make pipeline changes visible.
+- **REV-006** — `collectDamage` mutates `cooldown` despite documenting that it changes
+  nothing; also makes the real fire interval `cooldownTicks + 1`.
+- **REV-007** — FR-012 (place a Factory) still has no command; `isValidPlacement` is
+  reachable only from `spawnCell`.

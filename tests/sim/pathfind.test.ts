@@ -51,6 +51,18 @@ describe('findPath basics', () => {
     expect(path).toEqual([]);
   });
 
+  it('can leave a blocked cell it is standing in', () => {
+    // Units stand inside their Base's cell constantly, and a Base's cell is
+    // blocked. "Blocked" means a cell cannot be ENTERED; requiring a passable
+    // START stranded every worker that spawned next to its Base — invisible for
+    // as long as movement had a straight-line fallback to paper over it.
+    const grid = createGrid(8, 5, [cellIndex(openGrid(8, 5), 2, 2)]);
+    const path = findPath(grid, cellIndex(grid, 2, 2), cellIndex(grid, 6, 2), 1);
+    expect(path.length).toBeGreaterThan(0);
+    expect(path[path.length - 1]).toBe(cellIndex(grid, 6, 2));
+    expect(path).not.toContain(cellIndex(grid, 2, 2));
+  });
+
   it('never routes through a blocked cell', () => {
     const grid = createGrid(8, 5, [cellIndex(openGrid(8, 5), 3, 2)]);
     const blocked = cellIndex(grid, 3, 2);

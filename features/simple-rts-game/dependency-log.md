@@ -61,3 +61,13 @@ would have meant changing the import style across all of `src/sim/` to avoid one
 dependency. Not worth it.
 
 Runtime dependencies remain exactly one: `phaser@4.2.1`.
+
+## Corrective pass (post code-review)
+
+| Package | Version | Kind | Registry | Verdict |
+|---|---|---|:--:|:--:|
+| `@vitest/coverage-v8` | 4.1.11 | dev | ✅ exists | pass |
+
+Pinned to the same version as `vitest` (its peer requirement is exact). Added to
+measure the code-review coverage machine gate. **Added: 1 · Blocked: 0 · Audit: 0 vulns.**
+Runtime dependencies remain exactly one: `phaser@4.2.1`.

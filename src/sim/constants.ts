@@ -23,12 +23,18 @@ export const MAP_TILES_X = 20;
 export const MAP_TILES_Y = 11;
 
 /**
- * How close a unit must be to act on something, in world px, compared as SQUARED
- * distance. Both are under one tile, so "arrived" means the same thing whichever
- * side of a cell boundary the target sits on.
+ * How close a worker must be to mine, in world px, compared as SQUARED distance.
+ * Ore nodes are NOT blocked, so a worker stands on the node's own cell and a
+ * pixel radius is well defined here — unlike deposit, which must clear a blocked
+ * Base cell.
  */
 export const GATHER_RANGE = 48;
-export const DEPOSIT_RANGE = 56;
+/**
+ * Deposit is NOT a pixel range — see `isAdjacentCell` in economy.ts. A Base sits
+ * in a blocked cell, so a worker's closest legal standing position is an adjacent
+ * cell centre; a pixel radius and cell-based movement disagreed whenever a Base
+ * was not exactly cell-centred, and the worker livelocked holding a full load.
+ */
 
 /** Within this many px of its destination, a unit snaps and stops. */
 export const ARRIVE_EPSILON = 1.5;

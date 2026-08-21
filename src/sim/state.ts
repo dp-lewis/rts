@@ -30,8 +30,19 @@ export const ENTITY_STATE = {
   MOVING: 1,
   GATHERING: 2,
   ATTACKING: 3,
+  /** Producing something else — `queuedKind` says what. */
   BUILDING: 4,
   DEAD: 5,
+  /**
+   * This structure is itself being built and is not yet operational.
+   *
+   * Distinct from BUILDING on purpose. The two used to be told apart by
+   * `queuedKind === -1`, which meant a Factory handed a build order it failed to
+   * record fell into "building myself" and re-ran its own construction. One
+   * field with two meanings, distinguishable only by which system wrote last —
+   * the same shape as the `targetId` bug ADR-001 Amendment 4 fixed.
+   */
+  UNDER_CONSTRUCTION: 6,
 } as const;
 export type EntityState = (typeof ENTITY_STATE)[keyof typeof ENTITY_STATE];
 

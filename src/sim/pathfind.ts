@@ -1,4 +1,4 @@
-import { cellX, cellY, isPassable, type Grid } from './grid';
+import { cellX, cellY, inBounds, isPassable, type Grid } from './grid';
 
 /**
  * A* over the tile grid, with a total tie-break — O-2 / FR-022.
@@ -89,7 +89,11 @@ function popBest(open: number[], f: Int32Array, h: Int32Array): number {
 export function findPath(grid: Grid, start: number, goal: number, entityId: number): number[] {
   void entityId;
 
-  if (start === goal || !isPassable(grid, goal) || !isPassable(grid, start)) {
+  // The START may legitimately be blocked: units stand inside a Base's cell all
+  // the time, and "blocked" means a cell cannot be ENTERED, not that a unit
+  // already there is trapped. Requiring a passable start stranded every worker
+  // that spawned next to its Base.
+  if (start === goal || !isPassable(grid, goal) || !inBounds(grid, start)) {
     return [];
   }
 

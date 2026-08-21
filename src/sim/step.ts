@@ -1,10 +1,10 @@
-import { sortCommands, type Command } from './commands';
+import { ISSUER, sortCommands, type Command } from './commands';
 import { acquireTargets, applyDamage, collectDamage } from './combat';
 import { ARRIVE_EPSILON, MAP_TILES_X, MAP_TILES_Y, SPEED } from './constants';
 import { runEconomy } from './economy';
 import { runProduction } from './production';
 import { armSuddenDeath, resolveVictory, suddenDeathDamage } from './victory';
-import { cellCentreX, cellCentreY, cellOf, createGrid, isPassable, type Grid } from './grid';
+import { cellCentreX, cellCentreY, cellOf, cellX, cellY, createGrid, isPassable, type Grid } from './grid';
 import { findPath } from './pathfind';
 import { ENTITY_STATE, KIND, cloneState, type Entity, type SimState } from './state';
 
@@ -35,6 +35,35 @@ export const STAGES = [
   'victoryResolve', //       9 — win / lose / draw; sudden death         FR-017/028
   'advanceTick', //         10
 ] as const;
+
+/** `issuer` is a fixed enum where PLAYER is player 0 and AI is player 1. */
+function ownerOf(issuer: number): number {
+  return issuer === ISSUER.AI ? 1 : 0;
+}
+
+/**
+ * The entity this issuer is allowed to command: it must exist, be alive, and be
+ * theirs. Ownership is checked here rather than trusted, because from M4 the AI
+ * is a second command source and a targeting slip would otherwise let it order
+ * the player's units around.
+ */
+function commandable(state: SimState, issuer: number, id: number): Entity | undefined {
+  const entity = findEntity(state.entities, id);
+  if (entity === undefined || entity.state === ENTITY_STATE.DEAD) {
+    return undefined;
+  }
+  return entity.owner === ownerOf(issuer) ? entity : undefined;
+}
+
+function isProducibleKind(kind: number): boolean {
+  return (
+    kind === KIND.FACTORY ||
+    kind === KIND.WORKER ||
+    kind === KIND.SCOUT ||
+    kind === KIND.TROOPER ||
+    kind === KIND.TANK
+  );
+}
 
 function findEntity(entities: readonly Entity[], id: number): Entity | undefined {
   for (let i = 0; i < entities.length; i += 1) {
@@ -67,8 +96,8 @@ function applyCommands(state: SimState, commands: readonly Command[]): void {
     switch (command.type) {
       case 'attack': {
         for (let u = 0; u < command.units.length; u += 1) {
-          const unit = findEntity(state.entities, command.units[u]!);
-          if (unit === undefined || unit.state === ENTITY_STATE.DEAD) {
+          const unit = commandable(state, command.issuer, command.units[u]!);
+          if (unit === undefined) {
             continue;
           }
           unit.targetId = command.targetId;
@@ -78,23 +107,43 @@ function applyCommands(state: SimState, commands: readonly Command[]): void {
       }
 
       case 'build': {
-        const builder = findEntity(state.entities, command.builderId);
-        if (builder === undefined || builder.state === ENTITY_STATE.DEAD) {
+        const builder = commandable(state, command.issuer, command.builderId);
+        if (builder === undefined) {
           break;
         }
+        // A malformed kind must not reach production. `queuedKind as Kind` there
+        // is an unchecked cast, and an out-of-range value yields `undefined` from
+        // the cost and build-time tables — which makes ore NaN and kills the
+        // whole match on the next hash. Commands are the simulation's only
+        // external input, so this is the boundary where they get validated.
+        if (!isProducibleKind(command.kind)) {
+          break;
+        }
+        // Already busy. Dropped rather than replacing the order, so a stray
+        // double-click cannot silently discard the thing you meant to build.
+        if (builder.queuedKind >= 0 || builder.state === ENTITY_STATE.UNDER_CONSTRUCTION) {
+          break;
+        }
+        builder.queuedKind = command.kind;
         builder.state = ENTITY_STATE.BUILDING;
         builder.progress = 0;
         break;
       }
 
       case 'move': {
-        // Deliberately unhandled in M1, and deliberately explicit rather than a
-        // silent default. An Entity has no destination field — plan.md's data
-        // model and ADR-001's hashed field list both omit one — so a move order
-        // has nowhere to be recorded. Inventing `destX`/`destY` here would add a
-        // field to the hash ahead of the milestone that owns movement, and every
-        // corpus hash recorded in between would go stale the moment M2 changed
-        // it. M2 decides the field and amends ADR-001 in the same change.
+        for (let u = 0; u < command.units.length; u += 1) {
+          const unit = commandable(state, command.issuer, command.units[u]!);
+          if (unit === undefined) {
+            continue;
+          }
+          unit.destX = command.x;
+          unit.destY = command.y;
+          // An explicit order outranks the automatic gather loop (FR-020's
+          // principle). Without this the economy would re-target the worker on
+          // the very next tick and the order would appear to be ignored.
+          unit.gatherNodeId = -1;
+          unit.state = ENTITY_STATE.MOVING;
+        }
         break;
       }
     }
@@ -149,6 +198,62 @@ function gridFor(state: SimState): Grid {
  * wander — and there is no cached path to drift from the position it was computed
  * for.
  */
+/**
+ * The nearest cell adjacent to a blocked goal that a unit can actually stand in,
+ * or -1 if the goal is walled in completely.
+ *
+ * Neighbours are examined in a fixed order and chosen by (distance to the mover,
+ * then cell index), so the choice is total and independent of anything but the
+ * grid — O-7's rule applied to one more "pick the nearest" site.
+ */
+function nearestStandableNeighbour(grid: Grid, goal: number, from: number): number {
+  const gx = cellX(grid, goal);
+  const gy = cellY(grid, goal);
+  const fx = cellX(grid, from);
+  const fy = cellY(grid, from);
+
+  const candidates = [
+    gy > 0 ? goal - grid.width : -1,
+    gx > 0 ? goal - 1 : -1,
+    gx < grid.width - 1 ? goal + 1 : -1,
+    gy < grid.height - 1 ? goal + grid.width : -1,
+  ];
+
+  let best = -1;
+  let bestDistance = Infinity;
+  for (let i = 0; i < candidates.length; i += 1) {
+    const cell = candidates[i]!;
+    if (cell < 0 || !isPassable(grid, cell)) {
+      continue;
+    }
+    const distance = Math.abs(cellX(grid, cell) - fx) + Math.abs(cellY(grid, cell) - fy);
+    if (distance < bestDistance || (distance === bestDistance && cell < best)) {
+      bestDistance = distance;
+      best = cell;
+    }
+  }
+  return best;
+}
+
+/**
+ * Clear the order once the unit is standing where it was sent.
+ *
+ * Without this a unit sits in MOVING forever with its destination still set, and
+ * a worker given an explicit order never returns to the gather loop — the economy
+ * skips anything moving under orders, so it would be retired from the workforce
+ * by one click.
+ */
+function arrive(entity: Entity, onFinalLeg: boolean): void {
+  if (!onFinalLeg) {
+    return;
+  }
+  entity.destX = -1;
+  entity.destY = -1;
+  if (entity.state === ENTITY_STATE.MOVING) {
+    entity.state = ENTITY_STATE.IDLE;
+  }
+}
+
 function runMovement(state: SimState, grid: Grid): void {
   for (let i = 0; i < state.entities.length; i += 1) {
     const entity = state.entities[i]!;
@@ -164,28 +269,44 @@ function runMovement(state: SimState, grid: Grid): void {
     const goalCell = cellOf(grid, entity.destX, entity.destY);
     const fromCell = cellOf(grid, entity.x, entity.y);
 
-    // A destination inside a blocked cell (a Base, say) is normal: workers are
-    // sent AT the Base to deposit, not into it. Walk to the cell edge and let the
-    // range check in economy do the rest.
-    let targetX = entity.destX;
-    let targetY = entity.destY;
+    // A destination inside a blocked cell is normal — workers are sent AT the
+    // Base to deposit, not into it — so route to the nearest cell they can
+    // actually stand in and let the range check do the rest.
+    //
+    // This used to skip the pathfinder entirely for a blocked goal and walk a
+    // straight line at the destination, which meant units crossed structures on
+    // every deposit trip. Falling back to "go straight" whenever routing is hard
+    // is the tempting shape here and it silently deletes the whole point of
+    // having a grid.
+    const reachableGoal = isPassable(grid, goalCell) ? goalCell : nearestStandableNeighbour(grid, goalCell, fromCell);
+    if (reachableGoal < 0) {
+      continue; // nowhere legal to stand near the destination — hold position
+    }
 
-    if (fromCell !== goalCell) {
-      const path = isPassable(grid, goalCell) ? findPath(grid, fromCell, goalCell, entity.id) : [];
-      const nextCell = path[0];
-      if (nextCell !== undefined) {
-        targetX = cellCentreX(grid, nextCell);
-        targetY = cellCentreY(grid, nextCell);
+    let targetX = isPassable(grid, goalCell) ? entity.destX : cellCentreX(grid, reachableGoal);
+    let targetY = isPassable(grid, goalCell) ? entity.destY : cellCentreY(grid, reachableGoal);
+
+    if (fromCell !== reachableGoal) {
+      const nextCell = findPath(grid, fromCell, reachableGoal, entity.id)[0];
+      if (nextCell === undefined) {
+        // Unreachable. Standing still is the honest answer; walking at the
+        // obstacle would look like the unit was trying and failing forever.
+        continue;
       }
+      targetX = cellCentreX(grid, nextCell);
+      targetY = cellCentreY(grid, nextCell);
     }
 
     const dx = targetX - entity.x;
     const dy = targetY - entity.y;
     const distanceSquared = dx * dx + dy * dy;
 
+    const onFinalLeg = fromCell === reachableGoal;
+
     if (distanceSquared <= ARRIVE_EPSILON * ARRIVE_EPSILON) {
       entity.x = targetX;
       entity.y = targetY;
+      arrive(entity, onFinalLeg);
       continue;
     }
 
@@ -195,6 +316,7 @@ function runMovement(state: SimState, grid: Grid): void {
     if (distance <= speed) {
       entity.x = targetX;
       entity.y = targetY;
+      arrive(entity, onFinalLeg);
     } else {
       entity.x += (dx / distance) * speed;
       entity.y += (dy / distance) * speed;

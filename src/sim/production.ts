@@ -153,12 +153,12 @@ export function runProduction(state: SimState): void {
       continue;
     }
 
-    // A Factory building ITSELF: placed but not yet operational. It uses the same
-    // `progress` field, which is safe because the two uses are sequential — a
-    // Factory cannot produce until it exists.
-    if (producer.kind === KIND.FACTORY && producer.state === ENTITY_STATE.BUILDING && producer.queuedKind < 0) {
+    // A structure building ITSELF: placed but not yet operational. Keyed on an
+    // explicit state rather than inferred from `queuedKind`, so a producer that
+    // fails to record what it was told to build can never fall into this branch.
+    if (producer.state === ENTITY_STATE.UNDER_CONSTRUCTION) {
       producer.progress += 1;
-      if (producer.progress >= BUILD_TICKS.factory) {
+      if (producer.progress >= BUILD_TICKS_BY_KIND[producer.kind]) {
         producer.progress = 0;
         producer.state = ENTITY_STATE.IDLE;
       }

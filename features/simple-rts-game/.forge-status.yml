@@ -94,7 +94,7 @@ phases:
       m1_note: "Red rejected a SECOND time for the same reason: running the eight new test files against a repo with no src/sim modules produced bare 'Cannot find module' errors with zero new tests collected. Signature-only stubs (every export present, every body throwing) moved the failure to 43 collected tests failing on real calls. Writing the stubs also forced the whole M1 API surface to be settled before any logic existed. Green after T015-T025: 86 passed."
       note: "The first Red draft was REJECTED as insufficient — it failed with 'ESLint returned no result' (no config file, so ESLint matched nothing), which would have gone green on an empty eslint.config.js. Rewritten to lint against a parser-only rule-free fallback so a rule-less config still fails."
       skip_reason: null
-    tasks_completed: 44
+    tasks_completed: 44   # corrective pass added no tasks; it repaired existing ones
     tasks_total: 82
     tasks_in_scope_this_run: 44
     progressive_checkpoints: 8
@@ -106,14 +106,20 @@ phases:
       warned: 0
       blocked: 0
       log_path: "features/simple-rts-game/dependency-log.md"
-    sim_version: 5
+    sim_version: 6
     sim_version_history:
       - {version: 1, milestone: "M1", reason: "initial simulation behaviour"}
       - {version: 2, milestone: "M2 start", reason: "destX/destY added to Entity and the hash (ADR-001 Amendment 2). Deliberate regen, all 4 recorded hashes changed — the expected size for two new hashed fields per entity."}
+      - {version: 6, milestone: "M3 corrective pass", reason: "Code-review CRITICAL/HIGH fixes: build and move commands now function, blocked-goal pathing no longer beelines through structures, deposit is cell-adjacency. Behaviour changed substantially — the corpus case's three build commands were previously silent no-ops, so its recorded hashes had been encoding broken behaviour since M1."}
       - {version: 4, milestone: "M3", reason: "ADR-001 Amendment 3 — queuedKind per entity, suddenDeathAt on state, and the two per-player indicator flags. The flags are hashed deliberately: FR-033 requires sudden-death damage NOT to read as under-attack, so they record what happened in the simulation rather than how it is drawn."}
       - {version: 5, milestone: "M3", reason: "ADR-001 Amendment 4 — gatherNodeId split out of targetId. targetId was holding two id spaces (entity ids and ore node ids) and combat cleared it out from under the economy the moment both existed."}
       - {version: 3, milestone: "M2", reason: "economy and movement wired into the tick. NOT bumped in the same edit at first: the corpus caught it as a REGRESSION (first divergence tick 100) rather than as staleness, which is the more useful failure. Bumped by hand, regenerated, hashes matched the regression's 'got' column exactly."}
     findings_for_gate:
+      - id: "CR-M3-F5"
+        severity: "resolved"
+        title: "Removing the straight-line movement fallback exposed three further defects"
+        detail: "Fixing REV-004 deleted a lenient fallback that had been masking two latent bugs, and a third surfaced only once move orders worked at all. (1) findPath required a PASSABLE START, but units stand inside their Base's blocked cell constantly — with the beeline gone every worker was trapped and the whole economy stopped. Blocked must mean cannot be ENTERED, not cannot be left. (2) Deposit range was measured in pixels to the Base's x/y while movement is cell-based, so whenever a Base was not exactly cell-centred the worker stood as close as it was allowed, was still too far, and oscillated IDLE<->MOVING forever holding a full load — a silent livelock with no error and no progress. Deposit is now cell adjacency. (3) The economy re-targeted a worker on the same tick a move order was issued (commands are stage 1, economy is stage 3), so orders looked ignored; the loop only ever sets a destination together with a gatherNodeId, so moving WITHOUT one is now the predicate for 'under human orders'."
+        lesson: "Removing a lenient fallback is how you find out what it was hiding. All three were invisible while the beeline existed."
       - id: "M3-F1"
         severity: "resolved"
         title: "A test HUNG instead of failing"
@@ -182,7 +188,11 @@ phases:
       corpus_evidence: "FIRST cross-platform exact-bit hash agreement. The 001-baseline hashes were recorded locally on macOS/Node 24 and reproduced byte-identically on ubuntu/Node 22 and every other runner (13/13 corpus tests green on all four). This is the claim ADR-001 exists to make, and until this run it was untested."
       note: "actions/checkout and setup-node bumped v4 -> v5; --passWithNoTests removed from the corpus step now that a real case exists, so an accidentally-empty corpus directory fails instead of passing silently."
     open_tasks: []
-  code_review:            { status: pending }
+  code_review:
+    status: completed
+    completed_at: "2026-08-22T09:40:00Z"
+    scope: "M0-M3 (44/82 tasks). Reviewed at a milestone boundary by explicit request; implement.status is milestone_complete, not completed."
+    artifact: "code-review.md"
   verify:                 { status: pending }
   test_plan:              { status: pending }
   test_run:               { status: pending }
@@ -353,6 +363,36 @@ gates:
       - "F-5 ABSORBED into T073 - tune toward a legibility ceiling of ~25-30 units per side. The ~60 figure arrived as a performance NFR and was never a design decision; 60 units on 220 cells is 27% map occupancy with no camera to zoom out of."
       - "F-6 ABSORBED into T039/T080 - a Base with no surviving Workers affords one at zero cost, removing a dead state where a player can neither act nor lose."
       - "F-7 ABSORBED as T081 - 30-minute greyscale spike before T051. The underglow ring is the entire WCAG 1.4.1 mitigation and the drawn sprite is materially smaller than its 64px canvas."
+  - phase: code_review
+    decision: approved_with_conditions
+    at: "2026-08-22T09:40:00Z"
+    conditions_cleared_at: "2026-08-22T10:20:00Z"
+    conditions_status: "ALL CLEARED — corrective pass. 197 tests green (was 179). SIM_VERSION 5 -> 6, corpus regenerated deliberately."
+    risk: medium
+    reviewed_by_model: null
+    cross_model_findings: 0
+    notes: "Machine gates all PASS (lint, types, 0/192 SCA, 95.05% stmts / 100% funcs). Ten findings: 2 CRITICAL, 3 HIGH, 4 MEDIUM, 1 LOW. Self-review — the same model wrote every line, so all four CRITICAL/HIGH findings were driven by executable probes rather than reading for intent."
+    findings:
+      critical: 2
+      high: 3
+      medium: 4
+      low: 1
+      fixed: 10
+      acknowledged: 0
+    root_cause: "No test drives the system through the command layer. Every M3 test hand-writes its preconditions into state — runProduction has 16 tests and all of them write queuedKind into a fixture, so nothing ever asked whether the only real-world producer of that field sets it. It does not. The production system is exhaustively verified and completely unreachable; 95% statements and 100% functions with the entry point to three of them broken."
+    conditions:
+      - "REV-001 CRITICAL — build commands never set queuedKind. Probe: 5000 ore, 400 ticks, 0 units produced, 0 ore spent, Base left in BUILDING state permanently. FR-011/FR-012/US-005/US-006 non-functional. MUST fix before M4."
+      - "REV-002 CRITICAL — a build command aimed at a Factory makes it re-run its own construction, because queuedKind -1 plus state BUILDING matches the self-construction branch. This is the progress-with-two-meanings hazard M3's own digest flagged, biting in the same milestone it was written down in. MUST fix before M4."
+      - "REV-003 HIGH — move commands unhandled; the comment justifying it says M2 will add the destination field, and M2 did (Amendment 2). Stale comment reads as justification. Probe: destX still -1 after 400 ticks. MUST fix before M6 input work."
+      - "REV-004 HIGH — a destination inside a blocked cell skips the pathfinder entirely and the unit beelines through obstacles. Fires on EVERY worker deposit trip, since Base cells are blocked. Probe: worker crossed a walled column at a blocked row."
+      - "REV-008 LOW but coupled — unchecked `queuedKind as Kind` cast NaNs the simulation on an out-of-range kind. Unreachable ONLY because REV-001 means queuedKind is never set from a command, so fixing REV-001 makes it reachable. Fix together."
+      - "TEST GAP (HIGH) — add command-layer end-to-end tests before M4. M4 makes the AI a second command source, so the seam that hid these defects is about to get twice the traffic."
+      - "CORPUS — 001-baseline.json contains two build commands that are silent no-ops, so its recorded hashes encode broken behaviour. Fixing REV-001 changes them legitimately; deliberate simVersion bump and regeneration required."
+    positive:
+      - "The 'would this test fail if the guard were deleted?' discipline has now paid three times (M0 empty config, M1 import Red, M2 tie-break deleted with all 10 tests still green). Very few codebases mutation-test their own guards by habit."
+      - "Determinism architecture is sound: per-field hash mutation sweep, corpus reporting FIRST divergence rather than terminal mismatch, and a regen script that refuses to touch current cases — each the harder correct choice over an easier one that would have looked identical when green."
+      - "ADR-001's four amendments record HOW each gap was found, not just what changed, including Amendment 4 admitting the regression suite caught a defect two milestones later."
+    spec_updates_suggested: "none — every finding is code failing to meet the spec, not the spec failing to describe the code"
 sync_runs:
   - at: "2026-08-21T11:22:29Z"
     scope: "quick — full chain after CR-001 application"
