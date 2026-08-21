@@ -80,24 +80,24 @@ phases:
   implement:
     status: milestone_complete
     started_at: "2026-08-22T06:15:00Z"
-    milestone_completed_at: "2026-08-22T09:05:00Z"
+    milestone_completed_at: "2026-08-22T11:10:00Z"
     digest_path: "implement/digest.md"
     run_scope: "M0 only (T001-T006) — enforcement skeleton. User-scoped at the Phase 6 kickoff gate."
-    milestones_complete: ["M0", "M1", "M2", "M3"]
+    milestones_complete: ["M0", "M1", "M2", "M3", "M4"]
     red_gate:
       policy: per_milestone
       policy_rationale: "Greenfield repo: no package.json, no Vitest, no src/. The 27 Test-first tasks span M0-M9 and reference modules that will not exist for days, so a single upfront Red would be 27 bare import errors — a vacuous Red. Instead T001/T002 (pure INFRA, zero product code) scaffold the runner, then each milestone's test block must be observed failing before its implementation block runs. Chosen by the user at the Phase 6 kickoff gate 2026-08-22."
       status: confirmed_failing
-      tests: ["T003 (tests/lint/boundary.test.ts)", "T007-T014 (rng, hash, commands, determinism, roundtrip, headless)", "T026-T030 (pathfind, economy, ordering)", "T034-T038 + T078-T080 (combat, production, victory)"]
+      tests: ["T003 (tests/lint/boundary.test.ts)", "T007-T014 (rng, hash, commands, determinism, roundtrip, headless)", "T026-T030 (pathfind, economy, ordering)", "T034-T038 + T078-T080 (combat, production, victory)", "T042-T043 (ai, replay difficulty header)"]
       observed_at: "2026-08-22T06:17:37Z"
       evidence: "5 failed | 1 passed. Each failure read 'X was planted in src/sim/... and ESLint reported no error. Rules that did fire: (none)'. Green after T004: 6 passed (6). The one pass in the Red state is the scoping control, green by design in both states."
       m1_note: "Red rejected a SECOND time for the same reason: running the eight new test files against a repo with no src/sim modules produced bare 'Cannot find module' errors with zero new tests collected. Signature-only stubs (every export present, every body throwing) moved the failure to 43 collected tests failing on real calls. Writing the stubs also forced the whole M1 API surface to be settled before any logic existed. Green after T015-T025: 86 passed."
       note: "The first Red draft was REJECTED as insufficient — it failed with 'ESLint returned no result' (no config file, so ESLint matched nothing), which would have gone green on an empty eslint.config.js. Rewritten to lint against a parser-only rule-free fallback so a rule-less config still fails."
       skip_reason: null
-    tasks_completed: 44   # corrective pass added no tasks; it repaired existing ones
+    tasks_completed: 48
     tasks_total: 82
-    tasks_in_scope_this_run: 44
-    progressive_checkpoints: 8
+    tasks_in_scope_this_run: 48
+    progressive_checkpoints: 10
     progressive_warnings: 5
     progressive_critical: 0
     dependencies:
@@ -106,15 +106,24 @@ phases:
       warned: 0
       blocked: 0
       log_path: "features/simple-rts-game/dependency-log.md"
-    sim_version: 6
+    sim_version: 7
     sim_version_history:
       - {version: 1, milestone: "M1", reason: "initial simulation behaviour"}
       - {version: 2, milestone: "M2 start", reason: "destX/destY added to Entity and the hash (ADR-001 Amendment 2). Deliberate regen, all 4 recorded hashes changed — the expected size for two new hashed fields per entity."}
+      - {version: 7, milestone: "M4", reason: "AI opponent wired into stage 2. First milestone in which step() consumes the PRNG at all. ADR-001 Amendment 5 also added `pending` (scheduled AI commands) and `aiSeq` to the hash."}
       - {version: 6, milestone: "M3 corrective pass", reason: "Code-review CRITICAL/HIGH fixes: build and move commands now function, blocked-goal pathing no longer beelines through structures, deposit is cell-adjacency. Behaviour changed substantially — the corpus case's three build commands were previously silent no-ops, so its recorded hashes had been encoding broken behaviour since M1."}
       - {version: 4, milestone: "M3", reason: "ADR-001 Amendment 3 — queuedKind per entity, suddenDeathAt on state, and the two per-player indicator flags. The flags are hashed deliberately: FR-033 requires sudden-death damage NOT to read as under-attack, so they record what happened in the simulation rather than how it is drawn."}
       - {version: 5, milestone: "M3", reason: "ADR-001 Amendment 4 — gatherNodeId split out of targetId. targetId was holding two id spaces (entity ids and ore node ids) and combat cleared it out from under the economy the moment both existed."}
       - {version: 3, milestone: "M2", reason: "economy and movement wired into the tick. NOT bumped in the same edit at first: the corpus caught it as a REGRESSION (first divergence tick 100) rather than as staleness, which is the more useful failure. Bumped by hand, regenerated, hashes matched the regression's 'got' column exactly."}
     findings_for_gate:
+      - id: "M4-F1"
+        severity: "open — decide in M5 or delete"
+        title: "CommandQueue is now genuinely dead code"
+        detail: "createCommandQueue / enqueueCommand / drainCommands are fully tested and called by no production code. Before M4 a grep for their users in src/ returned nothing — the same 'verified but unreachable' shape the code review found twice in production code. M4 gave scheduling a real user, but via state.pending rather than the CommandQueue type, because the queue has to live IN hashed state to survive a pure step(). Either wire pending through it or delete both the type and its tests."
+      - id: "M4-F2"
+        severity: "open — watch"
+        title: "`pending` is the first variable-length hashed field"
+        detail: "A real departure from the fixed-width per-entity encoding. Handled by hashing length first and a type code before each payload, so a move and an attack carrying identical numbers cannot collide — but it is the one place where a future command type could be added without its fields being hashed, and no test would necessarily notice."
       - id: "CR-M3-F5"
         severity: "resolved"
         title: "Removing the straight-line movement fallback exposed three further defects"
