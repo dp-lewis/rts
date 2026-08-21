@@ -258,6 +258,9 @@ redundant, and the test now says so.
    showed that conflates the starting scenario (legitimate input) with a mid-run state
    snapshot (which would mean the run was not reproducible). Only the second is
    forbidden, and that is what the test now asserts.
-7. **The cross-platform half of Constitution IV is still unexercised.** The corpus is
-   green, but only on one machine so far. The first CI matrix run with a real corpus
-   case is the first genuine test of exact-bit hash agreement across engines.
+7. **Cross-platform hash agreement demonstrated (CI 32525241752).** The 001-baseline
+   hashes were recorded locally on macOS/Node 24 and reproduced byte-identically on
+   ubuntu/Node 22 and all four runners — 13/13 corpus tests green everywhere. Held on
+   first contact. But it held for a 400-tick skeleton whose arithmetic is nearly all
+   integer; the genuine test arrives when M2 introduces floating-point movement and
+   squared-distance comparisons.

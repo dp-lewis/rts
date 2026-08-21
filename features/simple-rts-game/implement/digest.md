@@ -135,10 +135,12 @@ dependencies remain exactly one.
 
 ## Open risks
 
-1. **The cross-platform half of Constitution IV is still unexercised.** The corpus is
-   green on one machine. Exact-bit hash agreement across engines — the entire reason
-   ADR-001 rejects rounding — is untested until the matrix runs with a real case. A red
-   first run is expected and is a *finding*, never a reason to loosen the hash.
+1. **Cross-platform hash agreement is now demonstrated, once.** CI run 32525241752:
+   hashes recorded on macOS/Node 24 reproduced byte-identically on ubuntu/Node 22 and
+   all four runners (13/13 corpus tests green everywhere). This is the claim ADR-001
+   exists to make and it held on first contact. The caveat is that it held for a
+   400-tick skeleton doing integer-ish arithmetic; the real test comes when M2 adds
+   floating-point movement and A\* distance comparisons.
 2. **`step()` does not consume the RNG**, because nothing random happens until the AI
    arrives in M4. TC-UNIT-002 proves the PRNG lives in state and survives
    serialise/restore; the integration of RNG with the tick loop is unproven until M4.

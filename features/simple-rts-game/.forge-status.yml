@@ -131,13 +131,14 @@ phases:
         detail: "no-restricted-syntax bans ForInStatement outright and catches the .keys()/.values()/.entries() idiom plus iteration of a Map/Set literal. Bare `for (const x of someMap)` on a Map-typed variable is NOT caught — a syntax selector has no type information. Rejected escalations: type-aware linting via projectService (several times slower on every CI run, before any sim code exists to justify it) and banning Map/Set outright in src/sim (A* needs an open set; would force a workaround in pathfinding, where determinism bugs are most expensive)."
         mitigation: "The replay corpus (Constitution IV) fails the build when iteration order diverges across the CI matrix. Revisit only if O-7 actually bites; the escalation path is type-aware linting."
     ci:
-      run_id: 32523481346
-      url: "https://github.com/dp-lewis/rts/actions/runs/32523481346"
-      commit: "7ae9840"
+      run_id: 32525241752
+      url: "https://github.com/dp-lewis/rts/actions/runs/32525241752"
+      commit: "99ec475"
       verdict: "success — 4/4 jobs green"
       jobs: ["ubuntu-latest node 22", "ubuntu-latest node 24", "macos-latest node 22", "macos-latest node 24"]
       boundary_guard_evidence: "Every runner logged: 'Lint correctly rejected a planted Math.random() in src/sim/__ci_canary__.ts.' The exit criterion is enforced on every push, not witnessed once."
-      note: "actions/checkout and setup-node bumped v4 -> v5 after this run to clear the Node 20 deprecation annotation; re-verified on the follow-up push."
+      corpus_evidence: "FIRST cross-platform exact-bit hash agreement. The 001-baseline hashes were recorded locally on macOS/Node 24 and reproduced byte-identically on ubuntu/Node 22 and every other runner (13/13 corpus tests green on all four). This is the claim ADR-001 exists to make, and until this run it was untested."
+      note: "actions/checkout and setup-node bumped v4 -> v5; --passWithNoTests removed from the corpus step now that a real case exists, so an accidentally-empty corpus directory fails instead of passing silently."
     open_tasks: []
   code_review:            { status: pending }
   verify:                 { status: pending }
