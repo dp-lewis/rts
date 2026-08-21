@@ -43,6 +43,7 @@
 | EDGE-003 | STEP-003 | Player idle 60 s | GIVEN no commands for 60 s / WHEN the AI advances / THEN the match is still recoverable — the player is not already defeated | P1 |
 | EDGE-006 | STEP-003 | Own ore exhausted | GIVEN every own ore node is depleted / WHEN workers finish their trip / THEN they idle at the Base without thrashing, production halts, and the match resolves with forces on the field | P1 |
 | EDGE-007 | STEP-009 | Own Base destroyed first | GIVEN the AI reaches the player's Base first / WHEN its HP hits zero / THEN the Defeat screen shows, with Rematch still primary | P0 |
+| EDGE-010 | STEP-010 | Post-exhaustion stalemate *(CR-001)* | GIVEN every ore node is depleted and neither side can resolve the match / WHEN the grace period elapses / THEN all Bases take escalating damage until a verdict is reached, with a **distinct sudden-death indicator** — not the under-attack indicator, which would falsely imply an attacker | P1 |
 | EDGE-009 | STEP-010 | Simultaneous Base destruction | GIVEN both Bases reach zero HP on the same tick / WHEN the tick resolves / THEN the match ends as an explicit **Draw** — not an arbitrary tie-break — with Rematch still primary | P2 |
 
 ## Error / boundary cases

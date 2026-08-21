@@ -137,6 +137,14 @@ journeys:
         then: "Defeat screen shown; Rematch remains the primary action"
         priority: P0
         tests: []
+      - id: EDGE-010
+        of_step: STEP-010
+        case: "Post-exhaustion stalemate — sudden death"    # CR-001
+        given: "Every ore node on the map is depleted and both sides retain forces that cannot resolve the match"
+        when: "The grace period elapses"
+        then: "All Bases begin taking escalating damage; the match reaches a definitive verdict in bounded time. A distinct sudden-death indicator is shown — NOT the under-attack indicator, which would falsely imply an attacker"
+        priority: P1
+        tests: []
       - id: EDGE-009
         of_step: STEP-010
         case: "Simultaneous Base destruction"

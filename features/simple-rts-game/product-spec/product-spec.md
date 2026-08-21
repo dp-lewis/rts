@@ -65,7 +65,7 @@ No secondary persona in v1. Competitive RTS players are explicitly not served.
 - [ ] **US-005** — As a player, I want to train combat units from a permanently visible build bar, so that I never hunt through menus. **AC:** Build bar shows exactly **five** entries — four unit entries (Worker, Scout, Trooper, Tank) plus one structure entry (Factory), with the structure **visually separated** from the units. Always on screen, never nested; unaffordable entries are greyed with cost shown, never hidden and never a dialog.
 - [ ] **US-006** — As a player, I want to build additional factories, so that I can trade economy now for production later. **AC:** One placeable structure type; placement is a click on valid ground with a live ghost preview; invalid placement is shown inline, not as an error. **Valid ground** = every tile in the structure's full 64 px footprint is passable terrain, wholly inside map bounds, and occupied by no other structure and no unit.
 - [ ] **US-007** — As a player, I want to see the whole battlefield at once, so that I never have to search for the enemy or manage a camera. **AC:** Fixed single-screen map, no scrolling, no minimap, no fog. Both bases visible from the first frame.
-- [ ] **US-008** — As a player, I want the match to end decisively in about ten minutes, so that it fits the time I actually have. **AC:** Destroying the enemy Base wins; losing your own Base loses. **If both Bases reach zero hit points on the same tick the match is a Draw** — an explicit third verdict rather than an arbitrary tie-break. Ore nodes are finite, so production necessarily halts and the match resolves. Median duration 6–10 min; p90 < 15 min.
+- [ ] **US-008** — As a player, I want the match to end decisively in about ten minutes, so that it fits the time I actually have. **AC:** Destroying the enemy Base wins; losing your own Base loses. **If both Bases reach zero hit points on the same tick the match is a Draw** — an explicit third verdict rather than an arbitrary tie-break. Ore nodes are finite, so production necessarily halts. <!-- CR-001: ore exhaustion halts production but does not force resolution --> **When every ore node on the map is depleted, a sudden-death backstop arms: after a grace period all Bases take escalating damage until one falls.** Median duration 6–10 min; p90 < 15 min.
 - [ ] **US-009** — As a player, I want to tell my units from the enemy's at a glance without relying on colour, so that the game is readable regardless of colour vision. **AC:** Every friendly unit carries a persistent non-colour ownership cue (underglow ring); enemies do not. Verified against WCAG 2.1 AA §1.4.1.
 - [ ] **US-010** — As a player, I want to restart instantly when the match ends, so that the good outcome is "again", not "leave". **AC:** Result screen's primary and largest action is Rematch; one click returns to a fresh match at the same difficulty.
 
@@ -94,7 +94,7 @@ No secondary persona in v1. Competitive RTS players are explicitly not served.
 **Description:** One resource, **Ore**. Workers walk to an ore node, extract for a fixed number of ticks, walk back to the Base, and deposit. Ore nodes hold a finite amount and visibly deplete.
 **Key interactions:** None required — workers auto-assign on spawn to the node of least squared distance, ties resolved by ascending node id. Manual reassignment is possible but never necessary.
 **Why finite:** This is the match-length pressure valve. It is diegetic, needs no UI, requires no timer, and creates a natural three-act shape — boom, squeeze, decide. It is also the cheapest valve to make deterministic: a counter in simulation state.
-**Edge cases:** All own nodes exhausted → workers idle at Base (they must not thrash or pathfind endlessly). Node exhausted while a worker is en route → worker retargets to the remaining own node of least squared distance, ties by ascending node id.
+**Edge cases:** All own nodes exhausted → workers idle at Base (they must not thrash or pathfind endlessly). Node exhausted while a worker is en route → worker retargets to the remaining own node of least squared distance, ties by ascending node id. <!-- CR-001 --> **All nodes on the map exhausted → sudden death arms.** Halting production is not the same as ending the match: two players who turtle to a rough stalemate after ore is gone have no terminator without this.
 
 ### 4.3 Units — the cost/power ladder
 
@@ -147,7 +147,12 @@ in a stable, id-ordered way — not by iteration accident (Constitution §I).
 
 Full-screen, unambiguous **Victory**, **Defeat**, or **Draw** (simultaneous Base
 destruction — rare but a real branch, so it is specified rather than left to an
-arbitrary tie-break), match duration shown, and one dominant action: **Rematch**. A bounded game's retention loop is the rematch
+arbitrary tie-break), match duration shown, and one dominant action: **Rematch**.
+
+<!-- CR-001 -->
+**Sudden death adds no fourth verdict.** It applies damage to both Bases; whichever
+has less hit points falls first, producing an ordinary Victory or Defeat. If they are
+exactly equal they fall on the same tick and the existing Draw rule already covers it. A bounded game's retention loop is the rematch
 button; nothing else competes with it for prominence.
 
 ## 5. Functional Requirements

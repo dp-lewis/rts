@@ -65,8 +65,10 @@
 <p><strong>Exactly five entries</strong> — four unit entries plus one structure entry, the structure visually separated by the divider. <strong>Always visible, never nested.</strong> Unaffordable entries are greyed with the cost still shown (Tank, above) — never hidden, never a dialog (EDGE-004).</p>
 <h3>Ore nodes are the pressure valve</h3>
 <p>Nodes show remaining percentage and visibly deplete (FR-016). When a side's ore is gone, production halts and the match resolves with what is on the field (EDGE-006). No timer, no UI chrome, no explanation needed.</p>
+<h3>Sudden death <em>(CR-001)</em></h3>
+<p>When every ore node is depleted, a backstop arms and — after a grace period — all Bases take escalating damage until the match resolves. This needs its own <strong>distinct persistent indicator</strong>. It must NOT reuse the under-attack band below: a base dying with no attacker on screen, flagged as "under attack", reads as a bug rather than a rule.</p>
 <h3>Under-attack indicator</h3>
-<p>The striped screen-edge band (JRN-003 STEP-002, FR-023) plus an audio cue. Losing without noticing is the worst possible outcome; on a fixed screen everything is <em>visible</em>, but attention is still finite.</p>
+<p>The striped screen-edge band (JRN-003 STEP-002, FR-023) plus an audio cue. Losing without noticing is the worst possible outcome; on a fixed screen everything is <em>visible</em>, but attention is still finite. <strong>Fires only on damage dealt by an enemy entity</strong> — sudden-death damage uses the separate indicator above (CR-001).</p>
 <h3>States</h3>
 <p>Default · Units selected · Placement ghost (valid / invalid — EDGE-005) · Insufficient ore · Under attack · Ore exhausted.</p>
 <h3>Not a design system</h3>

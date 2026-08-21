@@ -2,7 +2,7 @@ schema_version: 3
 feature: simple-rts-game
 feature_description: "Make a simple RTS game — local single-player vs AI, client-side Phaser, deterministic fixed-timestep simulation."
 created_at: "2026-08-21"
-last_updated: "2026-08-21T10:59:39Z"
+last_updated: "2026-08-21T11:22:29Z"
 feature_mode: standard
 flow_mode: gated
 v2_native: true
@@ -56,11 +56,27 @@ phases:
     digest_path: "plan/digest.md"
     adrs: ["plan/adr/ADR-001-canonical-state-hash.md", "plan/adr/ADR-002-replay-corpus.md"]
     complexity_tracking_entries: 0
-  tasks:                  { status: pending }
+  tasks:
+    status: completed
+    started_at: "2026-08-21T11:05:50Z"
+    completed_at: "2026-08-21T11:12:04Z"
+    digest_path: "tasks/digest.md"
+    total: 82
+    groups: 10
+    story_coverage: "12/12"
+    requirement_coverage: "33/33"
+    test_first_tasks: 24
+    xl_tasks: 0
   migration_plan:
     status: not_applicable
     note: "plan.md declares Storage: none. No database, no schema, no migrations (Express/MongoDB are explicit v1 non-goals). Conditional trigger not met."
-  pre_impl_review:        { status: pending }
+  pre_impl_review:
+    status: completed
+    started_at: "2026-08-21T11:12:41Z"
+    completed_at: "2026-08-21T11:22:29Z"
+    scope: "focused — untested assumptions + consolidated risk register; architecture deliberately not re-treaded (covered by two Constitution Check gates)"
+    digest_path: "pre-impl-review.md"
+    findings: {high: 3, medium: 3, low: 1}
   implement:              { status: pending }
   code_review:            { status: pending }
   verify:                 { status: pending }
@@ -204,7 +220,44 @@ gates:
       - "Expect further ordering hazards as gameplay grows - seven catalogued, assume the list is incomplete. Any new pick-the-nearest/first/best needs a tie-break rule before the code is written."
       - "Cross-platform float divergence may surface in M1. That is wanted, not feared: fix the divergence, never loosen the hash."
       - "mulberry32 vs sfc32 decided in M1; plan recommends mulberry32 for its single-integer serialisable state."
+  - phase: tasks
+    decision: approved
+    at: "2026-08-21T11:12:04Z"
+    reviewed_sha: "7da597005ec4a5cb69cb1e73ca37795a8a558bdc"
+    risk: low
+    notes: "77 tasks across 10 milestones (M0-M9). Coverage 31/31 requirements, 12/12 Must+Should stories, 7/7 ordering hazards each with a dedicated test. Sizes 4 XS / 28 S / 37 M / 8 L / 0 XL. 24 tasks marked Test-first: true. Structural checks all pass: unique contiguous ids, every task carries Paths and Size, no orphans, no workspace prefixes (single-root)."
+    findings:
+      - "FIXED - adversarial ordering pass caught an inverted Red-Green cycle in M0: the ESLint boundary CONFIG preceded the test verifying it fires, in the very milestone whose point is that guards must be verified. Swapped - T003 is now the test (fails because no rules exist yet, so ESLint reports nothing) and T004 is the config that turns it green."
+      - "DEVIATION (deliberate) - grouped by milestone rather than by user story. Story-first grouping would be fiction here: US-001 requires the whole game to exist, and Constitution I/II force the enforcement config and determinism harness before all gameplay. Every task carries its story/requirement tag so traceability is unaffected; only the grouping axis differs."
+      - "traceability.yml requirements block seeded - 31 rows with stories and owning tasks. code and tests columns left to implement and test-plan."
+    open_items:
+      - "T040 (combat) is the L-sized task to watch - it carries TWO ordering hazards (O-1 acquisition, O-6 atomic damage) and is where a split would be least surprising if it grows."
+      - "T075 is the first real exercise of ADR-002 manual corpus regeneration - the moment that discipline is either established or quietly abandoned."
+      - "~51 of 77 tasks complete before a single pixel renders. Accepted in plan.md, but it will feel wrong around task 30."
+      - "Watch for an eighth ordering hazard. The plan predicted more would appear and has already been right once."
+  - phase: pre_impl_review
+    decision: approved_with_conditions
+    at: "2026-08-21T11:22:29Z"
+    reviewed_sha: "7da597005ec4a5cb69cb1e73ca37795a8a558bdc"
+    risk: low
+    notes: "Focused review on untested assumptions rather than re-treading architecture (already 5/5 at two Constitution Check gates). Ten assumptions interrogated: seven held, three did not. 3 HIGH / 3 MEDIUM / 1 LOW. Found three HIGH findings four prior passes missed - because every earlier pass verified artifacts were consistent WITH EACH OTHER, while F-1/F-2/F-3 are each a MISSING STATE rather than a contradiction."
+    conditions:
+      - "F-1 RESOLVED via CR-001 (accepted) - sudden-death backstop. Ore exhaustion halts production but does not force resolution; a stalemate had no terminator. Escalating Base damage after global node depletion bounds match length; adds no fourth verdict and reuses the FR-028 Draw rule."
+      - "F-2 ABSORBED - units do NOT collide in v1. No separation system, so A* stays a pure grid search and determinism is preserved; render-only jitter (T082) never touches sim state. A separation system would almost certainly be ordering hazard O-8. Legibility of the resulting pile becomes an explicit M9 question."
+      - "F-3 ABSORBED - M9 exit criterion extended: >=3 of 5 first-timers must WIN at least one match on New to this. M8 tuned duration and M9 tested comprehension, but NOTHING tested beatability - the most common way a solo project ships an unwinnable game."
+      - "F-4 ABSORBED into T048 - clamp accumulator to ~250ms and drop excess, so a player returning from a backgrounded tab does not watch the sim fast-forward through the match they just lost."
+      - "F-5 ABSORBED into T073 - tune toward a legibility ceiling of ~25-30 units per side. The ~60 figure arrived as a performance NFR and was never a design decision; 60 units on 220 cells is 27% map occupancy with no camera to zoom out of."
+      - "F-6 ABSORBED into T039/T080 - a Base with no surviving Workers affords one at zero cost, removing a dead state where a player can neither act nor lose."
+      - "F-7 ABSORBED as T081 - 30-minute greyscale spike before T051. The underglow ring is the entire WCAG 1.4.1 mitigation and the drawn sprite is materially smaller than its 64px canvas."
 sync_runs:
+  - at: "2026-08-21T11:22:29Z"
+    scope: "quick — full chain after CR-001 application"
+    verdict: "PASS (12/12, zero drift)"
+    findings:
+      - "spec.md 33 FRs; delta specs cover all 33; tasks coverage matrix covers all 33; traceability has 33 requirement rows."
+      - "82 task ids unique, every task carries Paths and Size."
+      - "journeys.yml and traceability.yml edge counts match exactly (JRN-001:10, JRN-002:2, JRN-003:2)."
+      - "CR-001 marker present in spec.md, plan.md, tasks.md, and product-spec.md."
   - at: "2026-08-21T10:24:54Z"
     scope: "quick — Layer 1 (research <-> product-spec)"
     verdict: "PASS (1 drift found and resolved)"
@@ -213,7 +266,16 @@ sync_runs:
       - "RESOLVED: US-012 (WebGL fallback) was covered by JRN-001 EDGE-001 but absent from that journey's stories list. Linked across journeys.yml, JRN-001 markdown, and traceability.yml."
       - "12/12 Must+Should user stories covered by a journey. US-013..015 are Could-Have/post-v1 and correctly uncovered."
       - "traceability.yml journey ids and edge counts match journeys.yml exactly."
-change_requests: []
+change_requests:
+  - id: "CR-001"
+    title: "Sudden-death backstop for post-exhaustion stalemate"
+    status: "accepted"
+    timestamp: "2026-08-21T11:22:29Z"
+    requested_at_phase: "pre_impl_review"
+    artifacts_affected: 9
+    tasks_added: 2
+    phase_rollback: null
+    rationale: "Pre-impl review F-1. Ore exhaustion halts production but does not force resolution; a post-exhaustion stalemate had no terminator, so the ~10-minute promise was not guaranteed by anything in the simulation. Four earlier review passes missed it because each checked artifacts for consistency WITH EACH OTHER, and FR-016/FR-017 are consistent - the gap is BETWEEN them, a state the requirements jointly fail to cover."
 
 dependencies:
   depends_on: []

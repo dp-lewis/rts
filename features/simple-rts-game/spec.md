@@ -135,7 +135,7 @@ No secondary persona. Competitive RTS players are explicitly not served.
   - **Journey:** JRN-001 STEP-004
 
 - [ ] **US-008** As a player, I want the match to end decisively in about ten minutes, so that it fits the time I have.
-  - **AC:** Destroying the enemy Base wins; losing your own loses. **Both Bases at zero HP on the same tick is a Draw** — an explicit third verdict, not an arbitrary tie-break. Finite ore nodes force production to halt. Median duration 6–10 min; p90 < 15 min.
+  - **AC:** Destroying the enemy Base wins; losing your own loses. **Both Bases at zero HP on the same tick is a Draw** — an explicit third verdict, not an arbitrary tie-break. Finite ore nodes force production to halt, and <!-- CR-001 --> **when every node is depleted a sudden-death backstop arms: after a grace period all Bases take escalating damage until one falls.** Median duration 6–10 min; p90 < 15 min.
   - **Journey:** JRN-001 STEP-010, EDGE-007, EDGE-009
 
 - [ ] **US-009** As a player, I want to tell my units from the enemy's without relying on colour, so that the game is readable regardless of colour vision.
@@ -182,7 +182,9 @@ No secondary persona. Competitive RTS players are explicitly not served.
 | FR-014 | Map is a fixed single screen: no scrolling, no camera, no minimap | Must | US-007 |
 | FR-015 | No fog of war; both bases visible from the first frame | Must | US-007 |
 | FR-016 | Ore nodes hold finite amounts and visibly deplete | Must | US-008 |
-| FR-017 | Destroying the enemy Base wins; losing own Base loses | Must | US-008 |
+| FR-032 | When every ore node is depleted, sudden death arms; after a grace period all Bases take escalating damage until the match resolves *(CR-001)* | Must | US-008 |
+| FR-033 | Sudden-death damage shows a distinct indicator and does NOT trigger the under-attack indicator *(CR-001)* | Must | US-008, FR-023 |
+| FR-017 | Destroying the enemy Base wins; losing own Base loses. Sudden death adds no new verdict — it forces one of the existing three *(CR-001)* | Must | US-008 |
 | FR-018 | Every friendly unit carries a persistent non-colour ownership cue | Must | US-009 |
 | FR-019 | Result screen's primary action is Rematch | Must | US-010 |
 | FR-020 | Units auto-acquire enemies in range; explicit orders override | Must | US-004 |
@@ -198,6 +200,13 @@ No secondary persona. Competitive RTS players are explicitly not served.
 | FR-030 | Selection tests against unit collision circles, not sprite bounds | Must | US-004 |
 | FR-031 | Valid placement = full footprint passable, in-bounds, unoccupied by structure or unit | Must | US-006 |
 
+> **CR-001 (sudden death)** was raised by the Phase 5C pre-implementation review:
+> ore exhaustion halts *production* but does not force *resolution*, so a
+> post-exhaustion stalemate had no terminator and the "ten minutes" promise was not
+> actually guaranteed by anything in the simulation. Escalating damage bounds the
+> match length regardless of Base hit points. All timing and damage constants are M8
+> tuning variables, deliberately unfixed here.
+>
 > **Three of these — FR-021, FR-022, FR-027 — are the same defect class:** unspecified
 > ordering breaking determinism. Revalidation found FR-027 as the third instance.
 > **Expect a fourth during planning.** Each is numbered separately so the plan cannot
@@ -381,6 +390,8 @@ Supporting: K2 observed time to first action <30 s from page load · K3 completi
 | TC-UNIT-006 | Simultaneous Base destruction | Both Bases reach 0 HP on one tick | Verdict is **Draw** (FR-028) | unit |
 | TC-UNIT-007 | Ore exhaustion | All own nodes depleted, worker en route | Worker idles at Base; no repath thrash (EDGE-006) | unit |
 | TC-UNIT-008 | Command scheduling | Command issued at tick T | Applied at its target tick, not on issue (FR-004) | unit |
+| TC-UNIT-011 | Sudden death arms and terminates | All nodes depleted, both sides hold surviving forces | Backstop arms; escalating damage resolves the match in bounded ticks (FR-032) | unit |
+| TC-UNIT-012 | Sudden death does not misfire the alert | Sudden-death damage applied to a Base | Distinct indicator flagged; under-attack indicator NOT triggered (FR-033) | unit |
 | TC-UNIT-009 | No forbidden constructs | Lint over `sim/` | Zero violations (transcendentals, `Date.now`, `Math.random`) | lint |
 | TC-UNIT-010 | Layer boundary | Lint over `sim/` imports | Zero Phaser or DOM imports (FR/§II) | lint |
 | TC-INT-001 | Replay round-trip | Record a full match, replay from seed + log | Terminal hash matches the recorded hash | integration |

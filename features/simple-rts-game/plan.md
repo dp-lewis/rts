@@ -249,6 +249,13 @@ nothing else; the simulation is a pure function of `(previous state, commands fo
 tick)`. `MAX_STEPS_PER_FRAME` guards the spiral of death — under load the simulation
 falls behind wall-clock time, which is correct and does not change results.
 
+**Background-tab policy** *(pre-impl F-4)*: the accumulator is additionally **clamped
+to ~250 ms with the excess dropped**. Browsers suspend `requestAnimationFrame` in
+background tabs, so a player returning after five minutes would otherwise watch the
+simulation fast-forward through the match they just lost. In single-player, wall-clock
+time carries no meaning — the simulation is authoritative and simply continues. A
+presentation decision; it does not touch determinism.
+
 > **This departs from every Phaser tutorial**, all of which pass `delta` into game
 > logic. RF-3 identified that habit as an active hazard. The lint rule banning
 > frame-delta in `src/sim/` is what makes the departure stick; a comment would not.
@@ -283,7 +290,7 @@ step(state, commands):
   6. combat.acquire()      (choose targets)                  — O-1
   7. combat.collectDamage()(accumulate, do NOT apply)
   8. combat.applyDamage()  (atomic, end of tick)             — O-6
-  9. victory.resolve()     (win / lose / draw)               — FR-017, FR-028
+  9. victory.resolve()     (win / lose / draw; sudden death)               — FR-017, FR-028
  10. tick += 1
 ```
 
@@ -350,13 +357,13 @@ Test tasks precede implementation tasks throughout (Constitution §III).
 | **M0** | **Enforcement skeleton** | `package.json`, TS, Vite, Vitest, **eslint boundary rules**, CI matrix, empty `src/sim` + `src/game` | Lint fails on a deliberately planted `Math.random()` in `src/sim/`. CI green on all 3 platforms. |
 | **M1** | **Determinism harness** | `rng`, `hash` (ADR-001), `commands` + ordering, `step` skeleton, `replay` + corpus runner (ADR-002), `simVersion` | Same seed + log ⇒ identical hash on all 3 platforms. Corpus runner green with 1 trivial case. TC-UNIT-001/002, TC-INT-001/003. |
 | **M2** | **Grid, movement, economy** | `grid`, `pathfind` (O-2), `economy` (O-3), worker gather loop | Headless: workers gather, nodes deplete, ore rises. Tie-break tests TC-UNIT-003/004 pass. |
-| **M3** | **Production & combat** | `production` (O-5), `combat` (O-1, O-6 atomic damage), `victory` (draw) | Headless full match runs to a verdict. TC-UNIT-005/006/007/008 pass. |
+| **M3** | **Production & combat** | `production` (O-5), `combat` (O-1, O-6 atomic damage), `victory` (draw + **sudden death, CR-001**) | Headless full match runs to a verdict. TC-UNIT-005/006/007/008/011/012 pass. **A deliberate stalemate scenario terminates in bounded ticks.** |
 | **M4** | **AI opponent** | `ai.ts`, 3 difficulty levels, deterministic via sim RNG | Headless AI-vs-AI match completes identically across runs and platforms. |
 | **M5** | **Presentation** | Phaser boot, accumulator loop, sprite render, interpolation, underglow ring | A match is watchable. Lint still reports zero boundary violations. |
 | **M6** | **Input & HUD** | drag-select (FR-030 circles), right-click orders, 5-entry build bar, placement ghost, ore counter, alert band | JRN-001 playable end to end by hand. |
 | **M7** | **Screens & edges** | Difficulty gate, result screen (victory/defeat/draw), rematch, WebGL fallback, keyboard operability, local counters | All 9 E2E scenarios pass; axe reports zero critical violations. |
-| **M8** | **Balance tuning pass** ⏱ | Tune `constants.ts`: unit costs/speed/hp, ore per node, node count, AI aggression | **Median match duration lands in 6–10 min; p90 < 15 min.** Timeboxed. |
-| **M9** | **K1 comprehension playtest** 🚦 | 3–5 first-time players, cold, unaided, observed | **≥4 of 5 understand what to do without being told.** Blocking. |
+| **M8** | **Balance tuning pass** ⏱ | Tune `constants.ts`: unit costs/speed/hp, ore per node, node count, AI aggression, **sudden-death grace and damage ramp (CR-001)**. Also tune toward a **legibility** ceiling of ~25–30 units per side rather than the ~60 performance allows *(pre-impl F-5)* | **Median match duration lands in 6–10 min; p90 < 15 min.** Timeboxed. |
+| **M9** | **K1 comprehension playtest** 🚦 | 3–5 first-time players, cold, unaided, observed | **≥4 of 5 understand what to do without being told**, AND **≥3 of 5 win at least one match on "New to this"** *(pre-impl F-3 — comprehension alone does not prove the game is beatable)*. Blocking. |
 
 ### Requirement coverage by milestone
 
@@ -369,15 +376,15 @@ without it, milestones describe features by name and nothing machine-checks that
 |---|---|
 | **M1** Determinism harness | FR-003, FR-004, FR-005, FR-029 |
 | **M2** Grid, movement, economy | FR-006, FR-016, FR-022, FR-027 |
-| **M3** Production & combat | FR-012 *(rules)*, FR-017, FR-020, FR-021, FR-028, FR-031 |
+| **M3** Production & combat | FR-012 *(rules)*, FR-017, FR-020, FR-021, FR-028, FR-031, **FR-032** *(CR-001)* |
 | **M4** AI opponent | *(no new FRs — implements difficulty behaviour behind FR-002/FR-029)* |
 | **M5** Presentation | FR-014, FR-015, FR-018 |
 | **M6** Input & HUD | FR-007, FR-008, FR-009, FR-010, FR-011, FR-012 *(placement UX)*, FR-013, FR-030 |
-| **M7** Screens & edges | FR-001, FR-002, FR-019, FR-023, FR-024, FR-025, FR-026 |
+| **M7** Screens & edges | FR-001, FR-002, FR-019, FR-023, FR-024, FR-025, FR-026, **FR-033** *(CR-001)* |
 | **M8** Balance tuning | *(no FRs — tunes `constants.ts` against the FR-008/US-008 duration band)* |
 | **M9** Comprehension playtest | *(no FRs — validates the whole against success criterion K1)* |
 
-**Coverage: 31/31.** FR-012 is split deliberately — the placement *rules* (what is
+**Coverage: 33/33** (31 original + FR-032/FR-033 from CR-001). FR-012 is split deliberately — the placement *rules* (what is
 legal) belong to the simulation in M3, and the placement *interaction* (ghost preview,
 click) belongs to presentation in M6. Splitting it across the §II boundary is the
 correct decomposition, not a duplication.
@@ -427,6 +434,8 @@ be argued for rather than assumed.
 | **Fixed screen feels cramped (~20×11)** | Med | M9 decides. A scrolling map would be a change request, not a fix. |
 | **CI corpus runtime grows** | Low | Full corpus in CI, fast subset pre-commit. **Never prune cases.** |
 | **WebGL unavailable** (RF-6) | Low | FR-024 fallback, TC-E2E-004. |
+| **F-2** Unit crowding illegible; collision unspecified | Med | **Decision: units do not collide in v1.** No separation system — A\* stays a pure grid search and determinism is preserved. Render-only visual jitter that never touches sim state. Whether the pile is legible becomes an explicit M9 question. *(A separation system would almost certainly be ordering hazard O-8.)* |
+| **F-6** Worker wipeout soft-lock | Low | A Base with no surviving Workers affords one at zero cost. Small rule; removes a dead state in which a player can neither act nor lose. |
 
 ---
 

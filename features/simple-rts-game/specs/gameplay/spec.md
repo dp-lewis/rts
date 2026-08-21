@@ -13,14 +13,28 @@
 - **FR-017** Destroying the enemy Base wins; losing own Base loses — Priority: Must — Source: US-008
 - **FR-020** Units auto-acquire enemies in range; explicit orders override — Priority: Must — Source: US-004
 - **FR-031** Valid placement = full footprint passable, in-bounds, unoccupied by structure or unit — Priority: Must — Source: US-006
+- **FR-032** When every ore node is depleted, sudden death arms; after a grace period all Bases take escalating damage until the match resolves — Priority: Must — Source: US-008 <!-- CR-001 -->
+- **FR-033** Sudden-death damage shows a distinct indicator and does NOT trigger the under-attack indicator — Priority: Must — Source: US-008, FR-023 <!-- CR-001 -->
+
+## MODIFIED Requirements
+
+<!-- CR-001 -->
+- **FR-016** Ore nodes hold finite amounts and visibly deplete — **and their global depletion is now the arming condition for sudden death.** Previously implied that exhaustion resolved the match; it only halts production.
+- **FR-017** Destroying the enemy Base wins; losing own Base loses — **sudden death adds no new verdict**, it forces one of the existing three.
 
 ## Domain notes
 
-**FR-016 is the match-length pressure valve**, not merely an economy detail. Finite
-ore is what turns "roughly ten minutes" from a hope into a structural guarantee: when
-ore is gone, production halts and the match resolves with whatever is on the field. It
-is diegetic, needs no UI, needs no timer, and is the cheapest valve to make
-deterministic — a counter in simulation state.
+**FR-016 is the match-length pressure valve**, not merely an economy detail — but on
+its own it is **not sufficient**, which the Phase 5C review established (F-1). Ore
+exhaustion halts *production*; it does not force *resolution*. Two players who turtle
+to a rough stalemate after ore is gone have no terminator, and mutual attrition to a
+stalemate is a normal RTS outcome that becomes *more* likely once production stops.
+
+**FR-032 closes that gap with a backstop, not a second valve.** It is invisible in a
+normal match, so Phase 2's rejection of a visible soft timer still stands — a
+countdown would make the clock the opponent. Escalating damage guarantees termination
+in bounded time for any finite Base hit points, and reuses the existing Draw rule
+(FR-028) when both Bases fall on the same tick.
 
 **FR-012 carries the entire "build" pillar of the RTS arc** at the cost of exactly one
 new interaction, and creates the match's central economic decision: more production

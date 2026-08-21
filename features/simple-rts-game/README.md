@@ -1,6 +1,6 @@
 # Feature: Ten Minute War — Simple Browser RTS
 
-> Created: 2026-08-21 | Status: Phase 5 (Plan) approved — ready for task breakdown
+> Created: 2026-08-21 | Status: Phase 5C (Pre-Impl Review) complete — 82 tasks, ready to implement
 > Slug: `simple-rts-game` | Mode: `standard` | Flow: `gated`
 
 ## Lifecycle Status
@@ -15,9 +15,9 @@
 | 4. SpecKit Bridge | ✅ Complete | [spec.md](./spec.md) · [delta specs](./specs/) · [contracts](./contracts/README.md) |
 | 4.5. i18n Harvest | ⛔ Not applicable | English only |
 | 5. Plan | ✅ Approved | [plan.md](./plan.md) · [ADR-001](./plan/adr/ADR-001-canonical-state-hash.md) · [ADR-002](./plan/adr/ADR-002-replay-corpus.md) |
-| 5B. Tasks | ⏳ Pending | `tasks.md` |
+| 5B. Tasks | ✅ Approved | [tasks.md](./tasks.md) — 82 tasks, 10 milestones |
 | 5.5. Migration Plan | ⛔ Not applicable | no database, no schema, no migrations |
-| 5C. Pre-Impl Review | ⏳ Pending *(optional)* | `pre-impl-review.md` |
+| 5C. Pre-Impl Review | ✅ Complete | [pre-impl-review.md](./pre-impl-review.md) · [change-log.md](./change-log.md) — 3 HIGH findings, CR-001 accepted |
 | 6. Implementation | ⏳ Pending | — |
 | 6B. Code Review | ⏳ Pending *(optional)* | `code-review.md` |
 | 7. Verification | ⏳ Pending | `verify-report.md` |
