@@ -1,6 +1,6 @@
 # Feature: Ten Minute War — Simple Browser RTS
 
-> Created: 2026-08-21 | Status: Phase 4 (Bridge) complete — spec.md generated
+> Created: 2026-08-21 | Status: Phase 5 (Plan) approved — ready for task breakdown
 > Slug: `simple-rts-game` | Mode: `standard` | Flow: `gated`
 
 ## Lifecycle Status
@@ -14,9 +14,9 @@
 | 3. Revalidation | ✅ Approved | [review.md](./review.md) — spec LOCKED after 1 revision |
 | 4. SpecKit Bridge | ✅ Complete | [spec.md](./spec.md) · [delta specs](./specs/) · [contracts](./contracts/README.md) |
 | 4.5. i18n Harvest | ⛔ Not applicable | English only |
-| 5. Plan | ⏳ Pending | `plan.md` |
+| 5. Plan | ✅ Approved | [plan.md](./plan.md) · [ADR-001](./plan/adr/ADR-001-canonical-state-hash.md) · [ADR-002](./plan/adr/ADR-002-replay-corpus.md) |
 | 5B. Tasks | ⏳ Pending | `tasks.md` |
-| 5.5. Migration Plan | ⏳ Pending | expected `not_applicable` — no database in v1 |
+| 5.5. Migration Plan | ⛔ Not applicable | no database, no schema, no migrations |
 | 5C. Pre-Impl Review | ⏳ Pending *(optional)* | `pre-impl-review.md` |
 | 6. Implementation | ⏳ Pending | — |
 | 6B. Code Review | ⏳ Pending *(optional)* | `code-review.md` |

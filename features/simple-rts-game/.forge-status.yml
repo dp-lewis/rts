@@ -2,7 +2,7 @@ schema_version: 3
 feature: simple-rts-game
 feature_description: "Make a simple RTS game — local single-player vs AI, client-side Phaser, deterministic fixed-timestep simulation."
 created_at: "2026-08-21"
-last_updated: "2026-08-21T10:48:14Z"
+last_updated: "2026-08-21T10:59:39Z"
 feature_mode: standard
 flow_mode: gated
 v2_native: true
@@ -49,9 +49,17 @@ phases:
     completed_at: "2026-08-21T10:43:28Z"
     digest_path: "spec.md"
   i18n_harvest:           { status: not_applicable }
-  plan:                   { status: pending }
+  plan:
+    status: completed
+    started_at: "2026-08-21T10:49:55Z"
+    completed_at: "2026-08-21T10:59:39Z"
+    digest_path: "plan/digest.md"
+    adrs: ["plan/adr/ADR-001-canonical-state-hash.md", "plan/adr/ADR-002-replay-corpus.md"]
+    complexity_tracking_entries: 0
   tasks:                  { status: pending }
-  migration_plan:         { status: pending }
+  migration_plan:
+    status: not_applicable
+    note: "plan.md declares Storage: none. No database, no schema, no migrations (Express/MongoDB are explicit v1 non-goals). Conditional trigger not met."
   pre_impl_review:        { status: pending }
   implement:              { status: pending }
   code_review:            { status: pending }
@@ -176,6 +184,26 @@ gates:
       - "Plan MUST schedule the balance-tuning pass and the K1 comprehension playtest as real work. K1 is the only check on the fun goal and will otherwise be crowded out by the six machine-checkable criteria (RF-4)."
       - "Plan Complexity Tracking table starts EMPTY — zero accepted violations so far. Every later entry is a visible deliberate decision rather than accumulated drift."
       - "Expect a fourth unspecified-ordering determinism defect during planning; three found so far (FR-021, FR-022, FR-027)."
+  - phase: plan
+    decision: approved
+    at: "2026-08-21T10:59:39Z"
+    reviewed_sha: "c2ca5de4a474ca4cb08e85ea582f0e5695709ae9"
+    risk: low
+    notes: "plan.md 440 lines + 2 ADRs. Constitution Check 5/5 PASS at BOTH gates (before research, after design). Cross-validation 6/6. Coverage 12/12 stories, 31/31 FRs mapped to an owning milestone. Complexity Tracking EMPTY - zero accepted constitutional violations across five phases."
+    obligations_discharged:
+      - "OBLIGATION 1 - canonical state hash defined in ADR-001: fixed field order, id-ordered traversal, exact IEEE-754 bits via DataView. Rounding before hashing explicitly REJECTED (it would hide the sub-ulp divergence Principle I exists to detect). FNV-1a two 32-bit lanes to 64-bit hex, vendored, no dependency."
+      - "OBLIGATION 2 - replay corpus defined in ADR-002: one JSON file per case, MANDATORY checkpoint hashes so failures localise rather than merely register, simVersion gating, and a deliberately manual PR-visible regeneration procedure. Auto-updating hashes on mismatch REJECTED outright as converting the Principle IV guard into a rubber stamp."
+      - "OBLIGATION 3 - M8 (balance tuning) and M9 (K1 comprehension playtest) are numbered milestones with exit criteria, equal in standing to M0-M7. M9 BLOCKS completion. constants.ts exists as a single file so M8 has one tuning surface."
+      - "OBLIGATION 4 - ordering audit found FOUR more hazards, not one. O-4 command application order within a tick (issuer, seq). O-5 production completion when ore covers only one factory (ascending factory id). O-6 simultaneous lethal damage - collect across tick, apply atomically at end, which also makes FR-028 Draw reachable rather than theoretical. O-7 entity iteration order - the ROOT of the class, fixed structurally by an id-sorted array plus lint bans on for-in and Map/Set iteration in src/sim."
+    key_decisions:
+      - "Build order inverted: M0 is the ESLint boundary config and 3-platform CI matrix BEFORE any game code. Its acceptance test is that lint FAILS on a deliberately planted Math.random() in src/sim - a guard nobody verified is a guard nobody has."
+      - "Single package, not a monorepo. Principle II is about the dependency arrow, not package boundaries; a lint rule enforces it as strictly at a fraction of the ceremony."
+      - "Simulation at 20 Hz. Phaser delta never crosses into step() - it only counts whole ticks and produces an interpolation alpha. Isolated in src/game/loop.ts so it is easy to review."
+      - "One runtime dependency (Phaser). PRNG, A*, and hash vendored at ~50 lines total."
+    open_items:
+      - "Expect further ordering hazards as gameplay grows - seven catalogued, assume the list is incomplete. Any new pick-the-nearest/first/best needs a tie-break rule before the code is written."
+      - "Cross-platform float divergence may surface in M1. That is wanted, not feared: fix the divergence, never loosen the hash."
+      - "mulberry32 vs sfc32 decided in M1; plan recommends mulberry32 for its single-integer serialisable state."
 sync_runs:
   - at: "2026-08-21T10:24:54Z"
     scope: "quick — Layer 1 (research <-> product-spec)"
