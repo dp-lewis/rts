@@ -1,4 +1,7 @@
+import type { Command } from './commands';
 import type { SimState } from './state';
+
+const COMMAND_TYPE_CODE: Record<Command['type'], number> = { move: 0, attack: 1, build: 2 };
 
 /**
  * Canonical state hash — ADR-001.
@@ -23,7 +26,8 @@ import type { SimState } from './state';
  * Fields 7 and 8 (`difficulty`, `nextEntityId`) come from ADR-001 Amendment 1;
  * `destX`/`destY` on each entity come from Amendment 2; `queuedKind`, the two
  * per-player indicator flags, and `suddenDeathAt` come from Amendment 3;
- * `gatherNodeId` from Amendment 4.
+ * `gatherNodeId` from Amendment 4; the scheduled-command queue and `aiSeq` from
+ * Amendment 5.
  * The original field list omitted both despite the ADR opening with "exactly the
  * simulation state"; neither is presentational or derived, so neither fell under
  * its own exclusions. Two states differing only in `nextEntityId` diverge at the
@@ -138,6 +142,40 @@ export function hashState(state: SimState): string {
   h.uint(state.nextEntityId, 4);
   // Amendment 3. suddenDeathAt is -1 until armed, so shift into unsigned space.
   h.uint((state.suddenDeathAt + 1) >>> 0, 4);
+
+  // Amendment 5. Scheduled AI commands are state: they determine what happens
+  // next, so a divergence in planning is caught on the tick it occurs rather than
+  // a tick later when it manifests. Hashed in array order, which is issue order.
+  h.uint(state.aiSeq, 4);
+  h.uint(state.pending.length, 4);
+  for (let i = 0; i < state.pending.length; i += 1) {
+    const command = state.pending[i]!;
+    h.uint(command.tick, 4);
+    h.uint(command.issuer, 1);
+    h.uint(command.seq, 4);
+    h.uint(COMMAND_TYPE_CODE[command.type], 1);
+    switch (command.type) {
+      case 'move':
+        h.uint(command.units.length, 4);
+        for (let u = 0; u < command.units.length; u += 1) {
+          h.uint(command.units[u]!, 4);
+        }
+        h.float(command.x, `pending[${i}].x`);
+        h.float(command.y, `pending[${i}].y`);
+        break;
+      case 'attack':
+        h.uint(command.units.length, 4);
+        for (let u = 0; u < command.units.length; u += 1) {
+          h.uint(command.units[u]!, 4);
+        }
+        h.uint((command.targetId + 1) >>> 0, 4);
+        break;
+      case 'build':
+        h.uint(command.builderId, 4);
+        h.uint(command.kind, 1);
+        break;
+    }
+  }
 
   return h.digest();
 }

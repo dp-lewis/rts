@@ -1,3 +1,4 @@
+import type { Command } from './commands';
 import { MAX_HP, STARTING_ORE } from './constants';
 import { seedRng } from './rng';
 
@@ -159,6 +160,22 @@ export interface SimState {
   /** Sorted by id, ascending — O-7. */
   entities: Entity[];
   nextEntityId: number;
+  /**
+   * Commands the AI has scheduled for a future tick.
+   *
+   * Player intent enters as commands queued ahead of time (FR-004); the AI is held
+   * to the same rule, so it cannot act with less latency than a human can. Those
+   * commands have to survive from the tick that decided them to the tick that
+   * applies them, and `step` is pure — so they live here.
+   */
+  pending: Command[];
+  /**
+   * The AI's monotonic per-issuer command counter — the `seq` half of O-4's
+   * `(issuer, seq)` ordering. Held in state rather than a module counter so that
+   * `aiThink` stays a pure function of state and two simulations in one process
+   * cannot interleave their sequence numbers.
+   */
+  aiSeq: number;
 }
 
 export interface SimInit {
@@ -239,6 +256,8 @@ export function createInitialState(init: SimInit): SimState {
     nodes,
     entities,
     nextEntityId,
+    pending: [],
+    aiSeq: 0,
   };
 }
 
@@ -254,5 +273,9 @@ export function cloneState(state: SimState): SimState {
     nodes: state.nodes.map((n) => ({ ...n })),
     entities: state.entities.map((e) => ({ ...e })),
     nextEntityId: state.nextEntityId,
+    // Commands are treated as immutable once issued, so a shallow copy of the
+    // array is enough — nothing mutates a Command in place.
+    pending: [...state.pending],
+    aiSeq: state.aiSeq,
   };
 }

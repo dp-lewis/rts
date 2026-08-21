@@ -1,7 +1,7 @@
 # ADR-001: Canonical state hash
 
 > Status: **Accepted** · Date: 2026-08-21 · Feature: `simple-rts-game`
-> **Amended 2026-08-22 (Amendments 1–4)** — see the Amendments section.
+> **Amended 2026-08-22 (Amendments 1–5)** — see the Amendments section.
 > Discharges bridge-gate obligation 1. Required by Constitution §I and §IV.
 
 ## Context
@@ -34,6 +34,8 @@ Exactly the simulation state, in a fixed order:
 7. `difficulty` (uint8) — *added by Amendment 1*
 8. `nextEntityId` (uint32) — *added by Amendment 1*
 9. `suddenDeathAt` (int32, -1 until armed) — *added by Amendment 3*
+10. `aiSeq` (uint32) and the scheduled-command queue, in issue order — *added by
+    Amendment 5*
 
 Entity and node collections are stored as arrays kept sorted by id, so "iterate in
 id order" is the natural traversal, not a sort performed at hash time. Sorting at
@@ -216,6 +218,35 @@ sentinel `-1` and the fact that entity ids start at 1 would have hidden the coll
 in most scenarios makes it worse, not better: it would have surfaced as a rare,
 seed-dependent stall rather than an obvious break.
 
+### Amendment 5 — scheduled commands and `aiSeq` (2026-08-22, M4)
+
+**What changed.** `SimState` gained `pending: Command[]` — commands the AI has
+scheduled for a future tick — and `aiSeq`, its monotonic per-issuer counter. Both are
+hashed. `SIM_VERSION` 6 → 7.
+
+**Why they exist at all.** The AI issues COMMANDS scheduled for the next tick, exactly
+as the player's intent does (FR-004), rather than reaching into the simulation
+directly. It therefore gets no privileged access and no lower latency than a human. But
+`step` is pure, so a decision made on tick T has to survive in the returned state to be
+applied on T+1. That is what `pending` is.
+
+`aiSeq` is the `seq` half of O-4's `(issuer, seq)` ordering. It lives in state rather
+than in a module counter for the same reason the PRNG does: two simulations running in
+one process — which is exactly what the corpus runner does — must not interleave their
+sequence numbers.
+
+**Why they are hashed.** The AI's plan determines what happens next. Hashing it catches
+a divergence in *planning* on the tick it occurs, rather than a tick later when it
+finally manifests as a different unit doing a different thing. The delay would be
+harmless for a terminal hash and actively unhelpful for a checkpoint, whose whole job
+is localisation.
+
+**The variable-length problem.** This is the first hashed field that is not
+fixed-width, which is a real departure from the per-entity encoding. It is handled by
+hashing the length first and then each command in array order — which is issue order —
+with a type code before the payload so that a `move` and an `attack` carrying identical
+numbers cannot collide. Tests assert each of those separately.
+
 ## Alternatives rejected
 
 | Alternative | Why rejected |
@@ -230,3 +261,5 @@ seed-dependent stall rather than an obvious break.
 | Use `0` or `null` for "no destination" | Rejected by Amendment 2. `0` is a legal coordinate, and `null` breaks the sentinels-not-optionals rule that keeps the hash encoding branch-free. |
 | Treat the under-attack / sudden-death flags as presentational and leave them unhashed | Rejected by Amendment 3. They record what happened in the simulation, not how it is drawn. FR-033 depends on the two being distinguishable, and an unhashed flag set wrongly would replay green forever while the indicator lied. |
 | Keep one `targetId` for both combat targets and ore nodes | Rejected by Amendment 4. Two id spaces in one field, distinguishable only by which system wrote last. Combat cleared it out from under the economy the moment both existed. |
+| Let the AI mutate simulation state directly instead of issuing commands | Rejected by Amendment 5. It would need no `pending` queue and no hashing, but the opponent's decisions would then sit outside the replay, and an AI acting with zero latency is not playing the same game the player is. |
+| Leave `pending` unhashed, since it is derivable from the previous state | Rejected by Amendment 5. True, and the divergence would still surface one tick later — but checkpoints exist to localise, and a plan is state at the moment it exists. |

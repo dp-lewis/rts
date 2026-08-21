@@ -233,21 +233,21 @@ asserting on state, not rendered output (Principle II).
 
 ### Tests (Red first)
 
-- [ ] T042 [FR-002] Test: AI-vs-AI match produces an identical terminal hash across repeated runs and all three platforms
+- [x] T042 [FR-002] Test: AI-vs-AI match produces an identical terminal hash across repeated runs and all three platforms
       Paths: tests/sim/ai.test.ts
       Test-first: true
       Size: M
-- [ ] T043 [FR-029] Test: difficulty is a field of initial sim state and appears in the replay header; a replay reproduces AI behaviour exactly
+- [x] T043 [FR-029] Test: difficulty is a field of initial sim state and appears in the replay header; a replay reproduces AI behaviour exactly
       Paths: tests/sim/ai.test.ts, tests/replay/roundtrip.test.ts
       Test-first: true
       Size: S
 
 ### Implementation
 
-- [ ] T044 [FR-002, FR-029] Deterministic AI with three difficulty levels; emits commands into the shared queue and draws only from the sim PRNG
+- [x] T044 [FR-002, FR-029] Deterministic AI with three difficulty levels; emits commands into the shared queue and draws only from the sim PRNG
       Paths: src/sim/ai.ts
       Size: L
-- [ ] T045 [FR-003] Record an AI-vs-AI match as corpus case 002 — the first case with real gameplay
+- [x] T045 [FR-003] Record an AI-vs-AI match as corpus case 002 — the first case with real gameplay
       Paths: tests/replay/corpus/002-ai-vs-ai.json
       Size: S
 

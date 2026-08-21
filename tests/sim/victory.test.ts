@@ -150,7 +150,13 @@ describe('TC-UNIT-011 (CR-001) — sudden death arms and terminates', () => {
     for (let t = 0; t < SUDDEN_DEATH.graceTicks; t += 1) {
       state = step(state, []);
     }
-    expect(state.entities.every((e) => e.hp === MAX_HP.base)).toBe(true);
+    // Bases only. From M4 the AI populates its side during the grace period —
+    // the original `every entity is at Base hp` assertion silently assumed a
+    // world containing nothing but two Bases, which stopped being true the moment
+    // an opponent existed.
+    const bases = state.entities.filter((e) => e.kind === KIND.BASE);
+    expect(bases).toHaveLength(2);
+    expect(bases.every((e) => e.hp === MAX_HP.base)).toBe(true);
     expect(state.verdict).toBe(VERDICT.NONE);
   });
 

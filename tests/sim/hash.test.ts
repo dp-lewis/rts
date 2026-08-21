@@ -54,6 +54,8 @@ function state(overrides: Partial<SimState> = {}): SimState {
     ],
     entities: [entity({ id: 1 }), entity({ id: 2, owner: 1, x: 1024, y: 1024 })],
     nextEntityId: 3,
+    pending: [],
+    aiSeq: 0,
     ...overrides,
   };
 }
@@ -102,6 +104,8 @@ describe('hash stability', () => {
         { suddenDeathDamage: canonical.players[0].suddenDeathDamage, underAttack: canonical.players[0].underAttack, ore: canonical.players[0].ore },
         { suddenDeathDamage: canonical.players[1].suddenDeathDamage, underAttack: canonical.players[1].underAttack, ore: canonical.players[1].ore },
       ],
+      aiSeq: canonical.aiSeq,
+      pending: canonical.pending,
       suddenDeathAt: canonical.suddenDeathAt,
       verdict: canonical.verdict,
       difficulty: canonical.difficulty,
@@ -142,6 +146,8 @@ describe('hash sensitivity — every hashed field must move the hash', () => {
     ['player 1 underAttack', state({ players: [{ ore: 150, underAttack: false, suddenDeathDamage: false }, { ore: 200, underAttack: true, suddenDeathDamage: false }] })],
     ['player 0 suddenDeathDamage', state({ players: [{ ore: 150, underAttack: false, suddenDeathDamage: true }, { ore: 200, underAttack: false, suddenDeathDamage: false }] })],
     ['nextEntityId', state({ nextEntityId: 4 })],
+    ['aiSeq', state({ aiSeq: 7 })],
+    ['a scheduled command appearing', state({ pending: [{ tick: 9, issuer: 1, seq: 0, type: 'attack', units: [2], targetId: 1 }] })],
   ])('changes when %s changes', (_field, mutated) => {
     expect(hashState(mutated)).not.toBe(baseline);
   });
@@ -181,6 +187,37 @@ describe('hash ignores everything presentational', () => {
   it('is unchanged by fields that are not part of simulation state', () => {
     const withJunk = { ...state(), camera: { x: 12, y: 44 }, selection: [1, 2], alpha: 0.62 };
     expect(hashState(withJunk as SimState)).toBe(hashState(state()));
+  });
+});
+
+describe('scheduled commands are simulation state (Amendment 5)', () => {
+  const scheduled = (over: Partial<{ tick: number; seq: number; targetId: number }> = {}) =>
+    state({
+      pending: [
+        { tick: over.tick ?? 9, issuer: 1, seq: over.seq ?? 0, type: 'attack', units: [2], targetId: over.targetId ?? 1 },
+      ],
+    });
+
+  it('distinguishes two different scheduled commands', () => {
+    // The AI's plan determines what happens next, so a divergence in planning is
+    // caught on the tick it occurs rather than a tick later when it manifests.
+    expect(hashState(scheduled({ targetId: 1 }))).not.toBe(hashState(scheduled({ targetId: 2 })));
+  });
+
+  it('distinguishes the tick a command is scheduled for', () => {
+    expect(hashState(scheduled({ tick: 9 }))).not.toBe(hashState(scheduled({ tick: 10 })));
+  });
+
+  it('distinguishes commands of different types carrying the same numbers', () => {
+    const asAttack = state({ pending: [{ tick: 9, issuer: 1, seq: 0, type: 'attack', units: [2], targetId: 1 }] });
+    const asMove = state({ pending: [{ tick: 9, issuer: 1, seq: 0, type: 'move', units: [2], x: 1, y: 0 }] });
+    expect(hashState(asMove)).not.toBe(hashState(asAttack));
+  });
+
+  it('distinguishes two commands issued in a different order', () => {
+    const a = { tick: 9, issuer: 1, seq: 0, type: 'attack' as const, units: [2], targetId: 1 };
+    const b = { tick: 9, issuer: 1, seq: 1, type: 'attack' as const, units: [3], targetId: 1 };
+    expect(hashState(state({ pending: [b, a] }))).not.toBe(hashState(state({ pending: [a, b] })));
   });
 });
 

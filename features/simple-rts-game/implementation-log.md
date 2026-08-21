@@ -618,3 +618,97 @@ difference.
   nothing; also makes the real fire interval `cooldownTicks + 1`.
 - **REV-007** — FR-012 (place a Factory) still has no command; `isValidPlacement` is
   reachable only from `spawnCell`.
+
+---
+
+## Red gate — M4
+
+**Tasks:** T042–T043 · **Turned green by:** T044–T045 · **Status:** `confirmed_failing` → `green`
+**Tests:** 197 → **225**. `SIM_VERSION` 6 → 7.
+
+### The milestone that finally exercises the PRNG
+
+Until now TC-UNIT-002 could prove the generator lived inside simulation state and
+survived serialisation, but nothing proved the tick loop *threaded* it — a generator
+nobody draws from is trivially deterministic. M4 is the first milestone in which
+`step()` consumes the RNG at all, so `it('actually consumes the PRNG')` is the
+assertion three milestones of determinism work have been waiting for.
+
+It is also the first time O-4 has had two issuers to order. Every rule written for
+command ordering has been carrying player commands only.
+
+### `CommandQueue` was tested and entirely unwired
+
+Before starting, a grep for the queue's users in `src/` returned nothing:
+`createCommandQueue`, `enqueueCommand`, and `drainCommands` were fully tested and
+called by no production code — the same "verified but unreachable" shape the code
+review had just found in production. M4 gives the scheduling concept its first real
+user, though via `state.pending` rather than the `CommandQueue` type, since the queue
+has to live *in* hashed state to survive a pure `step`.
+
+**`CommandQueue` is now genuinely dead code.** Flagged rather than deleted in this
+pass; see open items.
+
+### Design: the AI plays by the same rules as the player
+
+Three constraints, all constitutional rather than stylistic:
+
+1. **It draws only from the simulation PRNG.** An opponent whose choices are not in
+   the replay is an opponent whose match cannot be reproduced.
+2. **It issues commands scheduled for a future tick**, the same route player intent
+   takes (FR-004) — no privileged access, no lower latency than a human.
+3. **Difficulty is a field, never folded into the seed** (FR-029).
+
+`aiThink(state)` is pure and returns what the AI *would* decide, including the PRNG
+state it would leave behind; `runAi(state)` commits that plan. The split is what lets
+tests inspect the opponent's intent without advancing the match, and it is why calling
+`aiThink` twice on one state gives identical answers.
+
+### Vacuous-pass guard
+
+The cheapest way for an "AI" to be perfectly reproducible is to do nothing, and every
+determinism assertion in T042 would pass. The `the AI plays — it is not a no-op that
+happens to be deterministic` block exists solely to close that: it produces units,
+spends ore, and something of the player's takes damage.
+
+### Corpus case 002 — the first with real gameplay
+
+1878 ticks, no player commands whatsoever. The AI fielded 16 units (10 of them army),
+issued 45 commands, and the recorded hashes are a signature of the opponent's
+decision-making and of the PRNG threading rather than of a script. Stops one tick
+short of a verdict so the case exercises a live match rather than a settled one.
+
+### A stale assertion, found by the AI existing
+
+`deals no damage during the grace period` asserted `every entity is at Base hp` — which
+silently assumed a world containing nothing but two Bases. True until M4 gave the
+opponent the ability to populate its own side. Narrowed to Bases.
+
+### Checkpoint #10 — M4
+
+| Check | Status | Notes |
+|-------|:------:|-------|
+| Task-Code correspondence | ✅ | T042/T043 → `ai.test.ts` + `roundtrip.test.ts`; T044 → `ai.ts`; T045 → `002-ai-vs-ai.json`. |
+| Spec AC alignment | ✅ | FR-002 and FR-029 covered; 225/225 green. |
+| Unplanned changes | ⚠️ 3 files | `state.ts`/`hash.ts` (Amendment 5), `step.ts` (stage 2 + draining `pending`). |
+| Plan alignment | ✅ | Pipeline order unchanged; every stage is now live and `STAGES` never moved. |
+| Dependency / supply-chain | ✅ None added | |
+
+**Verdict:** CLEAN — M4 complete.
+
+### Open items carried out of M4
+
+1. **`CommandQueue` in `commands.ts` is now dead code.** Fully tested, called by
+   nothing. Either wire `state.pending` through it or delete both the type and its
+   tests — a tested abstraction with no users is exactly what the code review found
+   twice already.
+2. **`pending` is the first variable-length hashed field**, a real departure from the
+   fixed-width per-entity encoding. Handled by hashing length first and a type code
+   before each payload, but it is the place where a future command type could be added
+   without its fields being hashed. A test would not necessarily notice.
+3. **The AI never builds Factories and never places structures**, so FR-012 remains
+   unreachable from either side (review REV-007).
+4. **Difficulty tuning is unvalidated.** The three profiles differ in re-plan cadence
+   and army targets, and the only assertion is that harder fields an army *no smaller*
+   than easier. Whether the levels feel different is M8/M9's question.
+5. **REV-005 and REV-006 remain open** from the code review and were not touched here.

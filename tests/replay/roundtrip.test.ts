@@ -101,6 +101,30 @@ describe('replay round-trip', () => {
   });
 });
 
+describe('FR-029 / T043 — difficulty travels in the replay header', () => {
+  it('records the difficulty the match was played at', () => {
+    const recorded = recordReplay(INIT, LOG, FINAL_TICK, CHECKPOINTS);
+    expect(recorded.input.difficulty).toBe(INIT.difficulty);
+  });
+
+  it('reproduces AI behaviour exactly from seed + difficulty + log', () => {
+    const recorded = recordReplay(INIT, LOG, FINAL_TICK, CHECKPOINTS);
+    expect(replay(recorded).ok).toBe(true);
+  });
+
+  it('diverges when replayed at a different difficulty', () => {
+    // This is the whole reason FR-029 keeps difficulty as a FIELD rather than
+    // folding it into the seed. If the header could be wrong without the replay
+    // noticing, a corpus case would silently verify the wrong opponent.
+    const recorded = recordReplay(INIT, LOG, FINAL_TICK, CHECKPOINTS);
+    const wrongLevel: Replay = {
+      ...recorded,
+      input: { ...recorded.input, difficulty: recorded.input.difficulty === 0 ? 1 : 0 },
+    };
+    expect(replay(wrongLevel).ok).toBe(false);
+  });
+});
+
 describe('replay failure reporting (ADR-002)', () => {
   it('reports the FIRST failing checkpoint, not just the terminal mismatch', () => {
     const recorded = recordReplay(INIT, LOG, FINAL_TICK, CHECKPOINTS);

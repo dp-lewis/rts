@@ -1,4 +1,5 @@
 import { ISSUER, sortCommands, type Command } from './commands';
+import { runAi } from './ai';
 import { acquireTargets, applyDamage, collectDamage } from './combat';
 import { ARRIVE_EPSILON, MAP_TILES_X, MAP_TILES_Y, SPEED } from './constants';
 import { runEconomy } from './economy';
@@ -11,11 +12,9 @@ import { ENTITY_STATE, KIND, cloneState, type Entity, type SimState } from './st
 /**
  * The tick function — `step(state, commands) → state`, pure.
  *
- * ── Scope in M1 ───────────────────────────────────────────────────────────────
- * This is the pipeline SKELETON. Stage 1 (apply commands) and stage 10 (advance
- * tick) are real; stages 2–9 are declared, ordered, and empty, because none of
- * the systems they call exist yet. Each is filled in by the milestone that owns
- * it, and the stage list stays exactly as it is.
+ * Every stage is live as of M4. The list below was written in M1 with stages 2–9
+ * empty, and each has been filled in by the milestone that owns it without the
+ * order ever changing — which was the point of declaring it up front.
  *
  * The order is part of the contract, not an implementation detail. Moving combat
  * before movement, or resolving victory before damage lands, changes the outcome
@@ -25,7 +24,7 @@ import { ENTITY_STATE, KIND, cloneState, type Entity, type SimState } from './st
  */
 export const STAGES = [
   'applyCommands', //        1 — sorted by (issuer, seq)                    O-4
-  'aiThink', //              2 — emits commands for tick+1; uses sim RNG     M4
+  'aiThink', //              2 — emits commands for tick+1; uses sim RNG    FR-002
   'economy', //              3 — gather, deposit, deplete nodes                 O-3
   'production', //           4 — advance queues, spend ore                      O-5
   'movement', //             5 — pathfind + step positions                      O-2
@@ -327,8 +326,20 @@ function runMovement(state: SimState, grid: Grid): void {
 export function step(state: SimState, commands: readonly Command[]): SimState {
   const next = cloneState(state);
 
-  applyCommands(next, commands); //    1
-  //                                   2  aiThink — M4
+  // Commands the AI scheduled on an earlier tick come due now, alongside whatever
+  // the caller supplies. `applyCommands` sorts the merged list by (issuer, seq),
+  // so the player is always resolved before the AI — O-4, and the first tick on
+  // which that rule has had two issuers to order.
+  const due: Command[] = [];
+  const stillPending: Command[] = [];
+  for (let i = 0; i < next.pending.length; i += 1) {
+    const command = next.pending[i]!;
+    (command.tick === next.tick ? due : stillPending).push(command);
+  }
+  next.pending = stillPending;
+
+  applyCommands(next, due.length > 0 ? [...commands, ...due] : commands); // 1
+  runAi(next); //                      2
   runEconomy(next); //                 3
   runProduction(next); //              4
   runMovement(next, gridFor(next)); // 5
