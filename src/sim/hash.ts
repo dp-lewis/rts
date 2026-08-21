@@ -20,15 +20,14 @@ import type { SimState } from './state';
  *  3. **NaN and Infinity throw.** Neither should ever reach simulation state, and
  *     hashing one would launder a defect into a stable-looking value.
  *
- * ── Deviation from ADR-001, pending amendment ─────────────────────────────────
- * ADR-001 opens with "exactly the simulation state" and then lists fields that
- * omit `difficulty` and `nextEntityId`. Both are simulation state: two states
- * differing only in `nextEntityId` diverge at the next spawn, and difficulty
- * (FR-029) is a field rather than part of the seed precisely so it can vary
- * independently. Neither is presentational or derived, so neither is covered by
- * the ADR's "what is NOT hashed" list — this reads as a drafting gap, not a
- * deliberate exclusion. They are appended AFTER the ADR's six fields so the
- * amendment is purely additive and trivially revertible.
+ * Fields 7 and 8 (`difficulty`, `nextEntityId`) come from ADR-001 Amendment 1;
+ * `destX`/`destY` on each entity come from Amendment 2.
+ * The original field list omitted both despite the ADR opening with "exactly the
+ * simulation state"; neither is presentational or derived, so neither fell under
+ * its own exclusions. Two states differing only in `nextEntityId` diverge at the
+ * very next spawn, and difficulty (FR-029) is a field precisely so it can vary
+ * independently of the seed. They are appended AFTER the original six so the
+ * amendment stays purely additive.
  */
 
 const FNV_PRIME = 16777619;
@@ -118,9 +117,11 @@ export function hashState(state: SimState): string {
     h.uint((e.targetId + 1) >>> 0, 4);
     h.float(e.cooldown, `entities[${e.id}].cooldown`);
     h.float(e.progress, `entities[${e.id}].progress`);
+    h.float(e.destX, `entities[${e.id}].destX`);
+    h.float(e.destY, `entities[${e.id}].destY`);
   }
 
-  // Appended beyond ADR-001's list — see the deviation note above.
+  // ADR-001 Amendment 1. Appended after the original six, never inserted.
   h.uint(state.difficulty, 1);
   h.uint(state.nextEntityId, 4);
 

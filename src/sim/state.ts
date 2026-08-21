@@ -1,4 +1,4 @@
-import { STARTING_ORE } from './constants';
+import { MAX_HP, STARTING_ORE } from './constants';
 import { seedRng } from './rng';
 
 /**
@@ -57,7 +57,32 @@ export interface Entity {
   targetId: number;
   cooldown: number;
   progress: number;
+  /**
+   * Move destination in world px; -1 on both axes means "no destination".
+   *
+   * There is deliberately no stored path. Units do not collide in v1 (pre-impl
+   * review F-2) and the grid is static, so a path is a pure function of
+   * (current cell, goal cell, grid) — recomputable from hashed state at any
+   * time. Over a ~20x11 map that is microseconds, so storing one would be a
+   * cache that can drift from its source for no gain, which is exactly what
+   * ADR-001 warns against.
+   *
+   * 0 is a legal coordinate, so the sentinel is -1 rather than 0 or null.
+   */
+  destX: number;
+  destY: number;
 }
+
+/**
+ * What a caller supplies when seeding a simulation. Identity and position are
+ * required; everything else defaults.
+ *
+ * This exists so that adding a field to `Entity` does not break every fixture
+ * and every corpus case at once — a lesson from adding `destX`/`destY` in M2,
+ * which would otherwise have touched a dozen literal constructions.
+ */
+export type EntitySeed = Pick<Entity, 'id' | 'kind' | 'owner' | 'x' | 'y'> &
+  Partial<Omit<Entity, 'id' | 'kind' | 'owner' | 'x' | 'y'>>;
 
 export interface OreNode {
   id: number;
@@ -88,11 +113,37 @@ export interface SimInit {
   seed: number;
   difficulty: Difficulty;
   players?: [PlayerState, PlayerState];
-  nodes?: OreNode[];
-  entities?: Entity[];
+  nodes?: readonly OreNode[];
+  entities?: readonly EntitySeed[];
 }
 
 const byId = (a: { id: number }, b: { id: number }): number => a.id - b.id;
+
+const DEFAULT_HP: Record<Kind, number> = {
+  [KIND.BASE]: MAX_HP.base,
+  [KIND.FACTORY]: MAX_HP.factory,
+  [KIND.WORKER]: MAX_HP.worker,
+  [KIND.SCOUT]: MAX_HP.scout,
+  [KIND.TROOPER]: MAX_HP.trooper,
+  [KIND.TANK]: MAX_HP.tank,
+};
+
+function hydrate(seed: EntitySeed): Entity {
+  return {
+    id: seed.id,
+    kind: seed.kind,
+    owner: seed.owner,
+    x: seed.x,
+    y: seed.y,
+    hp: seed.hp ?? DEFAULT_HP[seed.kind],
+    state: seed.state ?? ENTITY_STATE.IDLE,
+    targetId: seed.targetId ?? -1,
+    cooldown: seed.cooldown ?? 0,
+    progress: seed.progress ?? 0,
+    destX: seed.destX ?? -1,
+    destY: seed.destY ?? -1,
+  };
+}
 
 /**
  * Build a fresh simulation state.
@@ -103,7 +154,7 @@ const byId = (a: { id: number }, b: { id: number }): number => a.id - b.id;
  * find.
  */
 export function createInitialState(init: SimInit): SimState {
-  const entities = (init.entities ?? []).map((e) => ({ ...e })).sort(byId);
+  const entities = (init.entities ?? []).map(hydrate).sort(byId);
   const nodes = (init.nodes ?? []).map((n) => ({ ...n })).sort(byId);
 
   let nextEntityId = 1;

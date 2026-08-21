@@ -12,4 +12,4 @@
  * the pull request — or it changed by accident, which is the defect the corpus
  * exists to catch.
  */
-export const SIM_VERSION = 1;
+export const SIM_VERSION = 3;

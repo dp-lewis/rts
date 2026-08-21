@@ -79,7 +79,7 @@ requirements:
     text: "Starting workers auto-gather from tick 0 with no player input"
     stories: ["US-003"]
     tasks: ["T029", "T033"]
-    code: []
+    code: ["src/sim/economy.ts", "src/sim/step.ts"]
     tests: []
   - id: "FR-007"
     text: "Drag-rectangle selects all own units intersecting it"
@@ -127,7 +127,7 @@ requirements:
     text: "Map is a fixed single screen: no scrolling, no camera, no minimap"
     stories: ["US-007"]
     tasks: ["T031", "T047", "T050"]
-    code: []
+    code: ["src/sim/grid.ts", "src/sim/constants.ts"]
     tests: []
   - id: "FR-015"
     text: "No fog of war; both bases visible from the first frame"
@@ -139,7 +139,7 @@ requirements:
     text: "Ore nodes hold finite amounts and visibly deplete"
     stories: ["US-008"]
     tasks: ["T030", "T033", "T057"]
-    code: []
+    code: ["src/sim/economy.ts"]
     tests: []
   - id: "FR-017"
     text: "Destroying the enemy Base wins; losing own Base loses"
@@ -175,7 +175,7 @@ requirements:
     text: "A* open-set ties resolve by stable entity id"
     stories: []
     tasks: ["T026", "T032"]
-    code: []
+    code: ["src/sim/pathfind.ts"]
     tests: []
   - id: "FR-023"
     text: "Screen-edge indicator + audio cue when an owned entity takes damage"
@@ -205,7 +205,7 @@ requirements:
     text: "Ore-node selection resolves by least squared distance, ties by ascending node id"
     stories: ["US-003"]
     tasks: ["T027", "T033"]
-    code: []
+    code: ["src/sim/economy.ts"]
     tests: []
   - id: "FR-028"
     text: "Simultaneous Base destruction on one tick resolves as an explicit Draw"

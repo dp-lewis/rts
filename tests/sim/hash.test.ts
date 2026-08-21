@@ -29,6 +29,8 @@ function entity(overrides: Partial<Entity> = {}): Entity {
     targetId: -1,
     cooldown: 0,
     progress: 0,
+    destX: -1,
+    destY: -1,
     ...overrides,
   };
 }
@@ -74,6 +76,8 @@ describe('hash stability', () => {
     const shuffled: SimState = {
       nextEntityId: canonical.nextEntityId,
       entities: canonical.entities.map((e) => ({
+        destY: e.destY,
+        destX: e.destX,
         progress: e.progress,
         cooldown: e.cooldown,
         targetId: e.targetId,
@@ -117,6 +121,8 @@ describe('hash sensitivity — every hashed field must move the hash', () => {
     ['entity targetId', state({ entities: [entity({ id: 1, targetId: 2 }), entity({ id: 2, owner: 1, x: 1024, y: 1024 })] })],
     ['entity cooldown', state({ entities: [entity({ id: 1, cooldown: 5 }), entity({ id: 2, owner: 1, x: 1024, y: 1024 })] })],
     ['entity progress', state({ entities: [entity({ id: 1, progress: 0.5 }), entity({ id: 2, owner: 1, x: 1024, y: 1024 })] })],
+    ['entity destX', state({ entities: [entity({ id: 1, destX: 640 }), entity({ id: 2, owner: 1, x: 1024, y: 1024 })] })],
+    ['entity destY', state({ entities: [entity({ id: 1, destY: 640 }), entity({ id: 2, owner: 1, x: 1024, y: 1024 })] })],
     ['nextEntityId', state({ nextEntityId: 4 })],
   ])('changes when %s changes', (_field, mutated) => {
     expect(hashState(mutated)).not.toBe(baseline);
@@ -157,6 +163,18 @@ describe('hash ignores everything presentational', () => {
   it('is unchanged by fields that are not part of simulation state', () => {
     const withJunk = { ...state(), camera: { x: 12, y: 44 }, selection: [1, 2], alpha: 0.62 };
     expect(hashState(withJunk as SimState)).toBe(hashState(state()));
+  });
+});
+
+describe('destination sentinel', () => {
+  it('distinguishes "no destination" from a destination at the origin', () => {
+    // -1 is the sentinel and 0 is a real coordinate. A hash that treated the
+    // sentinel as just another number would still separate these, but a model
+    // that used 0 or null for "none" would not — which is why the sentinel is
+    // -1 and why this assertion exists.
+    const none = state({ entities: [entity({ id: 1, destX: -1, destY: -1 })] });
+    const origin = state({ entities: [entity({ id: 1, destX: 0, destY: 0 })] });
+    expect(hashState(none)).not.toBe(hashState(origin));
   });
 });
 

@@ -1,7 +1,7 @@
 import type { Command } from './commands';
 import { hashState } from './hash';
 import { step } from './step';
-import { createInitialState, type Difficulty, type Entity, type OreNode, type PlayerState, type SimInit } from './state';
+import { createInitialState, type Difficulty, type EntitySeed, type OreNode, type PlayerState, type SimInit } from './state';
 import { SIM_VERSION } from './version';
 
 /**
@@ -32,8 +32,8 @@ export interface Checkpoint {
  */
 export interface ReplaySetup {
   players?: [PlayerState, PlayerState];
-  nodes?: OreNode[];
-  entities?: Entity[];
+  nodes?: readonly OreNode[];
+  entities?: readonly EntitySeed[];
 }
 
 export interface Replay {

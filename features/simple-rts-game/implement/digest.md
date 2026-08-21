@@ -1,8 +1,8 @@
 # Phase Digest — Implement (M0 only)
 
-**Phase:** 6 · Implement · **Scope:** M0 — Enforcement skeleton · M1 — Determinism harness
-**Date:** 2026-08-22 · **Tasks:** T001–T025 complete (25 / 82)
-**Status:** M0 and M1 complete
+**Phase:** 6 · Implement · **Scope:** M0 Enforcement skeleton · M1 Determinism harness · M2 Grid, movement, economy
+**Date:** 2026-08-22 · **Tasks:** T001–T033 complete (33 / 82)
+**Status:** M0, M1 and M2 complete · `SIM_VERSION` 3 · 122 tests green
 
 ---
 
@@ -164,3 +164,97 @@ dependencies remain exactly one.
 - The corpus failure paths were verified by deliberately breaking the case — first
   divergence reporting, stale detection, ahead detection, dry run, and refusal to
   regenerate a current case. See implementation-log.md for the transcript.
+
+
+---
+
+# M2 — Grid, movement, economy
+
+## Key decisions
+
+- **No path is stored anywhere.** ADR-001 Amendment 2. Units do not collide in v1
+  (pre-impl F-2) and the grid is static, so a path is a pure function of (current
+  cell, goal cell, grid) and A\* over ~220 cells is microseconds. Storing one would be
+  a cache keyed on a position that has since moved, and it would force a
+  variable-length array into an otherwise fixed-width per-entity hash encoding. Both
+  costs, no benefit.
+
+- **`EntitySeed` introduced alongside the destination field.** Adding a required field
+  to `Entity` would have broken every literal construction in the tests and every
+  corpus case at once. Seeds require id, kind, owner, and position; everything else
+  defaults. Future field additions are now additive for callers.
+
+- **Cells are scalar indices, not `{x, y}` pairs.** A scalar gives the open set a
+  natural, total, cheap tie-break key and removes any question of how two coordinate
+  pairs compare.
+
+- **The open set is a linear scan, deliberately.** A binary heap would need its own
+  tie-break to stay deterministic under equal keys — heap sift order is precisely the
+  incidental ordering O-7 warns about — and a scan over ~220 cells is both trivially
+  fast and obviously correct.
+
+- **`entityId` is accepted by `findPath` and deliberately unused.** FR-022 names it as
+  the second tie-break key, but two units asking for the same route should get the
+  same route. The key belongs at a future point of *contention* — cell reservation or
+  formation assignment — not smuggled into the heuristic, where it would silently
+  degrade path quality for every unit.
+
+- **Squared distance everywhere in comparisons.** `sqrt` is correctly rounded under
+  IEEE 754 so it would be safe, but comparing squares gives the same ordering with
+  fewer operations between the coordinates and the comparison — and distance
+  comparison is the one place a rounding difference silently flips a tie.
+
+## The finding that matters
+
+**The O-2 tests were passing for the wrong reason.** Deleting the A\* tie-break
+entirely left all ten pathfinding tests green, because the open set is a linearly
+scanned array: among equal `f` the first-*pushed* candidate wins, and push order is
+fixed. Determinism was real but came from somewhere unrelated to FR-022, so the rule
+the milestone existed to enforce was untested insurance that would have evaporated the
+moment anyone swapped in a heap.
+
+This is the same class of error M0 caught, where a lint test would have gone green
+against an empty config. Both were invisible from the outside and both were found by
+asking "would this test fail if the thing it guards were removed?" — a question worth
+asking of every guard in this project, because it has now had a positive answer twice.
+
+Fixed by exporting the comparator and testing it against permuted candidate order.
+Mutation-verified: deleting the tie-break was 10 passed before, 3 failed after.
+
+## Artifacts produced
+
+| Path | Task |
+|---|---|
+| `tests/sim/pathfind.test.ts`, `tests/sim/economy.test.ts`, `tests/sim/ordering.test.ts` | T026–T030 |
+| `src/sim/grid.ts` | T031 |
+| `src/sim/pathfind.ts` | T032 |
+| `src/sim/economy.ts` | T033 |
+| `src/sim/step.ts`, `src/sim/constants.ts`, `tests/replay/corpus/001-baseline.json` | wiring / re-authoring |
+
+## Open risks
+
+1. **Cross-platform agreement has still not been tested against floating-point
+   movement.** M2 is the milestone that introduces it — unit positions are now doubles
+   accumulated through `dx / distance * speed` every tick. The next CI matrix run is
+   the first that could plausibly find real divergence, and a red result would be a
+   *finding*, never a reason to loosen the hash.
+2. **Recomputing A\* every tick for every moving unit is untimed.** Correct by
+   construction and cheap in theory; nobody has measured it with 60 units.
+3. **Workers under explicit orders skip the economy loop entirely.** This extends
+   FR-020's "explicit orders override" beyond combat, which the spec does not state in
+   so many words. Reasonable, but it is an interpretation.
+4. **`ARRIVE_EPSILON` snapping is a float-equality shortcut.** Units snap exactly to a
+   target within 1.5px. Deterministic, but it means position is quantised at
+   destinations in a way M8's tuning should be aware of.
+5. **M3 building placement must not create off-map entities.** `findPath` returns `[]`
+   out of bounds, so such units silently stand still rather than erroring.
+
+## Handoff notes
+
+- **Read `chooseBestOpen` and its tests together**, and read the mutation table in
+  implementation-log.md before deciding the pathfinder is fine. The interesting
+  property is not what the comparator does but that anything would notice if it
+  stopped doing it.
+- **`runEconomy` is a single function with the whole worker state machine in it.** It
+  reads linearly today; if M3 adds combat interactions to workers it will need
+  splitting before it stops reading linearly.

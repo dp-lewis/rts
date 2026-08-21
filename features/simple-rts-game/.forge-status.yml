@@ -80,25 +80,25 @@ phases:
   implement:
     status: milestone_complete
     started_at: "2026-08-22T06:15:00Z"
-    milestone_completed_at: "2026-08-22T07:20:00Z"
+    milestone_completed_at: "2026-08-22T08:10:00Z"
     digest_path: "implement/digest.md"
     run_scope: "M0 only (T001-T006) — enforcement skeleton. User-scoped at the Phase 6 kickoff gate."
-    milestones_complete: ["M0", "M1"]
+    milestones_complete: ["M0", "M1", "M2"]
     red_gate:
       policy: per_milestone
       policy_rationale: "Greenfield repo: no package.json, no Vitest, no src/. The 27 Test-first tasks span M0-M9 and reference modules that will not exist for days, so a single upfront Red would be 27 bare import errors — a vacuous Red. Instead T001/T002 (pure INFRA, zero product code) scaffold the runner, then each milestone's test block must be observed failing before its implementation block runs. Chosen by the user at the Phase 6 kickoff gate 2026-08-22."
       status: confirmed_failing
-      tests: ["T003 (tests/lint/boundary.test.ts)", "T007-T014 (rng, hash, commands, determinism, roundtrip, headless)"]
+      tests: ["T003 (tests/lint/boundary.test.ts)", "T007-T014 (rng, hash, commands, determinism, roundtrip, headless)", "T026-T030 (pathfind, economy, ordering)"]
       observed_at: "2026-08-22T06:17:37Z"
       evidence: "5 failed | 1 passed. Each failure read 'X was planted in src/sim/... and ESLint reported no error. Rules that did fire: (none)'. Green after T004: 6 passed (6). The one pass in the Red state is the scoping control, green by design in both states."
       m1_note: "Red rejected a SECOND time for the same reason: running the eight new test files against a repo with no src/sim modules produced bare 'Cannot find module' errors with zero new tests collected. Signature-only stubs (every export present, every body throwing) moved the failure to 43 collected tests failing on real calls. Writing the stubs also forced the whole M1 API surface to be settled before any logic existed. Green after T015-T025: 86 passed."
       note: "The first Red draft was REJECTED as insufficient — it failed with 'ESLint returned no result' (no config file, so ESLint matched nothing), which would have gone green on an empty eslint.config.js. Rewritten to lint against a parser-only rule-free fallback so a rule-less config still fails."
       skip_reason: null
-    tasks_completed: 25
+    tasks_completed: 33
     tasks_total: 82
-    tasks_in_scope_this_run: 25
-    progressive_checkpoints: 4
-    progressive_warnings: 2
+    tasks_in_scope_this_run: 33
+    progressive_checkpoints: 6
+    progressive_warnings: 3
     progressive_critical: 0
     dependencies:
       added: 11
@@ -106,13 +106,34 @@ phases:
       warned: 0
       blocked: 0
       log_path: "features/simple-rts-game/dependency-log.md"
+    sim_version: 3
+    sim_version_history:
+      - {version: 1, milestone: "M1", reason: "initial simulation behaviour"}
+      - {version: 2, milestone: "M2 start", reason: "destX/destY added to Entity and the hash (ADR-001 Amendment 2). Deliberate regen, all 4 recorded hashes changed — the expected size for two new hashed fields per entity."}
+      - {version: 3, milestone: "M2", reason: "economy and movement wired into the tick. NOT bumped in the same edit at first: the corpus caught it as a REGRESSION (first divergence tick 100) rather than as staleness, which is the more useful failure. Bumped by hand, regenerated, hashes matched the regression's 'got' column exactly."}
     findings_for_gate:
+      - id: "M2-F1"
+        severity: "resolved"
+        title: "The O-2 tie-break tests were passing for the wrong reason"
+        detail: "Deleting the A* tie-break entirely left all 10 pathfinding tests green. The open set is a linearly scanned array, so among equal f the first-PUSHED candidate wins and push order is fixed by the neighbour loop — the search was deterministic for a reason unrelated to FR-022, and every path-level assertion passed whether the comparator was total or absent. Path output cannot detect this because the property is invisible unless the open set's order varies, which it never does today and would the moment anyone swapped in a binary heap. Same class of error as M0's empty-config Red."
+        resolution: "Comparator exported as chooseBestOpen and tested directly against PERMUTED candidate order. Mutation-verified: tie-break deleted was 10 passed before, 3 failed after."
+      - id: "M2-F2"
+        severity: "resolved"
+        title: "The baseline corpus case was testing a layout the game cannot produce"
+        detail: "001-baseline was authored in M1 before a grid existed. Once M2 fixed the map at 20x11 tiles (1280x704 px), three of its six entities and one of its two ore nodes were off the map — player 1's economy and movement were entirely unexercised."
+        resolution: "Re-authored as a proper mirror across x=640 on cell centres. Both sides now gather from tick 0 with no input (p0 +60 ore, p1 +30 over 400 ticks); both same-tick command collisions preserved with the AI listed first so O-4 stays a real guard."
+      - id: "M2-F3"
+        severity: "informational"
+        title: "ADR-002 caught an undeclared behaviour change"
+        detail: "Wiring economy into the tick changed behaviour without a SIM_VERSION bump in the same edit. The corpus failed as a regression rather than staleness — the correct and more useful failure, since it says 'behaviour moved and you did not declare it'. After the hand bump the message switched to the stale path and regeneration produced hashes identical to the regression's 'got' column. The discipline worked without anyone remembering to apply it."
       - id: "M1-F1"
-        severity: "needs decision"
+        severity: "resolved"
+        resolution: "ACCEPTED at the M1 gate 2026-08-22. ADR-001 Amendment 1 written into plan/adr/ADR-001-canonical-state-hash.md: fields 7 and 8 added to the hashed list, an Amendments section records what changed, why, how it was found, and how to revert, and the original field list is added to Alternatives rejected. Code comment in hash.ts updated to cite the amendment rather than propose it."
         title: "ADR-001 amendment — hash covers difficulty and nextEntityId"
         detail: "ADR-001 opens with 'exactly the simulation state' then lists fields omitting both. Neither is presentational or derived, so neither falls under the ADR's own 'what is NOT hashed' list — a drafting gap, not a deliberate exclusion. It matters: two states differing only in nextEntityId diverge at the next spawn, and difficulty is a field precisely so it can vary independently (FR-029). Implemented as a purely additive append AFTER the ADR's six fields; reverting is two lines plus one corpus:regen."
       - id: "M1-F2"
-        severity: "needs decision"
+        severity: "deferred to M2 (decided)"
+        resolution: "DECIDED at the M1 gate 2026-08-22: M2 owns movement and pathfinding, so M2 chooses the field shape, adds it to Entity and the hash, amends ADR-001, bumps simVersion, and regenerates the corpus — all in one reviewed change. Adding destX/destY now would mean guessing a shape before pathfinding has a design."
         title: "Data model has no destination field, so move orders cannot be recorded"
         detail: "plan.md's Entity and ADR-001's hashed field list both omit one. step() handles attack and build; move hits an explicit commented case that does nothing. Inventing destX/destY in M1 would add a hashed field ahead of the milestone that owns movement, staling every corpus hash recorded in between. M2 must decide the field and amend ADR-001 in the same change."
       - id: "M1-F3"

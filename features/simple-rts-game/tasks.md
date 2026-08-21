@@ -143,36 +143,36 @@ asserting on state, not rendered output (Principle II).
 
 ### Tests (Red first)
 
-- [ ] T026 [P] [FR-022] Test **O-2 / TC-UNIT-004**: two equal-cost A\* paths resolve identically every run, tie broken by cell index then entity id
+- [x] T026 [P] [FR-022] Test **O-2 / TC-UNIT-004**: two equal-cost A\* paths resolve identically every run, tie broken by cell index then entity id
       Paths: tests/sim/pathfind.test.ts
       Test-first: true
       Size: M
-- [ ] T027 [P] [FR-027] Test **O-3 / TC-UNIT-003**: two ore nodes equidistant from a worker — the **lower node id** wins, every run
+- [x] T027 [P] [FR-027] Test **O-3 / TC-UNIT-003**: two ore nodes equidistant from a worker — the **lower node id** wins, every run
       Paths: tests/sim/economy.test.ts
       Test-first: true
       Size: S
-- [ ] T028 [P] [FR-003] Test **O-7**: entity traversal during `step()` is id-sorted index order; adding entities out of order does not change results
+- [x] T028 [P] [FR-003] Test **O-7**: entity traversal during `step()` is id-sorted index order; adding entities out of order does not change results
       Paths: tests/sim/ordering.test.ts
       Test-first: true
       Size: M
-- [ ] T029 [FR-006] Test: starting workers gather from tick 0 with **no player input**
+- [x] T029 [FR-006] Test: starting workers gather from tick 0 with **no player input**
       Paths: tests/sim/economy.test.ts
       Test-first: true
       Size: S
-- [ ] T030 [FR-016] Test **TC-UNIT-007**: nodes deplete; on exhaustion workers idle at Base **without repath thrashing**; worker en route to an exhausted node retargets deterministically
+- [x] T030 [FR-016] Test **TC-UNIT-007**: nodes deplete; on exhaustion workers idle at Base **without repath thrashing**; worker en route to an exhausted node retargets deterministically
       Paths: tests/sim/economy.test.ts
       Test-first: true
       Size: M
 
 ### Implementation
 
-- [ ] T031 [FR-014] 64 px tile grid + passability
+- [x] T031 [FR-014] 64 px tile grid + passability
       Paths: src/sim/grid.ts
       Size: S
-- [ ] T032 [FR-022] A\* with stable tie-breaking — **O-2**
+- [x] T032 [FR-022] A\* with stable tie-breaking — **O-2**
       Paths: src/sim/pathfind.ts
       Size: L
-- [ ] T033 [FR-006, FR-016, FR-027] Ore nodes, worker gather loop, depletion — **O-3**
+- [x] T033 [FR-006, FR-016, FR-027] Ore nodes, worker gather loop, depletion — **O-3**
       Paths: src/sim/economy.ts
       Size: L
 

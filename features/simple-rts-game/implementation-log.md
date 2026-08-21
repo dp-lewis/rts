@@ -264,3 +264,135 @@ redundant, and the test now says so.
    first contact. But it held for a 400-tick skeleton whose arithmetic is nearly all
    integer; the genuine test arrives when M2 introduces floating-point movement and
    squared-distance comparisons.
+
+---
+
+## Red gate — M2
+
+**Tasks:** T026–T030 · **Turned green by:** T031–T033 · **Status:** `confirmed_failing` → `green`
+
+Stub-first again, and it caught something new. The first stub run showed
+`pathfind.test.ts` failing at *collection* rather than at assertions — `openGrid()`
+was being called in `describe` scope, so one throwing helper took the whole file down
+and reported a suite error instead of ten failing tests. Grid construction moved
+inside each test. Final Red: **20 failed**, all at assertion level, split across
+pathfind (10) and economy (10).
+
+Green after T031–T033: **122 passed (122)**.
+
+Three economy tests passed *vacuously* in the Red state — conservation of ore, the
+carry-capacity bound, and retarget determinism all hold trivially when nothing
+happens. Noted rather than removed: they are regression guards whose value starts
+when the loop runs, and they do now hold non-vacuously.
+
+---
+
+## 🔴 The O-2 tests were passing for the wrong reason
+
+The most important finding of M2, and the same class of error M0 caught:
+
+**Deleting the A\* tie-break entirely left all 10 pathfinding tests green.**
+
+The open set is a linearly scanned array, so among equal `f` the first-*pushed*
+candidate wins — and push order is fixed by the neighbour loop. The search was
+therefore deterministic for a reason that has nothing whatever to do with FR-022, and
+every path-level assertion ("same route every time", "unaffected by wall declaration
+order") passed whether the comparator was total or absent. The rule the milestone
+existed to enforce was untested insurance.
+
+Path output cannot detect this, because the property under test is invisible unless
+the open set's order varies — which it never does today, and would the moment anyone
+swapped the array for a binary heap.
+
+The comparator is now exported as `chooseBestOpen` and tested **directly against
+permuted candidate order**, where a missing tie-break is immediately visible. Verified
+by mutation:
+
+| | tie-break present | tie-break deleted |
+|---|---|---|
+| before this change | 10 passed | **10 passed** ← the problem |
+| after | 15 passed | **3 failed** |
+
+## Other mutation checks
+
+- **O-3**: flipping `<` to `<=` in `chooseOreNode` fails exactly one test, by name
+  ("breaks an exact tie by the LOWER node id"). That single character *is* the
+  tie-break.
+
+## ADR-002 caught an undeclared behaviour change
+
+Wiring economy into the tick changed simulation behaviour, and I did not bump
+`SIM_VERSION` in the same edit. The corpus failed as a **regression**, not as
+staleness:
+
+```
+FAIL tick 100  expected adc5f03fd987711a  got e3f5bd625cc2041b   ← first divergence
+FAIL tick 200 …  FAIL tick 300 …  FAIL tick 400 … (terminal)
+```
+
+Which is the correct and more useful failure: it says "behaviour moved and you did not
+declare it". After the hand bump to `simVersion 3` the message changed to the stale
+path, regeneration produced hashes identical to the "got" column, and the suite went
+green. The discipline worked without anyone remembering to apply it.
+
+## The baseline corpus case was testing an impossible layout
+
+`001-baseline` was authored in M1, before a grid existed. Once M2 fixed the map at
+20×11 tiles (1280×704 px), three of its six entities and one of its two ore nodes were
+**off the map** — so player 1's economy and movement were entirely unexercised, and
+the case was asserting the behaviour of a configuration the game can never produce.
+
+Re-authored as a proper mirror across x=640, on cell centres. Both sides now gather
+from tick 0 with no input (p0 banks +60 ore, p1 +30 over 400 ticks), and both same-tick
+command collisions are preserved with the AI listed first so O-4 stays a real guard.
+
+## Checkpoint #5 — after T026–T030 (M2 test block)
+
+| Check | Status | Notes |
+|-------|:------:|-------|
+| Task-Code correspondence | ✅ | 5 test tasks → `pathfind.test.ts`, `economy.test.ts`, `ordering.test.ts`, paths exactly as listed. |
+| Spec AC alignment | ✅ | TC-UNIT-003 (O-3), TC-UNIT-004 (O-2), TC-UNIT-007 (depletion) each have a named test; FR-006 and O-7 covered. |
+| Unplanned changes | ✅ None | |
+| Plan alignment | ✅ | |
+| Dependency / supply-chain | ✅ None added | |
+
+**Verdict:** CLEAN.
+
+## Checkpoint #6 — after T031–T033 (M2 implementation)
+
+| Check | Status | Notes |
+|-------|:------:|-------|
+| Task-Code correspondence | ✅ | `grid.ts`, `pathfind.ts`, `economy.ts`. |
+| Spec AC alignment | ✅ | 122/122 green; both tie-break guards mutation-verified. |
+| Unplanned changes | ⚠️ 3 files | `src/sim/step.ts` (wires stages 3 and 5; the plan has no `movement.ts`, so the movement system lives as a stage function in `step.ts`), `src/sim/constants.ts` (map dimensions, ranges), `tests/replay/corpus/001-baseline.json` (re-authored). |
+| Plan alignment | ✅ | Pipeline order unchanged; `STAGES` test still pins it. |
+| Dependency / supply-chain | ✅ None added | |
+
+**Verdict:** CLEAN — M2 complete.
+
+## Deviations and open items carried out of M2
+
+1. **M1-F2 resolved — `destX`/`destY` added, no path stored.** ADR-001 Amendment 2.
+   Units do not collide in v1 (pre-impl F-2) and the grid is static, so a path is a
+   pure function of (current cell, goal cell, grid); over ~220 cells recomputing is
+   microseconds. Storing one would be a cache keyed on a position that has since
+   moved, and would force a variable-length array into a fixed-width per-entity hash
+   encoding. `EntitySeed` was introduced at the same time so future field additions do
+   not break every fixture at once.
+2. **`SIM_VERSION` is now 3**, bumped twice in M2 — once for the destination field, once
+   for economy. Two deliberate regenerations, both with visible hash diffs.
+3. **The movement system lives in `step.ts`.** plan.md's file list has no `movement.ts`
+   despite the pipeline naming a movement stage. Rather than invent a file the plan
+   does not have, it is a stage function alongside the others. Worth revisiting if it
+   grows.
+4. **`entityId` is accepted by `findPath` but deliberately unused.** FR-022 names entity
+   id as the second tie-break key, but two units asking for the same route should get
+   the same route. The key belongs at a future point of *contention* — cell reservation
+   or formation assignment — not smuggled into the heuristic where it would silently
+   degrade path quality. Documented at the call site.
+5. **Workers under explicit orders skip the economy loop.** A worker told to attack or
+   build stops gathering. This applies FR-020's "explicit orders override" principle
+   beyond combat, which the spec does not state in so many words.
+6. **Off-map entities simply cannot path.** `findPath` returns `[]` for out-of-bounds
+   cells, so such units stand still — deterministic, no crash. Nothing on-map produces
+   this now that the corpus case is fixed, but M3 building placement must not create it.

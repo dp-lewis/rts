@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "001-baseline",
-  "description": "M1 harness baseline. Player and AI commands land on the same tick in hostile arrival order (O-4); proves the recorded seed and log reproduce identical checkpoint and terminal hashes. Not a defect regression — it is the case that proves the corpus machinery itself works before any defect needs it.",
+  "description": "M1/M2 harness baseline on the real 20x11 map, mirrored across x=640. Player and AI commands land on the same tick twice with the AI listed first, so applying arrival order instead of (issuer, seq) changes the hash (O-4). Both sides gather from tick 0 with no player input (FR-006). Not a defect regression: this is the case that proves the corpus machinery works before any defect needs it.",
   "defect": null,
   "createdAt": "2026-08-22",
-  "simVersion": 1,
+  "simVersion": 3,
   "input": {
     "seed": 20260822,
     "difficulty": 1,
@@ -24,23 +24,12 @@
         "tick": 20,
         "issuer": 0,
         "seq": 0,
-        "type": "attack",
-        "units": [
-          2,
-          3
-        ],
-        "targetId": 6
-      },
-      {
-        "tick": 60,
-        "issuer": 0,
-        "seq": 1,
         "type": "build",
         "builderId": 1,
-        "kind": 4
+        "kind": 2
       },
       {
-        "tick": 60,
+        "tick": 120,
         "issuer": 1,
         "seq": 1,
         "type": "build",
@@ -48,7 +37,15 @@
         "kind": 4
       },
       {
-        "tick": 140,
+        "tick": 120,
+        "issuer": 0,
+        "seq": 1,
+        "type": "build",
+        "builderId": 1,
+        "kind": 4
+      },
+      {
+        "tick": 250,
         "issuer": 1,
         "seq": 2,
         "type": "attack",
@@ -56,17 +53,6 @@
           6
         ],
         "targetId": 1
-      },
-      {
-        "tick": 200,
-        "issuer": 0,
-        "seq": 2,
-        "type": "attack",
-        "units": [
-          2,
-          3
-        ],
-        "targetId": 4
       }
     ],
     "setup": {
@@ -81,14 +67,14 @@
       "nodes": [
         {
           "id": 0,
-          "x": 448,
-          "y": 448,
+          "x": 416,
+          "y": 352,
           "remaining": 1500
         },
         {
           "id": 1,
-          "x": 1472,
-          "y": 1472,
+          "x": 864,
+          "y": 352,
           "remaining": 1500
         }
       ],
@@ -97,92 +83,62 @@
           "id": 1,
           "kind": 0,
           "owner": 0,
-          "x": 256,
-          "y": 256,
-          "hp": 1500,
-          "state": 0,
-          "targetId": -1,
-          "cooldown": 0,
-          "progress": 0
+          "x": 160,
+          "y": 352
         },
         {
           "id": 2,
           "kind": 2,
           "owner": 0,
-          "x": 320,
-          "y": 320,
-          "hp": 40,
-          "state": 0,
-          "targetId": -1,
-          "cooldown": 0,
-          "progress": 0
+          "x": 224,
+          "y": 288
         },
         {
           "id": 3,
           "kind": 2,
           "owner": 0,
-          "x": 320,
-          "y": 384,
-          "hp": 40,
-          "state": 0,
-          "targetId": -1,
-          "cooldown": 0,
-          "progress": 0
+          "x": 224,
+          "y": 416
         },
         {
           "id": 4,
           "kind": 0,
           "owner": 1,
-          "x": 1664,
-          "y": 1664,
-          "hp": 1500,
-          "state": 0,
-          "targetId": -1,
-          "cooldown": 0,
-          "progress": 0
+          "x": 1120,
+          "y": 352
         },
         {
           "id": 5,
           "kind": 2,
           "owner": 1,
-          "x": 1600,
-          "y": 1600,
-          "hp": 40,
-          "state": 0,
-          "targetId": -1,
-          "cooldown": 0,
-          "progress": 0
+          "x": 1056,
+          "y": 288
         },
         {
           "id": 6,
           "kind": 4,
           "owner": 1,
-          "x": 1536,
-          "y": 1536,
-          "hp": 90,
-          "state": 0,
-          "targetId": -1,
-          "cooldown": 0,
-          "progress": 0
+          "x": 1056,
+          "y": 416
         }
       ]
     }
   },
   "expected": {
     "finalTick": 400,
-    "stateHash": "4bfba753aca714fa",
+    "stateHash": "fc077d8bcae5c84a",
     "checkpoints": [
       {
         "tick": 100,
-        "stateHash": "c73f4a9fee3c10da"
+        "stateHash": "7642e8dcc06528bd"
       },
       {
         "tick": 200,
-        "stateHash": "df946e7887875779"
+        "stateHash": "921360eca13f8235"
       },
       {
         "tick": 300,
-        "stateHash": "10f1809790be9d4e"
+        "stateHash": "ef8a6969c13cca9c"
       }
     ]
   }

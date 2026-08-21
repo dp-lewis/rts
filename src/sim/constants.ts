@@ -18,6 +18,21 @@ export const MS_PER_TICK = 1000 / TICK_HZ;
 /** World geometry. One grid cell is one 64px tile. */
 export const TILE_PX = 64;
 
+/** FR-014: one fixed single screen, no scrolling and no camera. */
+export const MAP_TILES_X = 20;
+export const MAP_TILES_Y = 11;
+
+/**
+ * How close a unit must be to act on something, in world px, compared as SQUARED
+ * distance. Both are under one tile, so "arrived" means the same thing whichever
+ * side of a cell boundary the target sits on.
+ */
+export const GATHER_RANGE = 48;
+export const DEPOSIT_RANGE = 56;
+
+/** Within this many px of its destination, a unit snaps and stops. */
+export const ARRIVE_EPSILON = 1.5;
+
 /** Starting resources. */
 export const STARTING_ORE = 150;
 

@@ -1,5 +1,9 @@
 import { sortCommands, type Command } from './commands';
-import { ENTITY_STATE, cloneState, type Entity, type SimState } from './state';
+import { ARRIVE_EPSILON, MAP_TILES_X, MAP_TILES_Y, SPEED } from './constants';
+import { runEconomy } from './economy';
+import { cellCentreX, cellCentreY, cellOf, createGrid, isPassable, type Grid } from './grid';
+import { findPath } from './pathfind';
+import { ENTITY_STATE, KIND, cloneState, type Entity, type SimState } from './state';
 
 /**
  * The tick function — `step(state, commands) → state`, pure.
@@ -19,9 +23,9 @@ import { ENTITY_STATE, cloneState, type Entity, type SimState } from './state';
 export const STAGES = [
   'applyCommands', //        1 — sorted by (issuer, seq)                    O-4
   'aiThink', //              2 — emits commands for tick+1; uses sim RNG     M4
-  'economy', //              3 — gather, deposit, deplete nodes             O-3, M2
+  'economy', //              3 — gather, deposit, deplete nodes                 O-3
   'production', //           4 — advance queues, spend ore                  O-5, M3
-  'movement', //             5 — pathfind + step positions                  O-2, M2
+  'movement', //             5 — pathfind + step positions                      O-2
   'combatAcquire', //        6 — choose targets                             O-1, M3
   'combatCollectDamage', //  7 — accumulate, do NOT apply                        M3
   'combatApplyDamage', //    8 — atomic, end of tick                        O-6, M3
@@ -86,12 +90,117 @@ function applyCommands(state: SimState, commands: readonly Command[]): void {
   }
 }
 
+/** Speed in world px per tick, by kind. Structures do not move. */
+function speedOf(entity: Entity): number {
+  switch (entity.kind) {
+    case KIND.WORKER:
+      return SPEED.worker;
+    case KIND.SCOUT:
+      return SPEED.scout;
+    case KIND.TROOPER:
+      return SPEED.trooper;
+    case KIND.TANK:
+      return SPEED.tank;
+    default:
+      return 0;
+  }
+}
+
+/**
+ * The passability grid, rebuilt from hashed state every tick.
+ *
+ * Derived, therefore never stored and never hashed — ADR-001 is explicit that a
+ * cached value which can drift from its source is itself the bug. Rebuilding a
+ * 220-cell boolean array per tick costs nothing measurable and removes the
+ * question entirely.
+ */
+function gridFor(state: SimState): Grid {
+  const bare = createGrid(MAP_TILES_X, MAP_TILES_Y, []);
+  const blocked: number[] = [];
+  for (let i = 0; i < state.entities.length; i += 1) {
+    const entity = state.entities[i]!;
+    if (entity.state === ENTITY_STATE.DEAD) {
+      continue;
+    }
+    if (entity.kind === KIND.BASE || entity.kind === KIND.FACTORY) {
+      blocked.push(cellOf(bare, entity.x, entity.y));
+    }
+  }
+  return createGrid(MAP_TILES_X, MAP_TILES_Y, blocked);
+}
+
+/**
+ * Stage 5. Steps every entity that has a destination one tick along its path.
+ *
+ * The path is recomputed from the unit's CURRENT cell each tick rather than
+ * stored (ADR-001 Amendment 2). Because the grid is static and the tie-break is
+ * total, recomputing yields the suffix of the same path, so a unit does not
+ * wander — and there is no cached path to drift from the position it was computed
+ * for.
+ */
+function runMovement(state: SimState, grid: Grid): void {
+  for (let i = 0; i < state.entities.length; i += 1) {
+    const entity = state.entities[i]!;
+    if (entity.state === ENTITY_STATE.DEAD || entity.destX < 0 || entity.destY < 0) {
+      continue;
+    }
+
+    const speed = speedOf(entity);
+    if (speed === 0) {
+      continue;
+    }
+
+    const goalCell = cellOf(grid, entity.destX, entity.destY);
+    const fromCell = cellOf(grid, entity.x, entity.y);
+
+    // A destination inside a blocked cell (a Base, say) is normal: workers are
+    // sent AT the Base to deposit, not into it. Walk to the cell edge and let the
+    // range check in economy do the rest.
+    let targetX = entity.destX;
+    let targetY = entity.destY;
+
+    if (fromCell !== goalCell) {
+      const path = isPassable(grid, goalCell) ? findPath(grid, fromCell, goalCell, entity.id) : [];
+      const nextCell = path[0];
+      if (nextCell !== undefined) {
+        targetX = cellCentreX(grid, nextCell);
+        targetY = cellCentreY(grid, nextCell);
+      }
+    }
+
+    const dx = targetX - entity.x;
+    const dy = targetY - entity.y;
+    const distanceSquared = dx * dx + dy * dy;
+
+    if (distanceSquared <= ARRIVE_EPSILON * ARRIVE_EPSILON) {
+      entity.x = targetX;
+      entity.y = targetY;
+      continue;
+    }
+
+    // sqrt is correctly rounded under IEEE 754, so it is safe here (Constitution I
+    // bans the transcendentals, not sqrt). Distance COMPARISONS still use squares.
+    const distance = Math.sqrt(distanceSquared);
+    if (distance <= speed) {
+      entity.x = targetX;
+      entity.y = targetY;
+    } else {
+      entity.x += (dx / distance) * speed;
+      entity.y += (dy / distance) * speed;
+    }
+  }
+}
+
 export function step(state: SimState, commands: readonly Command[]): SimState {
   const next = cloneState(state);
 
-  applyCommands(next, commands); // 1
-  // 2–9: no systems exist yet. See STAGES for what lands where.
-  next.tick += 1; // 10
+  applyCommands(next, commands); //    1
+  //                                   2  aiThink — M4
+  runEconomy(next); //                 3
+  //                                   4  production — M3
+  runMovement(next, gridFor(next)); // 5
+  //                                   6–9  combat and victory — M3
+  next.tick += 1; //                  10
 
   return next;
 }
