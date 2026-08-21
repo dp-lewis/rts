@@ -51,7 +51,7 @@ asserting on state, not rendered output (Principle II).
 - [x] T005 [INFRA] CI workflow — matrix over `ubuntu-latest` + `macos-latest` (Node LTS): lint → typecheck → unit → corpus → build → E2E
       Paths: .github/workflows/ci.yml
       Size: M
-- [ ] T006 [INFRA] Verify CI green on both OS runners; confirm the planted-violation fixtures do not leak into the real lint pass
+- [x] T006 [INFRA] Verify CI green on both OS runners; confirm the planted-violation fixtures do not leak into the real lint pass
       Paths: .github/workflows/ci.yml
       Size: XS
 

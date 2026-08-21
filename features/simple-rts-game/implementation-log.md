@@ -122,6 +122,4 @@ states by design — it is the control that proves the ban is scoped rather than
 6. **`index.html` carries no entry script yet.** The Phaser entry arrives in M5. The page
    exists now so the `build` step is real from the first milestone; `vite build` produces
    `dist/index.html` and the toolchain is proven end to end.
-7. **T006 is verified locally only.** "CI green on both OS runners" requires a push to
-   `origin` (`git@github.com:dp-lewis/rts.git`). Every step was run locally in CI order
-   and passes, but the matrix itself has not executed. Held pending explicit approval.
+7. **T006 CLOSED.** CI run 32523481346 — 4/4 jobs green (ubuntu + macOS x Node 22 + 24). Every runner logged `Lint correctly rejected a planted Math.random() in src/sim/__ci_canary__.ts`, so the boundary guard is proven on Linux as well as locally.

@@ -1,8 +1,8 @@
 # Phase Digest — Implement (M0 only)
 
 **Phase:** 6 · Implement · **Scope:** M0 — Enforcement skeleton
-**Date:** 2026-08-22 · **Tasks:** T001–T005 complete, T006 blocked on a push
-**Status:** partial by design — the run was user-scoped to M0 at the kickoff gate
+**Date:** 2026-08-22 · **Tasks:** T001–T006 complete
+**Status:** M0 complete — the run was user-scoped to M0 at the Phase 6 kickoff gate
 
 ---
 
@@ -59,9 +59,10 @@ Phaser 4.2.1 is the only runtime dependency.
 2. **No simulation code exists yet**, so the boundary rules have been proven against
    fixtures and a canary, never against real sim code under real pressure. M1 is the
    first honest test of whether they are livable.
-3. **The CI matrix has never run.** Every step passes locally on macOS / Node 24.4.1;
-   ubuntu and Node 22 are untested. Determinism divergence between engines is exactly
-   what §IV expects to find, so the first matrix run is genuinely informative.
+3. **The matrix is green but has nothing to disagree about yet.** Run 32523481346 passed
+   4/4 (ubuntu + macOS × Node 22 + 24), and each runner confirmed the boundary guard
+   fires. But no simulation exists, so no hash has been compared across engines. The
+   cross-platform half of §IV is unexercised until M1 lands the corpus.
 4. **`index.html` has no entry script** until M5. `vite build` currently emits an HTML
    file and nothing else — the build step is real but shallow.
 5. **CI matrix widened to 4 jobs** (2 OS × Node 22 and 24) beyond plan.md's wording.
@@ -73,7 +74,7 @@ Phaser 4.2.1 is the only runtime dependency.
   read together.** Everything else in M0 is conventional toolchain configuration; those
   two files are the constitution made executable, and a weakness in either is invisible
   until a replay diverges months from now.
-- **Verify-full should treat T006 as genuinely open**, not a rounding error. The "CI green
-  on both OS runners" criterion is unmet until the matrix runs.
+- **The M0 exit criterion is met on both halves and on all four runners** (CI 32523481346).
+  What is *not* yet proven is cross-engine hash agreement — there are no hashes.
 - The `no-restricted-*` rule arrays are exported as named consts specifically so a
   reviewer can diff intent against plan.md §Enforcement line by line.

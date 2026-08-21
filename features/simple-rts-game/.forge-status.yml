@@ -2,7 +2,7 @@ schema_version: 3
 feature: simple-rts-game
 feature_description: "Make a simple RTS game — local single-player vs AI, client-side Phaser, deterministic fixed-timestep simulation."
 created_at: "2026-08-21"
-last_updated: "2026-08-22T06:25:00Z"
+last_updated: "2026-08-22T06:35:00Z"
 feature_mode: standard
 flow_mode: gated
 v2_native: true
@@ -78,11 +78,12 @@ phases:
     digest_path: "pre-impl-review.md"
     findings: {high: 3, medium: 3, low: 1}
   implement:
-    status: in_progress
+    status: milestone_complete
     started_at: "2026-08-22T06:15:00Z"
+    milestone_completed_at: "2026-08-22T06:35:00Z"
     digest_path: "implement/digest.md"
     run_scope: "M0 only (T001-T006) — enforcement skeleton. User-scoped at the Phase 6 kickoff gate."
-    milestones_complete: ["M0 (partial — T006 open)"]
+    milestones_complete: ["M0"]
     red_gate:
       policy: per_milestone
       policy_rationale: "Greenfield repo: no package.json, no Vitest, no src/. The 27 Test-first tasks span M0-M9 and reference modules that will not exist for days, so a single upfront Red would be 27 bare import errors — a vacuous Red. Instead T001/T002 (pure INFRA, zero product code) scaffold the runner, then each milestone's test block must be observed failing before its implementation block runs. Chosen by the user at the Phase 6 kickoff gate 2026-08-22."
@@ -92,7 +93,7 @@ phases:
       evidence: "5 failed | 1 passed. Each failure read 'X was planted in src/sim/... and ESLint reported no error. Rules that did fire: (none)'. Green after T004: 6 passed (6). The one pass in the Red state is the scoping control, green by design in both states."
       note: "The first Red draft was REJECTED as insufficient — it failed with 'ESLint returned no result' (no config file, so ESLint matched nothing), which would have gone green on an empty eslint.config.js. Rewritten to lint against a parser-only rule-free fallback so a rule-less config still fails."
       skip_reason: null
-    tasks_completed: 5
+    tasks_completed: 6
     tasks_total: 82
     tasks_in_scope_this_run: 6
     progressive_checkpoints: 2
@@ -111,9 +112,15 @@ phases:
         decided_at: "2026-08-22T06:30:00Z"
         detail: "no-restricted-syntax bans ForInStatement outright and catches the .keys()/.values()/.entries() idiom plus iteration of a Map/Set literal. Bare `for (const x of someMap)` on a Map-typed variable is NOT caught — a syntax selector has no type information. Rejected escalations: type-aware linting via projectService (several times slower on every CI run, before any sim code exists to justify it) and banning Map/Set outright in src/sim (A* needs an open set; would force a workaround in pathfinding, where determinism bugs are most expensive)."
         mitigation: "The replay corpus (Constitution IV) fails the build when iteration order diverges across the CI matrix. Revisit only if O-7 actually bites; the escalation path is type-aware linting."
-    open_tasks:
-      - id: "T006"
-        reason: "'Verify CI green on both OS runners' requires a push to origin (git@github.com:dp-lewis/rts.git). Every pipeline step was run locally in CI order and passes, and both halves of the M0 exit criterion are verified locally — but the matrix itself has not executed. Not marked [x] because the criterion is literally about the runners."
+    ci:
+      run_id: 32523481346
+      url: "https://github.com/dp-lewis/rts/actions/runs/32523481346"
+      commit: "7ae9840"
+      verdict: "success — 4/4 jobs green"
+      jobs: ["ubuntu-latest node 22", "ubuntu-latest node 24", "macos-latest node 22", "macos-latest node 24"]
+      boundary_guard_evidence: "Every runner logged: 'Lint correctly rejected a planted Math.random() in src/sim/__ci_canary__.ts.' The exit criterion is enforced on every push, not witnessed once."
+      note: "actions/checkout and setup-node bumped v4 -> v5 after this run to clear the Node 20 deprecation annotation; re-verified on the follow-up push."
+    open_tasks: []
   code_review:            { status: pending }
   verify:                 { status: pending }
   test_plan:              { status: pending }
