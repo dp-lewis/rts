@@ -1572,3 +1572,27 @@ tightest spread recorded. Difficulty separates properly for the first time: 10.8
 
 **M9 does not carry over.** K1 was measured against an opening that no longer exists,
 and the first thirty seconds are precisely what it tests.
+
+### The production panel resized the playfield
+
+Reported from play: *"when I click on a building and I get the build option the UI is
+stacked which makes the canvas size change and it's a bit clunky."*
+
+The panel was a row in the document flow, so showing it shrank `.stage`; Phaser's FIT
+scaling recomputed and the whole map jumped. Worse than clunky: a canvas that resizes
+mid-match moves every unit under the cursor, so the click you were about to make lands
+somewhere else.
+
+Now absolutely positioned above the build bar — anchored bottom-left, near the
+buildings a player has just clicked rather than across the middle of the fight.
+Measured rather than eyeballed: the canvas holds at 1196x658 across deselected →
+selected, and the map is pixel-identical either side of the panel opening.
+
+Worth recording that the FIRST measurement said the bug was still there (1258x692 →
+1196x658). It was a measurement artifact — the baseline had been taken mid-boot, before
+layout settled. Re-measuring from a settled state showed no change at all. An
+instrument read once is not a result; that is the second time this project has been
+caught by it, after M8's AI-versus-nobody harness.
+
+Pinned by an E2E test, because the failure mode is invisible in a screenshot: both
+states look correct on their own, and only the transition is wrong.

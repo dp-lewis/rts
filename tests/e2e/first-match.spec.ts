@@ -142,3 +142,32 @@ test.describe('the test hook is not a production backdoor', () => {
     expect(await page.evaluate(() => window.__tmw === undefined)).toBe(true);
   });
 });
+
+test.describe('the production panel is an overlay, not a row', () => {
+  test('selecting a building does not resize the playfield', async ({ page }) => {
+    // Reported from play: "when I click on a building and I get the build option
+    // the UI is stacked which makes the canvas size change and it's a bit clunky".
+    //
+    // The panel was in the document flow, so showing it shrank the stage; Phaser's
+    // FIT scaling then recomputed and the whole map jumped. A canvas that resizes
+    // mid-match also moves every unit under the cursor, which makes the click you
+    // were about to make land somewhere else.
+    await openGame(page);
+    await startMatch(page, 'easy');
+
+    const size = async () =>
+      page.evaluate(() => {
+        const r = document.querySelector('canvas')!.getBoundingClientRect();
+        return { w: Math.round(r.width), h: Math.round(r.height) };
+      });
+
+    const before = await size();
+    expect(before.w).toBeGreaterThan(0);
+
+    const base = await page.evaluate(() => window.__tmw!.ownBaseScreenPoint());
+    await page.mouse.click(base.x, base.y);
+    await expect(page.getByTestId('production-panel')).toBeVisible();
+
+    expect(await size(), 'the canvas resized when the panel opened').toEqual(before);
+  });
+});

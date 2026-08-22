@@ -313,16 +313,30 @@ body {
   min-height: 13px;
 }
 
-/* The selected building's production panel. Sits directly above the permanent
-   build bar so the two read as one control strip rather than two ideas. */
+/*
+ * The selected building's production panel — an OVERLAY, not a row.
+ *
+ * It was in the document flow, which made showing it shrink `.stage`; Phaser's
+ * FIT scaling then recomputed and the whole canvas jumped every time a building
+ * was selected. Taking it out of flow means the playfield is a constant size for
+ * the life of a match, whatever the panel is doing.
+ *
+ * Anchored to the bottom-left above the build bar, so it appears NEAR the
+ * buildings a player has just clicked rather than across the middle of the fight.
+ */
 .production {
-  position: relative;
-  z-index: 4;
+  position: absolute;
+  left: 14px;
+  bottom: 84px;
+  z-index: 5;
   display: flex;
   gap: 6px;
   align-items: center;
-  padding: 8px 14px 0;
-  background: rgba(18, 20, 28, 0.92);
+  padding: 8px 12px;
+  background: rgba(12, 14, 20, 0.94);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
 }
 
 .production[hidden] {
