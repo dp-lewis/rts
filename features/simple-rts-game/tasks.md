@@ -320,52 +320,52 @@ asserting on state, not rendered output (Principle II).
 
 ### Tests (E2E — from `journeys.yml`, which is authoritative)
 
-- [ ] T058 [P] [JRN-001] E2E **TC-E2E-001**: first match, cold load → victory *(smoke)*
+- [x] T058 [P] [JRN-001] E2E **TC-E2E-001**: first match, cold load → victory *(smoke)*
       Paths: tests/e2e/first-match.spec.ts
       Size: M
-- [ ] T059 [P] [JRN-002] E2E **TC-E2E-002**: rematch loop, same difficulty, no state leak *(smoke)*
+- [x] T059 [P] [JRN-002] E2E **TC-E2E-002**: rematch loop, same difficulty, no state leak *(smoke)*
       Paths: tests/e2e/rematch.spec.ts
       Size: S
-- [ ] T060 [P] [JRN-003] E2E **TC-E2E-003**: under-attack indicator + audio cue on first damage
+- [x] T060 [P] [JRN-003] E2E **TC-E2E-003**: under-attack indicator + audio cue on first damage
       Paths: tests/e2e/under-attack.spec.ts
       Size: S
-- [ ] T061 [P] [FR-024] E2E **TC-E2E-004**: WebGL unavailable → plain readable message, not a blank rectangle
+- [x] T061 [P] [FR-024] E2E **TC-E2E-004**: WebGL unavailable → plain readable message, not a blank rectangle
       Paths: tests/e2e/webgl-fallback.spec.ts
       Size: S
-- [ ] T062 [P] [FR-026] E2E **TC-E2E-005**: keyboard-only difficulty selection with visible focus
+- [x] T062 [P] [FR-026] E2E **TC-E2E-005**: keyboard-only difficulty selection with visible focus
       Paths: tests/e2e/keyboard-gate.spec.ts
       Size: S
-- [ ] T063 [P] [FR-011] E2E **TC-E2E-006**: insufficient ore → greyed entry with cost, no dialog
+- [x] T063 [P] [FR-011] E2E **TC-E2E-006**: insufficient ore → greyed entry with cost, no dialog
       Paths: tests/e2e/insufficient-ore.spec.ts
       Size: S
-- [ ] T064 [P] [FR-013] E2E **TC-E2E-007**: invalid placement → invalid ghost, click refused inline
+- [x] T064 [P] [FR-013] E2E **TC-E2E-007**: invalid placement → invalid ghost, click refused inline
       Paths: tests/e2e/invalid-placement.spec.ts
       Size: S
-- [ ] T065 [P] [FR-017] E2E **TC-E2E-008**: defeat path — Rematch still primary
+- [x] T065 [P] [FR-017] E2E **TC-E2E-008**: defeat path — Rematch still primary
       Paths: tests/e2e/defeat.spec.ts
       Size: S
-- [ ] T066 [P] [FR-018] E2E **TC-E2E-009**: `@axe-core/playwright` WCAG-AA floor on gate, result, and fallback — zero critical violations
+- [x] T066 [P] [FR-018] E2E **TC-E2E-009**: `@axe-core/playwright` WCAG-AA floor on gate, result, and fallback — zero critical violations
       Paths: tests/e2e/a11y.spec.ts
       Size: M
 
 ### Implementation
 
-- [ ] T067 [FR-001, FR-002, FR-026] Difficulty gate scene — three self-declaring options, nothing else on screen, fully keyboard operable with visible focus
+- [x] T067 [FR-001, FR-002, FR-026] Difficulty gate scene — three self-declaring options, nothing else on screen, fully keyboard operable with visible focus
       Paths: src/game/scenes/Gate.ts
       Size: M
-- [ ] T068 [FR-019] Result scene — Victory / Defeat / **Draw**, duration shown, Rematch primary and largest; "change difficulty" deliberately secondary
+- [x] T068 [FR-019] Result scene — Victory / Defeat / **Draw**, duration shown, Rematch primary and largest; "change difficulty" deliberately secondary
       Paths: src/game/scenes/Result.ts
       Size: M
-- [ ] T069 [FR-019] Rematch — fresh sim constructed from a new seed, same difficulty, **no state leak** from the prior match
+- [x] T069 [FR-019] Rematch — fresh sim constructed from a new seed, same difficulty, **no state leak** from the prior match
       Paths: src/game/scenes/Result.ts, src/game/main.ts
       Size: S
-- [ ] T070 [FR-023, FR-033] Under-attack screen-edge indicator + audio cue; **rate-limited in presentation only, never in simulation**. Fires **only on damage from an enemy entity**. Sudden death gets its own distinct persistent indicator *(CR-001)* — a base dying with no attacker on screen, flagged "under attack", reads as a bug rather than a rule
+- [x] T070 [FR-023, FR-033] Under-attack screen-edge indicator + audio cue; **rate-limited in presentation only, never in simulation**. Fires **only on damage from an enemy entity**. Sudden death gets its own distinct persistent indicator *(CR-001)* — a base dying with no attacker on screen, flagged "under attack", reads as a bug rather than a rule
       Paths: src/game/hud/alert.ts
       Size: M
-- [ ] T071 [FR-024] WebGL-unavailable fallback message
+- [x] T071 [FR-024] WebGL-unavailable fallback message
       Paths: src/game/main.ts, index.html
       Size: S
-- [ ] T072 [FR-025] Local counters (time-to-first-action, duration, completion, rematch) + debug overlay
+- [x] T072 [FR-025] Local counters (time-to-first-action, duration, completion, rematch) + debug overlay
       Paths: src/game/hud/counters.ts
       Size: M
 

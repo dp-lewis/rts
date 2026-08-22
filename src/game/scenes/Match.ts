@@ -1,5 +1,5 @@
 /**
- * The match scene — T047.
+ * The match scene — T047, rewired in M7.
  *
  * This is the seam between wall-clock time and simulation time, and it is
  * deliberately the only place the two meet. `update` receives Phaser's `delta`,
@@ -7,6 +7,12 @@
  * count drives `step`; the leftover drives interpolation. `delta` itself goes no
  * further, which is what makes the simulation a function of (seed, commands)
  * rather than of the player's refresh rate.
+ *
+ * M7 moved the HUD out. The scene now owns the world and canvas input only, and
+ * reports upward through `onFrame` and `onVerdict` — the DOM shell owns the
+ * screens, the build bar, the counters and the alert band. Keeping the scene
+ * ignorant of them means the HUD can be rebuilt (as it just was) without
+ * touching the tick loop.
  */
 
 import Phaser from 'phaser';
@@ -28,15 +34,14 @@ import {
   type Difficulty,
   type Kind,
   type SimState,
+  type Verdict,
 } from '../../sim/state';
 import { step } from '../../sim/step';
-import { BuildBar } from '../hud/buildbar';
-import { ResourceHud } from '../hud/resources';
 import { orderFor } from '../input/orders';
 import { placementAt } from '../input/placement';
-import { PlacementGhost } from '../render/ghost';
 import { selectInRect } from '../input/select';
 import { advanceAccumulator } from '../loop';
+import { PlacementGhost } from '../render/ghost';
 import { WorldRenderer } from '../render/world';
 
 export const MATCH_SCENE_KEY = 'Match';
@@ -46,7 +51,6 @@ export interface MatchConfig {
   difficulty: Difficulty;
 }
 
-/** The match Phaser starts when the scene is given no data (M7's gate supplies it). */
 const DEFAULT_MATCH: MatchConfig = { seed: 20260822, difficulty: 1 };
 
 /**
@@ -60,34 +64,39 @@ const DEFAULT_MATCH: MatchConfig = { seed: 20260822, difficulty: 1 };
 type Unscheduled<C> = C extends Command ? Omit<C, 'tick' | 'issuer' | 'seq'> : never;
 export type PlayerIntent = Unscheduled<Command>;
 
+export interface MatchHooks {
+  /** Every rendered frame, for the DOM HUD to read. */
+  onFrame?: (state: SimState, now: number) => void;
+  /** Once, on the tick a verdict is reached. */
+  onVerdict?: (verdict: Verdict, ticks: number) => void;
+  /** Once per match, on the player's first command — FR-025. */
+  onFirstAction?: (now: number) => void;
+}
+
 export class MatchScene extends Phaser.Scene {
   private state!: SimState;
   // NOT `renderer` — Phaser.Scene already owns that name for the WebGL renderer.
   private world!: WorldRenderer;
+  private ghost!: PlacementGhost;
   private accumulator = 0;
 
   /**
    * Player commands, buffered here until the tick they are scheduled for.
    *
-   * This is the CommandQueue's real user (M4 finding F1 left the question open).
-   * It is NOT the same thing as `state.pending`: that holds the AI's scheduled
-   * commands and must live inside hashed state so `step` can stay pure. Player
-   * intent arrives from outside the simulation, so it buffers outside it and
-   * enters through `step`'s argument — which is exactly the seam a multiplayer
-   * feature would widen.
+   * NOT the same thing as `state.pending`: that holds the AI's scheduled commands
+   * and must live inside hashed state so `step` can stay pure. Player intent
+   * arrives from outside the simulation, so it buffers outside it and enters
+   * through `step`'s argument — the seam a multiplayer feature would widen.
    */
   private queue: CommandQueue = createCommandQueue();
   private seq = 0;
 
-  // ── Presentation-only input state. None of this is hashed, none of it reaches
-  // `step`, and all of it is rebuilt from scratch on a rematch.
-  private buildBar!: BuildBar;
-  private resources!: ResourceHud;
-  private ghost!: PlacementGhost;
+  private hooks: MatchHooks = {};
   private selection: Set<number> = new Set();
   private dragFrom: { x: number; y: number } | undefined;
-  /** The Base the player builds from. Recomputed on demand — Bases can die. */
   private placingKind: Kind | undefined;
+  private announcedVerdict = false;
+  private firstActionSent = false;
 
   constructor() {
     super(MATCH_SCENE_KEY);
@@ -99,34 +108,40 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
-  create(config?: Partial<MatchConfig>): void {
+  create(config?: Partial<MatchConfig> & { hooks?: MatchHooks }): void {
     // Phaser calls `create` with whatever data the caller passed, including
     // nothing at all. Reading `config.seed` off `undefined` would throw inside a
     // scene lifecycle callback, where the stack says nothing useful.
     const { seed, difficulty } = { ...DEFAULT_MATCH, ...config };
     this.state = createMatch(seed, difficulty);
+    this.hooks = config?.hooks ?? {};
+
     this.accumulator = 0;
     this.queue = createCommandQueue();
     this.seq = 0;
-    this.world = new WorldRenderer(this);
-    this.resources = new ResourceHud(this);
-    this.buildBar = new BuildBar(this, this.scale.height);
-    this.ghost = new PlacementGhost(this);
     this.selection = new Set();
     this.dragFrom = undefined;
     this.placingKind = undefined;
+    this.announcedVerdict = false;
+    this.firstActionSent = false;
+
+    this.world = new WorldRenderer(this);
+    this.ghost = new PlacementGhost(this);
+
+    // `journeys.yml` addresses `canvas[data-testid=game-canvas]`, and Phaser
+    // creates the element itself, so the hook is attached after boot.
+    this.game.canvas.setAttribute('data-testid', 'game-canvas');
 
     this.installInput();
   }
 
   /**
-   * Pointer wiring. Deliberately thin: every decision here is delegated to a pure
-   * function that is tested without a scene (`selectInRect`, `orderFor`,
-   * `placementAt`), so this method holds only the parts that genuinely need
-   * Phaser — which is also the only part no unit test can reach.
+   * Pointer wiring. Deliberately thin: every decision is delegated to a pure
+   * function tested without a scene (`selectInRect`, `orderFor`, `placementAt`),
+   * so this holds only the parts that genuinely need Phaser — which is also the
+   * only part no unit test can reach.
    */
   private installInput(): void {
-    // Phaser's own context menu would otherwise eat every right-click.
     this.input.mouse?.disableContextMenu();
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
@@ -139,12 +154,7 @@ export class MatchScene extends Phaser.Scene {
 
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
       if (this.placingKind !== undefined) {
-        const target = placementAt(this.state, pointer.worldX, pointer.worldY);
-        if (target === undefined) {
-          this.ghost.hide();
-        } else {
-          this.ghost.show(target);
-        }
+        this.updateGhost(pointer.worldX, pointer.worldY);
         return;
       }
       if (this.dragFrom !== undefined) {
@@ -175,28 +185,20 @@ export class MatchScene extends Phaser.Scene {
     });
   }
 
-  private onLeftDown(pointer: Phaser.Input.Pointer): void {
-    // HUD first: a click on the build bar must never fall through and start a
-    // marquee across the units behind it.
-    const hit = this.buildBar.hitTest(this.state, pointer.x, pointer.y);
-    if (hit !== undefined) {
-      if (!hit.affordable) {
-        return; // FR-011: greyed and inert, never a dialog explaining why.
-      }
-      if (hit.entry.placed) {
-        this.placingKind = hit.entry.kind;
-        this.buildBar.setSelectedKind(hit.entry.kind);
-      } else {
-        this.queueBuild(hit.entry.kind);
-      }
-      return;
+  private updateGhost(x: number, y: number): void {
+    const target = placementAt(this.state, x, y);
+    if (target === undefined) {
+      this.ghost.hide();
+    } else {
+      this.ghost.show(target);
     }
+  }
 
+  private onLeftDown(pointer: Phaser.Input.Pointer): void {
     if (this.placingKind !== undefined) {
       this.confirmPlacement(pointer);
       return;
     }
-
     this.dragFrom = { x: pointer.worldX, y: pointer.worldY };
   }
 
@@ -229,7 +231,7 @@ export class MatchScene extends Phaser.Scene {
     if (target === undefined || !target.valid) {
       return; // The ghost already said so. Refusing inline IS the feedback.
     }
-    const base = this.state.entities.find((e) => e.kind === KIND.BASE && e.owner === 0);
+    const base = this.ownBase();
     if (base === undefined) {
       return;
     }
@@ -238,14 +240,33 @@ export class MatchScene extends Phaser.Scene {
     this.cancelPlacement();
   }
 
-  private cancelPlacement(): void {
-    this.placingKind = undefined;
-    this.ghost.hide();
-    this.buildBar.setSelectedKind(undefined);
+  private ownBase() {
+    return this.state.entities.find(
+      (e) => e.kind === KIND.BASE && e.owner === 0 && e.state !== ENTITY_STATE.DEAD,
+    );
   }
 
-  private queueBuild(kind: Kind): void {
-    const base = this.state.entities.find((e) => e.kind === KIND.BASE && e.owner === 0);
+  // ── Called by the DOM build bar ───────────────────────────────────────────
+
+  armPlacement(kind: Kind): void {
+    this.placingKind = kind;
+  }
+
+  cancelPlacement(): void {
+    this.placingKind = undefined;
+    this.ghost.hide();
+  }
+
+  isPlacing(): boolean {
+    return this.placingKind !== undefined;
+  }
+
+  ghostState(): { visible: boolean; valid: boolean } | undefined {
+    return this.ghost.snapshot();
+  }
+
+  queueBuild(kind: Kind): void {
+    const base = this.ownBase();
     if (base === undefined) {
       return;
     }
@@ -255,13 +276,13 @@ export class MatchScene extends Phaser.Scene {
   /**
    * Schedule a player command. `LATENCY` is one tick, deliberately not zero:
    * commands must land on a FUTURE tick (Constitution §II), so intent can never
-   * be applied to the tick that is already being computed.
+   * be applied to the tick already being computed.
    */
   issue(command: PlayerIntent): void {
     // The cast is on the OUTPUT only: spreading a union member plus the three
     // scheduling fields is a valid Command by construction, but TypeScript
-    // cannot re-narrow the union across a spread. The input type above is what
-    // makes it safe — a malformed command cannot reach this line.
+    // cannot re-narrow the union across a spread. The input type is what makes
+    // it safe — a malformed command cannot reach this line.
     const scheduled = {
       ...command,
       tick: this.state.tick + 1,
@@ -271,6 +292,11 @@ export class MatchScene extends Phaser.Scene {
 
     this.queue = enqueueCommand(this.queue, scheduled);
     this.seq += 1;
+
+    if (!this.firstActionSent) {
+      this.firstActionSent = true;
+      this.hooks.onFirstAction?.(this.time.now);
+    }
   }
 
   override update(_time: number, delta: number): void {
@@ -282,11 +308,10 @@ export class MatchScene extends Phaser.Scene {
         break; // A settled match does not keep simulating behind the result.
       }
       // The CURRENT tick, not `tick + 1`. `applyCommands` skips any command whose
-      // `tick` is not `state.tick` (TC-UNIT-008), and `step` applies commands
-      // BEFORE advancing the tick — so draining ahead handed `step` commands it
-      // was guaranteed to skip, and `drainCommands` had already removed them from
-      // the queue. Every player order would have been silently discarded.
-      // `replay.ts` is the reference: `commands.filter((c) => c.tick === state.tick)`.
+      // `tick` is not `state.tick`, and `step` applies commands BEFORE advancing
+      // the tick — so draining ahead handed `step` commands it was guaranteed to
+      // skip while `drainCommands` had already removed them from the queue.
+      // Every player order would have been silently discarded (REV-009).
       const [due, rest] = drainCommands(this.queue, this.state.tick);
       this.queue = rest;
       this.world.captureTick(this.state);
@@ -296,22 +321,24 @@ export class MatchScene extends Phaser.Scene {
     // Selection is presentation state holding SIMULATION ids, so it has to be
     // reconciled: a selected unit that died must leave the set, or its id lingers
     // and a later order names an entity that no longer exists.
-    if (this.selection.size > 0) {
-      for (const id of [...this.selection]) {
-        const entity = this.state.entities.find((e) => e.id === id);
-        if (entity === undefined || entity.state === ENTITY_STATE.DEAD) {
-          this.selection.delete(id);
-        }
+    for (const id of [...this.selection]) {
+      const entity = this.state.entities.find((e) => e.id === id);
+      if (entity === undefined || entity.state === ENTITY_STATE.DEAD) {
+        this.selection.delete(id);
       }
     }
 
     this.world.setSelection(this.selection);
     this.world.draw(this.state, advanced.alpha, this.time.now);
-    this.resources.draw(this.state);
-    this.buildBar.draw(this.state);
+    this.hooks.onFrame?.(this.state, this.time.now);
+
+    if (this.state.verdict !== VERDICT.NONE && !this.announcedVerdict) {
+      this.announcedVerdict = true;
+      this.hooks.onVerdict?.(this.state.verdict, this.state.tick);
+    }
   }
 
-  /** Read-only access for the HUD and input layers landing in M6. */
+  /** Read-only access for the HUD, the counters, and the E2E test hook. */
   simState(): SimState {
     return this.state;
   }

@@ -2,7 +2,7 @@ schema_version: 3
 feature: simple-rts-game
 feature_description: "Make a simple RTS game — local single-player vs AI, client-side Phaser, deterministic fixed-timestep simulation."
 created_at: "2026-08-21"
-last_updated: "2026-08-22T12:20:00Z"
+last_updated: "2026-08-22T13:05:00Z"
 feature_mode: standard
 flow_mode: gated
 v2_native: true
@@ -80,27 +80,28 @@ phases:
   implement:
     status: milestone_complete
     started_at: "2026-08-22T06:15:00Z"
-    milestone_completed_at: "2026-08-22T12:20:00Z"
+    milestone_completed_at: "2026-08-22T13:05:00Z"
     digest_path: "implement/digest.md"
-    run_scope: "M6 (T052-T057) plus the `place` command (REV-007) and REV-006, folded in at the kickoff gate because FR-012 was unreachable without a verb and all three needed one deliberate simVersion bump. Prior runs scoped M0-M5 the same way."
-    milestones_complete: ["M0", "M1", "M2", "M3", "M4", "M5", "M6"]
+    run_scope: "M7 (T058-T072) — nine E2E specs plus six screens. The HUD was migrated from Phaser to DOM at the kickoff gate: journeys.yml is authoritative and addresses every UI surface by DOM selector, and FR-026 plus the T066 axe floor are unsatisfiable inside a canvas. Prior runs scoped M0-M6 the same way."
+    milestones_complete: ["M0", "M1", "M2", "M3", "M4", "M5", "M6", "M7"]
     red_gate:
       policy: per_milestone
       policy_rationale: "Greenfield repo: no package.json, no Vitest, no src/. The 27 Test-first tasks span M0-M9 and reference modules that will not exist for days, so a single upfront Red would be 27 bare import errors — a vacuous Red. Instead T001/T002 (pure INFRA, zero product code) scaffold the runner, then each milestone's test block must be observed failing before its implementation block runs. Chosen by the user at the Phase 6 kickoff gate 2026-08-22."
       status: confirmed_failing
       tests: ["T003 (tests/lint/boundary.test.ts)", "T007-T014 (rng, hash, commands, determinism, roundtrip, headless)", "T026-T030 (pathfind, economy, ordering)", "T034-T038 + T078-T080 (combat, production, victory)", "T042-T043 (ai, replay difficulty header)"]
       observed_at: "2026-08-22T06:17:37Z"
+      m7_note: "M7 carries NO Test-first: true task, but the nine E2E specs were written first against journeys.yml as a voluntary Red: 41 failed | 1 passed of 42, every failure a selector that did not exist. Green at 42/42 after the DOM migration and T067-T072. The single Red-state pass is `exposes no test hook without the flag`, trivially true while no hook existed and load-bearing now that one does."
       m6_note: "T052 is the only Test-first: true task in M6 and the first since M4, so the gate was genuinely load-bearing here rather than voluntary. `selectInRect` stubbed to throw gave 12 failed | 1 passed of 13 collected; green at 15/15 after T053. The single Red-state pass asserts the function's arity, structural and green in both states."
       m5_note: "Rejected a THIRD time for the M1 reason, and this time the test was already written when the run started. tests/game/loop.test.ts failed with 'Cannot find module ../../src/game/loop' and ZERO tests collected — a failure an empty file turns green. A signature-only src/game/loop.ts (every export present, advanceAccumulator throwing) moved it to 17 failed | 1 passed of 18 collected; green after T048 at 18/18. The single Red-state pass reads only the two constants and is green by design in both states, the same scoping control M0 used. Worth recording that M5 carries NO Test-first: true task in tasks.md — all 27 markers sit in M0-M4 and M6 — so the loop test was a voluntary extension of the discipline, and it immediately caught a defect the milestone would otherwise have shipped."
       evidence: "5 failed | 1 passed. Each failure read 'X was planted in src/sim/... and ESLint reported no error. Rules that did fire: (none)'. Green after T004: 6 passed (6). The one pass in the Red state is the scoping control, green by design in both states."
       m1_note: "Red rejected a SECOND time for the same reason: running the eight new test files against a repo with no src/sim modules produced bare 'Cannot find module' errors with zero new tests collected. Signature-only stubs (every export present, every body throwing) moved the failure to 43 collected tests failing on real calls. Writing the stubs also forced the whole M1 API surface to be settled before any logic existed. Green after T015-T025: 86 passed."
       note: "The first Red draft was REJECTED as insufficient — it failed with 'ESLint returned no result' (no config file, so ESLint matched nothing), which would have gone green on an empty eslint.config.js. Rewritten to lint against a parser-only rule-free fallback so a rule-less config still fails."
       skip_reason: null
-    tasks_completed: 62
+    tasks_completed: 77
     tasks_total: 82
-    tasks_in_scope_this_run: 6
-    progressive_checkpoints: 14
-    progressive_warnings: 8
+    tasks_in_scope_this_run: 15
+    progressive_checkpoints: 16
+    progressive_warnings: 11
     progressive_critical: 0
     dependencies:
       added: 11
@@ -119,6 +120,33 @@ phases:
       - {version: 5, milestone: "M3", reason: "ADR-001 Amendment 4 — gatherNodeId split out of targetId. targetId was holding two id spaces (entity ids and ore node ids) and combat cleared it out from under the economy the moment both existed."}
       - {version: 3, milestone: "M2", reason: "economy and movement wired into the tick. NOT bumped in the same edit at first: the corpus caught it as a REGRESSION (first divergence tick 100) rather than as staleness, which is the more useful failure. Bumped by hand, regenerated, hashes matched the regression's 'got' column exactly."}
     findings_for_gate:
+      - id: "M7-F1"
+        severity: "resolved"
+        title: "The HUD was unreachable by the authoritative journey and invisible to the a11y gate"
+        detail: "journeys.yml — which tasks.md names authoritative — addresses every UI surface by DOM selector and reserves the canvas for the world. M6 drew the build bar and ore counter inside Phaser, so four of the nine E2E specs addressed elements that did not exist. Worse, FR-026 (gate operable by keyboard with visible focus) has no implementation inside a canvas, and T066's axe WCAG-AA floor CANNOT SEE into a canvas — a canvas-drawn UI passes that gate by having nothing to audit. Same vacuous-green shape as M0's empty-config Red and M5's coverage report."
+        resolution: "HUD and all screens moved to DOM at the kickoff gate; the world stays in Phaser. a11y.spec.ts carries a control test asserting axe found real nodes, because a suite of zero-violation assertions is green over an empty DOM."
+        lesson: "An accessibility gate over a surface the auditor cannot read is not a weak gate, it is no gate."
+      - id: "M7-F2"
+        severity: "resolved"
+        title: "A one-in-three E2E flake that was a real ordering fact"
+        detail: "`damage from an enemy raises the indicator` failed while the sudden-death test beside it passed, with identical machinery. `underAttack` lives for exactly one tick — applyDamage clears both flags at the top of every tick and re-raises them from that tick's ledger. In the game that is safe because step and onFrame run in the SAME frame, so the flag is always observed by the frame that produced it. Applying damage from outside the loop broke that pairing: at 60Hz render against a 20Hz simulation, roughly one frame in three runs a step, and a step landing before any observation consumed the flag. Sudden death passed by luck."
+        resolution: "Fixed in the hook, not the game — the game's ordering was already correct. The hook makes the observation itself, at the moment the flag is true, through the real alert code. Confirmed with --repeat-each=6: 24 passed."
+      - id: "M7-F3"
+        severity: "resolved"
+        title: "A keyboard test was measuring the autofocus, not the tab order"
+        detail: "`every difficulty option is reachable by Tab` reported ['normal','hard','easy']. Gate.show() focuses the first option so a keyboard player starts inside the gate rather than tabbing through browser chrome, so the first Tab moves OFF it. Rewritten to walk from whatever already holds focus."
+      - id: "M7-F4"
+        severity: "open — for M8"
+        title: "The counters are recorded and never read"
+        detail: "SessionCounters persists to localStorage and feeds the F3 overlay, but nothing surfaces them. T074 needs twenty recorded match durations from the tuned build, and that is where they have to come from."
+      - id: "M7-F5"
+        severity: "open — watch"
+        title: "No corpus case covers the `place` command"
+        detail: "Added in M6 and hashed with an exhaustiveness guard, but absent from both recorded cases — so its encoding is asserted by unit test and never by the cross-platform corpus. T075 records a third case during M8 tuning and is the natural place to include a placement."
+      - id: "M7-F6"
+        severity: "open — informational"
+        title: "The axe floor covers four DOM surfaces and cannot cover the world"
+        detail: "Gate, result, fallback and the in-match HUD are audited. The canvas cannot be, so the world's accessibility claim rests entirely on FR-018's underglow ring — verified in greyscale by the T081 spike and pinned by unit tests, not by axe. Worth stating plainly rather than letting `zero critical violations` imply more than it covers."
       - id: "M6-F1"
         severity: "resolved"
         title: "REV-006 was real: every damage-per-second figure was 6% low"

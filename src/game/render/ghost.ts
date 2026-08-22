@@ -25,6 +25,7 @@ export class PlacementGhost {
   private readonly sprite: Phaser.GameObjects.Image;
   private readonly outline: Phaser.GameObjects.Graphics;
   private active = false;
+  private valid = false;
 
   constructor(scene: Phaser.Scene) {
     this.sprite = scene.add.image(0, 0, spriteKey(KIND.FACTORY, 0)).setDepth(35).setAlpha(0.6);
@@ -36,6 +37,11 @@ export class PlacementGhost {
     return this.active;
   }
 
+  /** What the E2E hook reports for FR-013 — visibility and validity, no drawing. */
+  snapshot(): { visible: boolean; valid: boolean } | undefined {
+    return this.active ? { visible: true, valid: this.valid } : undefined;
+  }
+
   hide(): void {
     this.active = false;
     this.sprite.setVisible(false);
@@ -45,6 +51,7 @@ export class PlacementGhost {
   /** Show the ghost at `target`, coloured by validity. */
   show(target: PlacementTarget): void {
     this.active = true;
+    this.valid = target.valid;
     this.sprite.setVisible(true);
     this.sprite.setPosition(target.x, target.y);
     this.sprite.setTint(target.valid ? VALID_TINT : INVALID_TINT);

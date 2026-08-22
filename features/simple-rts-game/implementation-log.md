@@ -1077,3 +1077,131 @@ returning from it safe.
    scene here would only assert the mock.
 4. **The AI still never places structures.** REV-007 is closed for the player, but the
    opponent has no `place` behaviour, so FR-012 is exercised from one side only.
+
+---
+
+## M7 — Screens & edges
+
+### The milestone opened on a contradiction between M6 and the authoritative spec
+
+`tasks.md` names `journeys.yml` authoritative, and it — with every wireframe —
+addresses the HUD and screens by **DOM selector**, reserving the canvas for the world:
+
+```
+[data-testid=difficulty-gate]   [data-testid=ore-counter]     <button data-testid=rematch>
+[data-testid=difficulty-easy]   [data-testid=build-trooper]   canvas[data-testid=game-canvas]
+```
+
+M6 drew the build bar and ore counter inside Phaser. They looked right and worked, and
+they were unreachable by four of the nine E2E specs because the elements did not exist.
+
+Two requirements were unsatisfiable that way, not merely awkward:
+
+- **FR-026** — the gate operable by keyboard with visible focus. A canvas has no
+  focusable elements and no focus ring.
+- **T066** — an axe WCAG-AA floor with zero critical violations on gate, result and
+  fallback. **axe cannot see into a canvas**, so a canvas-drawn UI passes that gate by
+  having nothing to audit. That is the same vacuous-green shape as M0's empty-config
+  Red and M5's coverage report — an accessibility gate that passes because it is blind.
+
+Resolved at the kickoff gate by moving the HUD and all screens to DOM. `a11y.spec.ts`
+carries a control test (`the scan is actually finding elements to audit`) for exactly
+this reason: a suite of "zero violations" assertions is perfectly green over an empty
+DOM, so one test asserts axe found real nodes to check.
+
+### The Red
+
+Nine specs written against `journeys.yml` before any screen existed:
+
+```
+before:  41 failed | 1 passed (42)
+after:   42 passed
+```
+
+The single Red-state pass is `exposes no test hook without the flag` — trivially true
+while no hook existed, and the scoping control for the file. It becomes load-bearing
+now that the hook does exist.
+
+### The test hook, and why it is the smallest thing that works
+
+A match runs six to ten minutes by design — that is the entire premise — so no browser
+test can play one to a verdict in real time. `?test=1` exposes a narrow read/force
+surface and nothing without the flag, which is asserted rather than assumed: a debug
+backdoor nobody checks is closed is one that quietly stays open.
+
+`damageOwnBase` deliberately applies REAL damage through `addDamage` + `applyDamage`
+rather than setting the HUD's flags, so FR-033 is tested through the simulation's own
+flag logic instead of testing that a boolean can be assigned.
+
+### A one-in-three flake that was a real ordering fact
+
+`STEP-002: damage from an enemy raises the indicator` failed while the sudden-death test
+beside it passed — with identical machinery. The cause: `underAttack` lives for exactly
+one tick. `applyDamage` clears both flags at the top of every tick and re-raises them
+from that tick's ledger.
+
+In the real game that is safe, because `step` and `onFrame` run in the same frame — the
+flag is always observed by the frame that produced it. Applying damage from OUTSIDE the
+loop breaks the pairing: at 60 Hz render against a 20 Hz simulation, roughly one frame
+in three runs a step, and if that step lands before any frame observes the flag it is
+gone. Sudden death passed by luck.
+
+Fixed in the hook, not the game — the game's ordering was already correct. The hook now
+makes the observation itself, at the moment the flag is true, through the real alert
+code. Confirmed with `--repeat-each=6`: 24 passed.
+
+### A test that was asserting the wrong thing
+
+`every difficulty option is reachable by Tab` reported `['normal', 'hard', 'easy']`. Not
+a bug: `Gate.show()` focuses the first option so a keyboard player starts inside the
+gate rather than tabbing through browser chrome, so the first Tab moves OFF `easy`. The
+test was measuring the autofocus, not the tab order. Rewritten to walk from whatever
+already holds focus.
+
+### Checkpoint #15 — after T058–T066 (the nine specs)
+
+| Check | Status | Notes |
+|-------|:------:|-------|
+| Task-Code correspondence | ✅ | One spec file per task, at the paths tasks.md names. |
+| Spec AC alignment | ✅ | Written from `journeys.yml` steps and edges, in order. |
+| Unplanned changes | ⚠️ 2 files | `playwright.config.ts` and `tests/e2e/helpers.ts` — no task owns the harness itself. |
+| Plan alignment | ✅ | `tests/e2e/` is in plan.md's tree; Chromium-only matches Constitution IV's third platform. |
+| Dependency / supply-chain | ✅ None added | `@playwright/test` and `@axe-core/playwright` were in the lockfile from M0. |
+
+### Checkpoint #16 — after T067–T072 and the DOM migration
+
+| Check | Status | Notes |
+|-------|:------:|-------|
+| Task-Code correspondence | ✅ | T067 → `scenes/Gate.ts`; T068/T069 → `scenes/Result.ts` + `main.ts`; T070 → `hud/alert.ts`; T071 → `main.ts` + `index.html`; T072 → `hud/counters.ts`. |
+| Spec AC alignment | ✅ | 42 E2E green incl. the axe floor; 320 unit tests green. |
+| Unplanned changes | ⚠️ | `src/game/ui/app.css`; `hud/buildbar.ts` and `hud/resources.ts` rewritten from Phaser to DOM. |
+| Plan alignment | ⚠️ | `Gate.ts` and `Result.ts` are DOM controllers, not `Phaser.Scene` subclasses. Paths kept as tasks.md names them; the technology changed, the responsibility did not. |
+| Dependency / supply-chain | ✅ None added | |
+
+**Verdict:** CLEAN — M7 complete. The two warnings are the gate-approved DOM decision
+and its consequences.
+
+### Verified in the production build, not the dev server
+
+`playwright.config.ts` runs `npm run build && vite preview` rather than the dev server.
+M5 shipped a bundle with no sprites while `npm run dev` looked perfect; pointing E2E at
+the preview is what makes that class of defect visible to a test instead of only to a
+human who thinks to check `dist/`. All three screens were also driven by hand against
+the built bundle.
+
+### Open items carried out of M7
+
+1. **`Match.ts` is still the largest untested file.** The DOM migration moved the HUD
+   out, which shrank it, and E2E now covers the flows it drives — but no unit test
+   reaches it.
+2. **The counters are recorded and never read.** `SessionCounters` persists to
+   `localStorage` and feeds the F3 overlay; nothing surfaces them for the M8 tuning pass
+   yet, which is where T074's twenty match durations have to come from.
+3. **The AI still never places structures** (M6-F8) — FR-012 remains exercised from one
+   side only.
+4. **No corpus case covers the `place` command.** Added in M6, still absent from the
+   two recorded cases, so its hashing is asserted by unit test but not by the
+   cross-platform corpus.
+5. **The axe floor covers four DOM surfaces and cannot cover the world.** The in-match
+   canvas's accessibility claim rests entirely on FR-018's underglow ring, verified in
+   greyscale by the T081 spike and pinned by unit tests — not by axe.

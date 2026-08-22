@@ -1,8 +1,8 @@
 # Phase Digest — Implement
 
-**Phase:** 6 · Implement · **Scope:** M0 Enforcement · M1 Determinism · M2 Grid/movement/economy · M3 Production/combat/victory · M4 AI opponent · M5 Presentation · M6 Input & HUD
-**Date:** 2026-08-22 · **Tasks:** 62 / 82 complete
-**Status:** M0–M6 complete · `SIM_VERSION` 8 · 320 tests green · **the game is playable**
+**Phase:** 6 · Implement · **Scope:** M0–M7
+**Date:** 2026-08-22 · **Tasks:** 77 / 82 complete
+**Status:** M0–M7 complete · `SIM_VERSION` 8 · 320 unit + 42 E2E green · **the game is complete end to end**
 
 ---
 
@@ -542,3 +542,75 @@ pointer events and verified against simulation state read back from the running 
 - **The corpus diff for `simVersion` 8 is one case and one checkpoint.** 001-baseline
   did not move at all, because no shot is ever fired in it — worth knowing before
   assuming a combat change should have touched both.
+
+---
+
+# M7 — Screens & edges
+
+**Tasks:** T058–T072 · **Tests:** 320 unit + 42 E2E green (E2E was 0)
+**`SIM_VERSION`:** unchanged at 8 — M7 added no simulation behaviour.
+
+The arc closes: cold load → difficulty gate → match → result → rematch, with a WebGL
+fallback, an under-attack alert, session counters, and an automated WCAG-AA floor.
+
+## Key decisions
+
+- **The HUD and every screen are DOM; only the world is canvas.** Decided at the
+  kickoff gate after finding that `journeys.yml` — authoritative per tasks.md —
+  addresses every UI surface by DOM selector, and that FR-026 and T066's axe floor are
+  both unsatisfiable inside a canvas. Cost: M6's build bar and ore counter rewritten.
+
+- **`Gate.ts` and `Result.ts` are DOM controllers, not `Phaser.Scene` subclasses**,
+  despite living under `scenes/`. The paths are kept because tasks.md names them; what
+  changed is the technology, not the responsibility.
+
+- **Native `<button>` throughout the gate and result screens.** Enter and Space both
+  activate, focus is reachable and visible, and the accessible role is right without a
+  single `aria-` attribute. Re-implementing that on a `div` is how keyboard support
+  quietly rots.
+
+- **`aria-disabled`, not `disabled`, on unaffordable build entries.** A disabled button
+  leaves the tab order and the accessibility tree, so a keyboard player would lose the
+  ability to read what they cannot yet afford — which is the information FR-011 exists
+  to keep on screen.
+
+- **The alert band latches for 1500 ms.** `underAttack` lives for one tick; rate
+  limiting belongs in presentation only, because a simulation that throttled its own
+  flags would hash differently depending on when someone last looked at the screen.
+
+- **E2E runs against the PRODUCTION build**, not the dev server. M5 shipped a bundle
+  with no sprites while `npm run dev` looked perfect.
+
+- **A `?test=1` hook, and nothing without the flag.** A six-minute match cannot be
+  played to a verdict in a browser test. The exclusion is asserted, not assumed.
+
+## Artifacts produced
+
+- `src/game/scenes/{Gate,Result}.ts`, `src/game/hud/{alert,counters}.ts`
+- `src/game/hud/{buildbar,resources}.ts` rewritten from Phaser to DOM
+- `src/game/main.ts` — screen flow, WebGL check, rematch, test hook
+- `index.html` DOM shell, `src/game/ui/app.css`
+- `playwright.config.ts`, `tests/e2e/` — 9 spec files + helpers
+- `src/game/scenes/Match.ts` rewired to report through `onFrame` / `onVerdict`
+
+**Dependencies added: none.**
+
+## Open risks
+
+1. **`Match.ts` remains the largest untested file** (M7 open item 1) — smaller after the
+   HUD moved out, and covered by E2E flows, but no unit test reaches it.
+2. **Counters are recorded and never surfaced** (M7-F4). T074 needs twenty match
+   durations from the tuned build and this is where they come from.
+3. **No corpus case covers `place`** (M7-F5). T075 is the natural place to add one.
+4. **The axe floor cannot cover the world** (M7-F6). The canvas's accessibility claim is
+   the underglow ring alone.
+5. **The AI never places structures** (M6-F8), so FR-012 is exercised from one side.
+
+## Handoff notes
+
+- **Read `main.ts` first.** It owns the screen flow, and every screen transition in the
+  game passes through it.
+- **`a11y.spec.ts` has a control test** asserting axe found real nodes. Do not delete
+  it: without it, the whole file is green over an empty DOM.
+- **The test hook is the only backdoor.** If it grows, each addition is a piece of the
+  game a test reaches around rather than through — the list is meant to read as a cost.

@@ -1,45 +1,29 @@
 /**
- * Ore counter and node depletion — T057, FR-016.
+ * Ore counter and node depletion — T057 (reworked in M7), FR-016.
  *
- * FR-016's presentation half. The counter is the number the player checks most
- * often, so it sits top-left where the eye starts, and the remaining ore across
- * all nodes sits with it — because "how long can this economy last" is the
- * question that decides whether to expand or attack, and CR-001's sudden death
- * makes global depletion a real clock rather than a curiosity.
+ * DOM for the reasons in `buildbar.ts`: `journeys.yml` addresses
+ * `[data-testid=ore-counter]` directly, and STEP-003 of JRN-001 reads it to prove
+ * that a player who touches nothing still sees the economy working.
  */
-
-import Phaser from 'phaser';
 
 import type { SimState } from '../../sim/state';
 
-const MARGIN = 12;
-
 export class ResourceHud {
-  private readonly ore: Phaser.GameObjects.Text;
-  private readonly nodes: Phaser.GameObjects.Text;
+  private readonly ore: HTMLElement;
+  private readonly nodes: HTMLElement;
 
-  constructor(scene: Phaser.Scene) {
-    this.ore = scene.add
-      .text(MARGIN, MARGIN, '', {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '20px',
-        color: '#fbbf24',
-      })
-      .setDepth(51)
-      .setScrollFactor(0);
-
-    this.nodes = scene.add
-      .text(MARGIN, MARGIN + 26, '', {
-        fontFamily: 'system-ui, sans-serif',
-        fontSize: '13px',
-        color: '#9ca3af',
-      })
-      .setDepth(51)
-      .setScrollFactor(0);
+  constructor(root: ParentNode) {
+    this.ore = root.querySelector<HTMLElement>('[data-testid=ore-counter]')!;
+    this.nodes = root.querySelector<HTMLElement>('[data-testid=node-status]')!;
   }
 
   draw(state: SimState): void {
-    this.ore.setText(`${state.players[0].ore} ore`);
+    const ore = String(state.players[0].ore);
+    // Guarded because this runs every frame and touching textContent
+    // unconditionally invalidates layout for a string that rarely changes.
+    if (this.ore.textContent !== ore) {
+      this.ore.textContent = ore;
+    }
 
     let remaining = 0;
     let live = 0;
@@ -51,11 +35,13 @@ export class ResourceHud {
       }
     }
 
-    // When every node is dry, say so plainly rather than showing "0" — sudden
-    // death is armed at that moment (CR-001) and the player needs to know the
-    // match now has a timer, not just an empty map.
-    this.nodes.setText(
-      live === 0 ? 'ore exhausted — sudden death' : `${live} nodes · ${remaining} ore left`,
-    );
+    // When every node is dry, say so plainly rather than showing a zero: sudden
+    // death arms at that moment (CR-001), and the player needs to know the match
+    // now has a clock rather than just an empty map.
+    const text =
+      live === 0 ? 'ore exhausted — sudden death' : `${live} nodes · ${remaining} ore left`;
+    if (this.nodes.textContent !== text) {
+      this.nodes.textContent = text;
+    }
   }
 }

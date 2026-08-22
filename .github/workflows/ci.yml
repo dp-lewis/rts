@@ -86,7 +86,7 @@ jobs:
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "No E2E specs yet (they arrive in Phase 8A) — skipping browser install."
+            echo "No E2E specs found — skipping browser install."
           fi
 
       - name: Install Playwright browsers

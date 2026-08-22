@@ -49,7 +49,7 @@ requirements:
     text: "Page load presents the difficulty gate and nothing else"
     stories: ["US-002"]
     tasks: ["T067"]
-    code: []
+    code: ["src/game/scenes/Gate.ts", "index.html"]
     tests: []
   - id: "FR-002"
     text: "Selecting a difficulty starts a match immediately"
@@ -145,7 +145,7 @@ requirements:
     text: "Destroying the enemy Base wins; losing own Base loses"
     stories: ["US-008"]
     tasks: ["T038", "T041", "T065"]
-    code: ["src/sim/victory.ts"]
+    code: ["src/sim/victory.ts", "src/game/scenes/Result.ts"]
     tests: []
   - id: "FR-018"
     text: "Every friendly unit carries a persistent non-colour ownership cue"
@@ -157,7 +157,7 @@ requirements:
     text: "Result screen's primary action is Rematch"
     stories: ["US-010"]
     tasks: ["T068", "T069"]
-    code: []
+    code: ["src/game/scenes/Result.ts", "src/game/main.ts"]
     tests: []
   - id: "FR-020"
     text: "Units auto-acquire enemies in range; explicit orders override"
@@ -181,25 +181,25 @@ requirements:
     text: "Screen-edge indicator + audio cue when an owned entity takes damage"
     stories: ["US-011"]
     tasks: ["T070"]
-    code: ["src/sim/combat.ts", "src/sim/state.ts"]
+    code: ["src/sim/combat.ts", "src/sim/state.ts", "src/game/hud/alert.ts"]
     tests: []
   - id: "FR-024"
     text: "Honest fallback message when WebGL is unavailable"
     stories: ["US-012"]
     tasks: ["T061", "T071"]
-    code: []
+    code: ["src/game/main.ts", "index.html"]
     tests: []
   - id: "FR-025"
     text: "Local counters record time-to-first-action, duration, completion, rematch"
     stories: ["US-001", "US-008", "US-010"]
     tasks: ["T072"]
-    code: []
+    code: ["src/game/hud/counters.ts"]
     tests: []
   - id: "FR-026"
     text: "Difficulty gate is operable by keyboard alone"
     stories: ["US-002"]
     tasks: ["T062", "T067"]
-    code: []
+    code: ["src/game/scenes/Gate.ts", "src/game/ui/app.css"]
     tests: []
   - id: "FR-027"
     text: "Ore-node selection resolves by least squared distance, ties by ascending node id"
@@ -241,7 +241,7 @@ requirements:
     text: "Sudden-death damage shows a distinct indicator and does NOT trigger the under-attack indicator (CR-001)"
     stories: ["US-008"]
     tasks: ["T079", "T041", "T070"]
-    code: ["src/sim/victory.ts", "src/sim/combat.ts"]
+    code: ["src/sim/victory.ts", "src/sim/combat.ts", "src/game/hud/alert.ts"]
     tests: []
 
 
