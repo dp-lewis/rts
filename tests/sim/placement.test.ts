@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ATTACK, COST, MAP_TILES_X, TILE_PX } from '../../src/sim/constants';
+import { ATTACK, BUILD_TICKS, COST, MAP_TILES_X, TILE_PX } from '../../src/sim/constants';
 import { hashState } from '../../src/sim/hash';
 import { ISSUER, type Command } from '../../src/sim/commands';
 import { ENTITY_STATE, KIND, createInitialState, type EntitySeed } from '../../src/sim/state';
@@ -97,7 +97,10 @@ describe('place — FR-012 becomes reachable', () => {
     state = step(state, [place(1, centre(6), centre(5))]);
     const id = state.entities.find((e) => e.kind === KIND.FACTORY)!.id;
 
-    for (let i = 0; i < 500; i += 1) {
+    // Derived, not a magic 500: M8 raised the Factory's build time past that and
+    // this assertion started failing for a tuning reason rather than a placement
+    // one. The +20 is slack for the tick the command lands on.
+    for (let i = 0; i < BUILD_TICKS.factory + 20; i += 1) {
       state = step(state, []);
     }
     expect(state.entities.find((e) => e.id === id)?.state).toBe(ENTITY_STATE.IDLE);

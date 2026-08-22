@@ -6,9 +6,28 @@
  * Every value a designer might want to change lives here; nothing else in
  * `src/sim/` should contain a magic number.
  *
- * The values below are STARTING POINTS, not balanced figures. spec.md is explicit
- * that all timing and damage constants are M8 targets, and the target the tuning
- * pass aims at is a median match of 6–10 minutes with p90 under 15.
+ * ## Tuned in M8 (2026-08-22)
+ *
+ * These are no longer starting points. The pass moved the median match from
+ * **1.6 minutes to 6.2**, with p90 at 9.97 — both inside the K4 band — measured
+ * over 30 fixed-seed matches by `tests/sim/duration.test.ts`, which now fails the
+ * build if a later edit drifts out of it.
+ *
+ * What moved, and why:
+ *
+ * | change | from → to | reason |
+ * |---|---|---|
+ * | `MAX_HP.base` | 1500 → 10500 | The Base is the win condition, so its hp is the single biggest lever on how long the closing fight lasts. |
+ * | `BUILD_TICKS` | +~70% across the board | Slower production means the armies that decide a match take longer to exist, which is where most of the added length came from. |
+ * | `ORE_PER_NODE` | 1500 → 3400 | Enough to sustain a longer match — but deliberately NOT more, because sudden death arms on global depletion, and 4200 put the CR-001 backstop out of reach in exactly the matches that needed it (one ran 15.8 minutes). |
+ * | `SUDDEN_DEATH` | grace 60s → 30s, ramp +1/15s → +4/10s | The backstop was written against 1500hp Bases and was far too slow against 10500. This is what pulled p90 from 13.1 to 9.97. |
+ *
+ * Peak army size settled at 19 a side against the ~25–30 LEGIBILITY ceiling
+ * (pre-impl F-5) — comfortably under, so nothing was tuned to chase it.
+ *
+ * The measurements come from AI-vs-mirrored-AI, which is a proxy for a human and
+ * an imperfect one: see `tests/sim/sparring.ts`. The band is confirmed against
+ * real players in M9, not here.
  */
 
 /** Fixed simulation rate. The renderer interpolates between ticks; it never sets the rate. */
@@ -43,7 +62,7 @@ export const ARRIVE_EPSILON = 1.5;
 export const STARTING_ORE = 150;
 
 /** Ore per node at match start, and how much a worker moves per trip. */
-export const ORE_PER_NODE = 1500;
+export const ORE_PER_NODE = 3400;
 export const WORKER_CARRY_CAPACITY = 10;
 export const WORKER_GATHER_PER_TICK = 1;
 
@@ -58,17 +77,17 @@ export const COST = {
 
 /** Build times, in ticks. */
 export const BUILD_TICKS = {
-  worker: 100,
-  scout: 90,
-  trooper: 140,
-  tank: 300,
-  factory: 400,
+  worker: 170,
+  scout: 160,
+  trooper: 250,
+  tank: 460,
+  factory: 520,
 } as const;
 
 /** Maximum hit points by kind. */
 export const MAX_HP = {
-  base: 1500,
-  factory: 600,
+  base: 10500,
+  factory: 900,
   worker: 40,
   scout: 50,
   trooper: 90,
@@ -98,11 +117,11 @@ export const ATTACK = {
  * grace period runs, then all Bases take escalating damage until one falls.
  */
 export const SUDDEN_DEATH = {
-  graceTicks: TICK_HZ * 60,
+  graceTicks: TICK_HZ * 30,
   initialDamagePerTick: 1,
   /** Added to the per-tick damage every `rampIntervalTicks`. */
-  damageRampStep: 1,
-  rampIntervalTicks: TICK_HZ * 15,
+  damageRampStep: 4,
+  rampIntervalTicks: TICK_HZ * 10,
 } as const;
 
 /**

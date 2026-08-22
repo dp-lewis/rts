@@ -2,7 +2,7 @@ schema_version: 3
 feature: simple-rts-game
 feature_description: "Make a simple RTS game — local single-player vs AI, client-side Phaser, deterministic fixed-timestep simulation."
 created_at: "2026-08-21"
-last_updated: "2026-08-22T13:05:00Z"
+last_updated: "2026-08-22T14:00:00Z"
 feature_mode: standard
 flow_mode: gated
 v2_native: true
@@ -80,16 +80,17 @@ phases:
   implement:
     status: milestone_complete
     started_at: "2026-08-22T06:15:00Z"
-    milestone_completed_at: "2026-08-22T13:05:00Z"
+    milestone_completed_at: "2026-08-22T14:00:00Z"
     digest_path: "implement/digest.md"
     run_scope: "M7 (T058-T072) — nine E2E specs plus six screens. The HUD was migrated from Phaser to DOM at the kickoff gate: journeys.yml is authoritative and addresses every UI surface by DOM selector, and FR-026 plus the T066 axe floor are unsatisfiable inside a canvas. Prior runs scoped M0-M6 the same way."
-    milestones_complete: ["M0", "M1", "M2", "M3", "M4", "M5", "M6", "M7"]
+    milestones_complete: ["M0", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8"]
     red_gate:
       policy: per_milestone
       policy_rationale: "Greenfield repo: no package.json, no Vitest, no src/. The 27 Test-first tasks span M0-M9 and reference modules that will not exist for days, so a single upfront Red would be 27 bare import errors — a vacuous Red. Instead T001/T002 (pure INFRA, zero product code) scaffold the runner, then each milestone's test block must be observed failing before its implementation block runs. Chosen by the user at the Phase 6 kickoff gate 2026-08-22."
       status: confirmed_failing
       tests: ["T003 (tests/lint/boundary.test.ts)", "T007-T014 (rng, hash, commands, determinism, roundtrip, headless)", "T026-T030 (pathfind, economy, ordering)", "T034-T038 + T078-T080 (combat, production, victory)", "T042-T043 (ai, replay difficulty header)"]
       observed_at: "2026-08-22T06:17:37Z"
+      m8_note: "M8 has no Test-first: true task and no Red gate: it is a tuning pass, not a feature. The discipline it does carry is that the exit criterion became a TEST (tests/sim/duration.test.ts, 30 fixed-seed matches) rather than a number someone remembered, so a later edit that drifts out of the 6-10 band fails the build."
       m7_note: "M7 carries NO Test-first: true task, but the nine E2E specs were written first against journeys.yml as a voluntary Red: 41 failed | 1 passed of 42, every failure a selector that did not exist. Green at 42/42 after the DOM migration and T067-T072. The single Red-state pass is `exposes no test hook without the flag`, trivially true while no hook existed and load-bearing now that one does."
       m6_note: "T052 is the only Test-first: true task in M6 and the first since M4, so the gate was genuinely load-bearing here rather than voluntary. `selectInRect` stubbed to throw gave 12 failed | 1 passed of 13 collected; green at 15/15 after T053. The single Red-state pass asserts the function's arity, structural and green in both states."
       m5_note: "Rejected a THIRD time for the M1 reason, and this time the test was already written when the run started. tests/game/loop.test.ts failed with 'Cannot find module ../../src/game/loop' and ZERO tests collected — a failure an empty file turns green. A signature-only src/game/loop.ts (every export present, advanceAccumulator throwing) moved it to 17 failed | 1 passed of 18 collected; green after T048 at 18/18. The single Red-state pass reads only the two constants and is green by design in both states, the same scoping control M0 used. Worth recording that M5 carries NO Test-first: true task in tasks.md — all 27 markers sit in M0-M4 and M6 — so the loop test was a voluntary extension of the discipline, and it immediately caught a defect the milestone would otherwise have shipped."
@@ -97,11 +98,11 @@ phases:
       m1_note: "Red rejected a SECOND time for the same reason: running the eight new test files against a repo with no src/sim modules produced bare 'Cannot find module' errors with zero new tests collected. Signature-only stubs (every export present, every body throwing) moved the failure to 43 collected tests failing on real calls. Writing the stubs also forced the whole M1 API surface to be settled before any logic existed. Green after T015-T025: 86 passed."
       note: "The first Red draft was REJECTED as insufficient — it failed with 'ESLint returned no result' (no config file, so ESLint matched nothing), which would have gone green on an empty eslint.config.js. Rewritten to lint against a parser-only rule-free fallback so a rule-less config still fails."
       skip_reason: null
-    tasks_completed: 77
+    tasks_completed: 80
     tasks_total: 82
-    tasks_in_scope_this_run: 15
-    progressive_checkpoints: 16
-    progressive_warnings: 11
+    tasks_in_scope_this_run: 3
+    progressive_checkpoints: 17
+    progressive_warnings: 12
     progressive_critical: 0
     dependencies:
       added: 11
@@ -109,8 +110,9 @@ phases:
       warned: 0
       blocked: 0
       log_path: "features/simple-rts-game/dependency-log.md"
-    sim_version: 8
+    sim_version: 9
     sim_version_history:
+      - {version: 9, milestone: "M8", reason: "The balance tuning pass: base hp 1500->10500, build times +~70%, ore/node 1500->3400, and a sharper CR-001 ramp. Median match 1.6 -> 6.2 min, p90 2.0 -> 9.97. Every recorded hash in both existing cases moved, which is the expected size for a change to hp, build times AND the economy — unlike M6, which touched one case because 001 never fires a shot. Case 003 added in the same bump."}
       - {version: 8, milestone: "M6", reason: "The `place` command (FR-012 / REV-007) joins the hashed command set, and REV-006's cooldown off-by-one changes combat timing. Deliberate regen: 001-baseline's hashes did not move at all (no shot is fired in that case) and 002-ai-vs-ai's matched the regression's `got` column exactly — one case, one checkpoint, the blast radius expected of a combat-timing change."}
       - {version: 1, milestone: "M1", reason: "initial simulation behaviour"}
       - {version: 2, milestone: "M2 start", reason: "destX/destY added to Entity and the hash (ADR-001 Amendment 2). Deliberate regen, all 4 recorded hashes changed — the expected size for two new hashed fields per entity."}
@@ -120,6 +122,41 @@ phases:
       - {version: 5, milestone: "M3", reason: "ADR-001 Amendment 4 — gatherNodeId split out of targetId. targetId was holding two id spaces (entity ids and ore node ids) and combat cleared it out from under the economy the moment both existed."}
       - {version: 3, milestone: "M2", reason: "economy and movement wired into the tick. NOT bumped in the same edit at first: the corpus caught it as a REGRESSION (first divergence tick 100) rather than as staleness, which is the more useful failure. Bumped by hand, regenerated, hashes matched the regression's 'got' column exactly."}
     findings_for_gate:
+      - id: "M8-F1"
+        severity: "resolved"
+        title: "The first duration measurement was AI-versus-nobody"
+        detail: "The harness reported 18 matches at a 1.54-minute median with player 1 winning 18 of 18 — on a perfectly mirrored map, which is not a balance result but a broken instrument. ai.ts states in its own header that it plays player 1 only and that an unattended match is one where player 0 never issues a command. Tuning against that number would have optimised a configuration the game never ships."
+        resolution: "Player 0 driven by reflecting the state across the map's vertical axis with owners swapped, planning for `player 1` in the mirror, and flipping the orders back. ai.ts left untouched — the single-AI design is deliberate. Extracted to tests/sim/sparring.ts and shared with the measurement script so the mirror exists once."
+        lesson: "An instrument's first output deserves more suspicion than its tenth."
+      - id: "M8-F2"
+        severity: "resolved — was a phantom"
+        title: "A reported asymmetry that turned out to be the probe's own fault"
+        detail: "A symmetry probe showed player 1 ending every mirrored fight one unit up, which looked like a systematic advantage to the side the human does not play. It was the probe: with no sparring partner inside it, p1's Base built a free Worker (pre-impl F-6) while p0's did nothing. Tracing a real mirrored duel showed both units dying on tick 145 — O-6 exactly as designed. The residual skew is the harness's zero-latency commands versus the AI's `pending` queue, not the game."
+        lesson: "A reported-and-wrong balance bug costs more than an unreported one. The trace was worth the twenty minutes."
+      - id: "M8-F3"
+        severity: "resolved"
+        title: "CR-001's backstop could not reach the matches that needed it"
+        detail: "After pass 4 the median was in band but one match ran 16.2 minutes — past p90 and past the product's own name. The cause was the TRIGGER, not the ramp: sudden death arms on global node depletion, and 4200 ore per node put depletion out of reach in precisely the stalemates the backstop exists for. Cutting to 3400 took p90 from 13.08 to 9.97 and raised sudden-death engagement from 4/24 to 7/30. The backstop had been tuned against 1500hp Bases and was far too slow against 10500."
+      - id: "M8-F4"
+        severity: "resolved"
+        title: "Two tests held tuning constants as magic numbers"
+        detail: "`builds itself to completion` looped 500 ticks against a Factory whose build time is now 520. `actually consumes the PRNG` ran 300 ticks, and the AI draws ONLY when choosing among affordable combat units — slower worker production meant it never reached that branch, so a determinism test failed because of build times. Both now derive their windows from constants.ts."
+      - id: "M8-F5"
+        severity: "open — for M9"
+        title: "The duration band is measured against a mirrored AI, not a human"
+        detail: "A good instrument for pacing, a poor one for balance, a proxy for a human in neither. If real players play very differently from this AI, these constants move again — and M9 is the first time anyone will find out."
+      - id: "M8-F6"
+        severity: "open — accepted"
+        title: "One match in thirty still runs to 15.3 minutes"
+        detail: "p90 sits at 9.97, comfortably inside the criterion, but the worst case is outside the promise the product name makes. Accepted rather than tuned away, because chasing the tail further would drag the median down out of the band."
+      - id: "M8-F7"
+        severity: "open — for M9"
+        title: "Difficulty barely separates by duration"
+        detail: "Medians are 6.3 / 5.9 / 6.3 across the three levels. Peak army size DOES separate cleanly (7 / 12 / 19), so the profiles are doing something — but whether the levels feel different is a question no harness can answer. Related to the M4 open item that difficulty tuning is unvalidated."
+      - id: "M8-F8"
+        severity: "open — informational"
+        title: "MAX_UNITS_PER_SIDE is decorative"
+        detail: "Peak observed is 19 against a ceiling of 30. Nothing enforces the constant and nothing approaches it, so it currently documents an intent rather than constraining anything."
       - id: "M7-F1"
         severity: "resolved"
         title: "The HUD was unreachable by the authoritative journey and invisible to the a11y gate"

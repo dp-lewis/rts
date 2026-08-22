@@ -61,7 +61,7 @@ requirements:
     text: "Simulation advances in fixed-timestep ticks, decoupled from render frames"
     stories: []
     tasks: ["T011", "T013", "T014", "T015", "T021", "T022", "T023", "T024", "T025", "T028", "T045", "T048", "T075"]
-    code: ["src/sim/step.ts", "src/sim/replay.ts", "src/sim/version.ts", "tests/replay/run-corpus.ts", "scripts/corpus-regen.ts", "src/game/loop.ts", "src/game/scenes/Match.ts"]
+    code: ["src/sim/step.ts", "src/sim/replay.ts", "src/sim/version.ts", "tests/replay/run-corpus.ts", "scripts/corpus-regen.ts", "src/game/loop.ts", "src/game/scenes/Match.ts", "tests/replay/corpus/003-tuned-baseline.json"]
     tests: []
   - id: "FR-004"
     text: "All player intent enters the simulation as commands queued for a future tick"

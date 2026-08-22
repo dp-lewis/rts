@@ -1,27 +1,17 @@
 {
   "schemaVersion": 1,
-  "id": "001-baseline",
-  "description": "M1/M2 harness baseline on the real 20x11 map, mirrored across x=640. Player and AI commands land on the same tick twice with the AI listed first, so applying arrival order instead of (issuer, seq) changes the hash (O-4). Both sides gather from tick 0 with no player input (FR-006). Not a defect regression: this is the case that proves the corpus machinery works before any defect needs it.",
+  "id": "003-tuned-baseline",
+  "description": "The M8 tuned baseline, and the first corpus case to exercise the `place` command. Recorded after the balance pass that moved the median match from 1.6 minutes to 6.2 (base hp 1500->10500, build times up ~70%, ore/node 1500->3400, and a sharper CR-001 ramp). It carries player commands AND the AI's, so the hashes cover both command sources interleaving under O-4. The placement at tick 900 closes M7-F5: `place` was added in M6 and hashed with an exhaustiveness guard, but until now no recorded case replayed one, so its encoding was asserted by unit test and never across platforms.",
   "defect": null,
   "createdAt": "2026-08-22",
   "simVersion": 9,
   "input": {
-    "seed": 20260822,
+    "seed": 31337,
     "difficulty": 1,
     "map": "inline",
     "commands": [
       {
-        "tick": 20,
-        "issuer": 1,
-        "seq": 0,
-        "type": "attack",
-        "units": [
-          6
-        ],
-        "targetId": 2
-      },
-      {
-        "tick": 20,
+        "tick": 30,
         "issuer": 0,
         "seq": 0,
         "type": "build",
@@ -29,30 +19,44 @@
         "kind": 2
       },
       {
-        "tick": 120,
-        "issuer": 1,
-        "seq": 1,
-        "type": "build",
-        "builderId": 4,
-        "kind": 4
-      },
-      {
-        "tick": 120,
+        "tick": 400,
         "issuer": 0,
         "seq": 1,
         "type": "build",
         "builderId": 1,
-        "kind": 4
+        "kind": 3
       },
       {
-        "tick": 250,
-        "issuer": 1,
+        "tick": 900,
+        "issuer": 0,
         "seq": 2,
+        "type": "place",
+        "builderId": 1,
+        "kind": 1,
+        "x": 352,
+        "y": 224
+      },
+      {
+        "tick": 1500,
+        "issuer": 0,
+        "seq": 3,
+        "type": "move",
+        "units": [
+          2,
+          3
+        ],
+        "x": 544,
+        "y": 480
+      },
+      {
+        "tick": 2100,
+        "issuer": 0,
+        "seq": 4,
         "type": "attack",
         "units": [
-          6
+          2
         ],
-        "targetId": 1
+        "targetId": 4
       }
     ],
     "setup": {
@@ -69,13 +73,13 @@
           "id": 0,
           "x": 416,
           "y": 352,
-          "remaining": 1500
+          "remaining": 3400
         },
         {
           "id": 1,
           "x": 864,
           "y": 352,
-          "remaining": 1500
+          "remaining": 3400
         }
       ],
       "entities": [
@@ -116,7 +120,7 @@
         },
         {
           "id": 6,
-          "kind": 4,
+          "kind": 2,
           "owner": 1,
           "x": 1056,
           "y": 416
@@ -125,20 +129,24 @@
     }
   },
   "expected": {
-    "finalTick": 400,
-    "stateHash": "ba933196a140897d",
+    "finalTick": 3000,
+    "stateHash": "e8032a231c4cb844",
     "checkpoints": [
       {
-        "tick": 100,
-        "stateHash": "3e8863c2add730ef"
+        "tick": 900,
+        "stateHash": "6f2eca51de381e84"
       },
       {
-        "tick": 200,
-        "stateHash": "71320feb4e44bf46"
+        "tick": 1500,
+        "stateHash": "3527b95206a0b807"
       },
       {
-        "tick": 300,
-        "stateHash": "5798031debf8bba0"
+        "tick": 2100,
+        "stateHash": "59b94168ce42015f"
+      },
+      {
+        "tick": 2700,
+        "stateHash": "9fd4c2e320b83360"
       }
     ]
   }

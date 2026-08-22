@@ -1205,3 +1205,136 @@ the built bundle.
 5. **The axe floor covers four DOM surfaces and cannot cover the world.** The in-match
    canvas's accessibility claim rests entirely on FR-018's underglow ring, verified in
    greyscale by the T081 spike and pinned by unit tests — not by axe.
+
+---
+
+## M8 — Balance tuning pass
+
+**Exit criterion met: median 6.19 min (target 6–10), p90 9.97 min (target < 15), over 30
+fixed-seed matches.** Was 1.6 min and 2.0 min before the pass.
+
+### The first measurement was worthless, and finding out why was the milestone's real work
+
+T073 says "iterate by **playing**, not by specifying", and the exit criterion is a
+number over many matches — which cannot be gathered by hand. So the first thing built
+was an instrument, and the first thing it reported was a lie:
+
+```
+18 matches   median 1.54 min   p1 wins 18/18
+```
+
+Player 1 winning every match on a perfectly mirrored map is not a balance result, it is
+a broken measurement. `ai.ts` says so plainly in its own header: *"The AI plays player
+1. There is no second AI: this is a single-player game, and an unattended match is
+simply one where player 0 never issues a command."* The harness was measuring
+AI-versus-nobody.
+
+That design decision was left alone rather than overturned for a measurement. Player 0
+is instead driven by **reflecting the state across the map's vertical axis** with owners
+swapped, planning for "player 1" in that mirrored world, and flipping the orders back —
+sound only because the opening is a true mirror, which `command-seam.test.ts` already
+asserts. Entity ids survive reflection, so only x coordinates need mapping.
+
+### A phantom bug, correctly discarded
+
+With a sparring partner the median moved to 1.62 min and p1 still won 16 of 18. A
+symmetry probe appeared to confirm a real asymmetry — p1 ended every mirrored fight one
+unit up. It was the probe that was wrong: with no sparring partner in it, p1's base was
+building a free Worker (pre-impl F-6) while p0's did nothing.
+
+Tracing an actual mirrored duel showed the simulation is **symmetric**:
+
+```
+t145  p0#3 hp=0 st=DEAD   p1#4 hp=0 st=DEAD
+```
+
+Both units die on the same tick — O-6 working exactly as designed. The remaining
+skew comes from the harness (its commands apply with zero latency, the AI's go through
+`pending`), not from the game. Worth stating because a reported-and-wrong balance bug
+is more expensive than an unreported one.
+
+### What actually moved the number
+
+Four tuning passes, measured after each:
+
+| pass | change | median | p90 |
+|---|---|---|---|
+| baseline | — | 1.62 | 2.00 |
+| 1 | base hp 1500→4500, build times +40%, ore/node →2600 | 3.10 | 5.53 |
+| 2 | base hp →7000, build times +20% more, ore/node →4200 | 5.02 | 11.92 |
+| 3 | base hp →9000 | 5.97 | 12.62 |
+| 4 | base hp →10000, sudden death sharpened | 6.21 | 13.08 |
+| 5 | ore/node →3400, base hp →10500 | **6.19** | **9.97** |
+
+Pass 5 is the one worth reading. The median was already in band at pass 4, but one
+match ran 16.2 minutes — past the p90 ceiling and past the product's own name. The
+cause was not the ramp but the TRIGGER: sudden death arms on **global node depletion**,
+and 4200 ore a node put depletion out of reach in precisely the stalemates that needed
+the backstop. Cutting ore to 3400 brought p90 from 13.08 to 9.97 and raised sudden-death
+engagement from 4/24 to 7/30. CR-001's backstop had been tuned against 1500hp Bases and
+was far too slow against 10500.
+
+Peak army settled at 19 a side against the ~25–30 legibility ceiling (pre-impl F-5).
+Nothing was tuned to chase that number.
+
+### Two tests were holding tuning constants as magic numbers
+
+Both failed for reasons unrelated to what they test:
+
+- `builds itself to completion` looped 500 ticks; `BUILD_TICKS.factory` is now 520.
+- `actually consumes the PRNG` ran 300 ticks. The AI draws **only** when choosing among
+  affordable combat units, and slower worker production meant it never reached that
+  branch in the window — so a test about determinism failed because of build times.
+
+Both now derive their windows from `constants.ts`, so the next tuning pass cannot
+repeat it.
+
+### Checkpoint #17 — after T073, T074, T075
+
+| Check | Status | Notes |
+|-------|:------:|-------|
+| Task-Code correspondence | ✅ | T073 → `constants.ts`; T074 → `tests/sim/duration.test.ts`; T075 → `003-tuned-baseline.json` + `version.ts`. |
+| Spec AC alignment | ✅ | K4 median 6.19 / p90 9.97 asserted, not remembered. 328 tests green. |
+| Unplanned changes | ⚠️ 3 files | `tests/sim/sparring.ts`, `scripts/measure-durations.ts`, and two tests whose windows were rewritten. |
+| Plan alignment | ✅ | `SIM_VERSION` 8 → 9 by hand, corpus regenerated deliberately, diff reviewed. |
+| Dependency / supply-chain | ✅ None added | |
+
+**Verdict:** CLEAN — M8 complete.
+
+### The corpus diff, and case 003
+
+```
+001-baseline    terminal e23a750e… -> ba933196…   (+3 checkpoints)
+002-ai-vs-ai    terminal b65e43f5… -> 2e843b5b…   (+3 checkpoints)
+003-tuned       terminal            e8032a23…    (new, +4 checkpoints)
+```
+
+Every recorded hash moved, which is the expected size for a change to hp, build times
+and ore: unlike M6's combat-timing change — which touched one case and one checkpoint
+because 001 never fires a shot — this pass altered the economy, so it moved everything.
+
+Case 003 also closes **M7-F5**: `place` was added in M6 and hashed behind an
+exhaustiveness guard, but no recorded case replayed one, so its encoding was asserted by
+unit test and never across platforms. Verified the command genuinely lands rather than
+being silently refused — a placement that failed for want of ore would have made the
+case a fiction:
+
+```
+t30 build | t400 build | t900 place -> STRUCTURE CREATED | t1500 move | t2100 attack
+factories at end: id13 owner0 state0 (operational)
+```
+
+### Open items carried out of M8
+
+1. **The duration figures are AI-vs-mirrored-AI, not human-vs-AI.** A good instrument
+   for pacing, a poor one for balance, and a proxy for a human in neither. M9 is where
+   the band meets real players — and if they play very differently, these constants move
+   again.
+2. **One match in thirty still runs to 15.3 minutes.** p90 is comfortably inside the
+   criterion, but the worst case is outside the promise the product's name makes.
+3. **Difficulty still barely separates by duration** (d0 6.3, d1 5.9, d2 6.3 median).
+   The profiles differ in re-plan cadence and army target, and peak army does separate
+   cleanly (7 / 12 / 19) — but whether the levels *feel* different is M9's question, not
+   a number this harness can produce.
+4. **`MAX_UNITS_PER_SIDE` is now decorative.** Peak is 19 against a ceiling of 30;
+   nothing enforces it and nothing approaches it.

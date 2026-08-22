@@ -375,13 +375,13 @@ asserting on state, not rendered output (Principle II).
 
 **Exit criterion: median match duration 6–10 min, p90 < 15 min.** Timeboxed.
 
-- [ ] T073 [US-008, FR-032] Tuning pass over `constants.ts` — unit costs, speeds, hp, ore per node, node count, AI aggression, **sudden-death grace and damage ramp** *(CR-001)*. Tune toward a **legibility** ceiling of ~25–30 units per side, not the ~60 performance permits *(pre-impl F-5: "~60 units" arrived as a performance NFR and was never a design decision)*. Iterate by **playing**, not by specifying
+- [x] T073 [US-008, FR-032] Tuning pass over `constants.ts` — unit costs, speeds, hp, ore per node, node count, AI aggression, **sudden-death grace and damage ramp** *(CR-001)*. Tune toward a **legibility** ceiling of ~25–30 units per side, not the ~60 performance permits *(pre-impl F-5: "~60 units" arrived as a performance NFR and was never a design decision)*. Iterate by **playing**, not by specifying
       Paths: src/sim/constants.ts
       Size: L
-- [ ] T074 [US-008] Instrument and record 20+ match durations from the tuned build; confirm the 6–10 min median and p90 < 15 min
+- [x] T074 [US-008] Instrument and record 20+ match durations from the tuned build; confirm the 6–10 min median and p90 < 15 min
       Paths: tests/sim/duration.test.ts
       Size: M
-- [ ] T075 [FR-003] Record the tuned baseline as corpus case 003 — tuning changed simulation behaviour, so bump `simVersion` and regenerate stale cases **deliberately**, showing hash diffs in the PR
+- [x] T075 [FR-003] Record the tuned baseline as corpus case 003 — tuning changed simulation behaviour, so bump `simVersion` and regenerate stale cases **deliberately**, showing hash diffs in the PR
       Paths: tests/replay/corpus/003-tuned-baseline.json, src/sim/version.ts
       Size: M
 

@@ -1,8 +1,8 @@
 # Phase Digest — Implement
 
-**Phase:** 6 · Implement · **Scope:** M0–M7
-**Date:** 2026-08-22 · **Tasks:** 77 / 82 complete
-**Status:** M0–M7 complete · `SIM_VERSION` 8 · 320 unit + 42 E2E green · **the game is complete end to end**
+**Phase:** 6 · Implement · **Scope:** M0–M8
+**Date:** 2026-08-22 · **Tasks:** 80 / 82 complete
+**Status:** M0–M8 complete · `SIM_VERSION` 9 · 328 unit + 42 E2E green · **median match 6.2 min**
 
 ---
 
@@ -614,3 +614,62 @@ fallback, an under-attack alert, session counters, and an automated WCAG-AA floo
   it: without it, the whole file is green over an empty DOM.
 - **The test hook is the only backdoor.** If it grows, each addition is a piece of the
   game a test reaches around rather than through — the list is meant to read as a cost.
+
+---
+
+# M8 — Balance tuning pass
+
+**Tasks:** T073–T075 · **Tests:** 328 unit + 42 E2E green · **`SIM_VERSION`:** 8 → 9
+**Exit criterion MET:** median 6.19 min (target 6–10), p90 9.97 min (target < 15), n=30.
+
+## Key decisions
+
+- **Build the instrument before touching a constant.** T073 says iterate by playing, but
+  the criterion is a distribution over many matches. The first thing measured was
+  AI-versus-nobody reporting 1.5-minute matches — a number that would have made every
+  subsequent tuning decision wrong.
+
+- **Mirror the state rather than write a second AI.** `ai.ts` is explicit that it plays
+  player 1 only, for a single-player game. That decision was not overturned to make a
+  measurement convenient; player 0 is driven by reflecting the map and flipping the
+  orders back, which works only because the opening is a verified mirror.
+
+- **Base hp is the primary lever** (1500 → 10500). It is the win condition, so it sets
+  how long the closing fight lasts. Build times (+~70%) set how long the buildup takes.
+
+- **Ore per node is a sudden-death lever, not just an economy one.** CR-001 arms on
+  global depletion, so how much ore exists decides whether the backstop can engage at
+  all. 4200 put it out of reach; 3400 took p90 from 13.08 to 9.97.
+
+- **The exit criterion became a test.** `duration.test.ts` runs 30 fixed-seed matches
+  and fails the build outside the band, so the number cannot quietly drift.
+
+## Artifacts produced
+
+- `src/sim/constants.ts` — tuned, with the pass documented in the header
+- `tests/sim/duration.test.ts` — K4 asserted over 30 matches
+- `tests/sim/sparring.ts` — the mirrored partner, shared with the script
+- `scripts/measure-durations.ts` — the human-readable report used while tuning
+- `tests/replay/corpus/003-tuned-baseline.json` — first case to replay a `place`
+- `src/sim/version.ts` → 9; 001 and 002 regenerated
+
+**Dependencies added: none.**
+
+## Open risks
+
+1. **The band is measured against a mirrored AI, not a human** (M8-F5). M9 is the first
+   contact with real players, and the constants may move again.
+2. **One match in thirty runs to 15.3 minutes** (M8-F6) — inside p90, outside the name.
+3. **Difficulty barely separates by duration** (M8-F7): 6.3 / 5.9 / 6.3. Peak army does
+   separate (7 / 12 / 19), so the profiles work; whether they *feel* different is M9's.
+4. **`MAX_UNITS_PER_SIDE` is decorative** (M8-F8) — nothing enforces or approaches it.
+
+## Handoff notes
+
+- **Read `tests/sim/sparring.ts` before trusting any duration figure.** Its header says
+  plainly what the instrument can and cannot measure.
+- **If M9 moves the constants, `duration.test.ts` is the thing that will fail first**,
+  and that is the intended order of events.
+- **The corpus diff for `simVersion` 9 touched everything**, unlike M6's which touched
+  one case. Economy changes move every hash; combat-timing changes only move cases that
+  fire a shot.

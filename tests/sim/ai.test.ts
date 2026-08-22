@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { aiThink } from '../../src/sim/ai';
 import { ISSUER } from '../../src/sim/commands';
+import { BUILD_TICKS } from '../../src/sim/constants';
 import { hashState } from '../../src/sim/hash';
+
+/** `PROFILE[1].workerTarget` in ai.ts; duplicated because the table is private. */
+const PROFILE_WORKER_TARGET = 4;
 import { step } from '../../src/sim/step';
 import { ENTITY_STATE, KIND, VERDICT, createInitialState, type Difficulty, type SimState } from '../../src/sim/state';
 
@@ -72,9 +76,21 @@ describe('FR-002 / T042 — an AI-vs-AI match is reproducible', () => {
   });
 
   it('actually consumes the PRNG — this is the first milestone where step() does', () => {
+    // The AI draws exactly once per decision, and ONLY when choosing among
+    // affordable combat units — so the window has to be long enough for it to
+    // finish its worker opening first. A flat 300 ticks was that window until M8
+    // slowed worker production, after which the AI never reached the branch that
+    // draws and this test failed for a reason that had nothing to do with the
+    // PRNG. Derived from the constants so a later tuning pass cannot repeat it.
+    const budget = BUILD_TICKS.worker * PROFILE_WORKER_TARGET + BUILD_TICKS.scout * 2;
+
     const initial = mirrorMatch(1);
-    const later = run(initial, 300);
-    expect(later.rng).not.toBe(initial.rng);
+    const later = run(initial, budget);
+    expect(
+      later.rng,
+      `the AI drew nothing in ${budget} ticks — it should have reached a combat-unit ` +
+        'choice, which is its only PRNG draw',
+    ).not.toBe(initial.rng);
   });
 
   it('diverges for a different seed at the same difficulty', () => {
