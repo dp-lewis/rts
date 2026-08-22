@@ -15,7 +15,7 @@
 
 import Phaser from 'phaser';
 
-import { ORE_KEY, TILE_KEYS, spriteKey } from '../../assets/sprites';
+import { ORE_KEY, SCENERY_KEYS, TILE_KEYS, spriteKey } from '../../assets/sprites';
 import { MAP_TILES_X, MAP_TILES_Y, MAX_HP, TILE_PX } from '../../sim/constants';
 import { ENTITY_STATE, KIND, type Entity, type Kind, type SimState } from '../../sim/state';
 import { Effects } from './effects';
@@ -25,6 +25,23 @@ import { drawOwnership } from './ownership';
 interface Snapshot {
   x: number;
   y: number;
+}
+
+/** Percentage of eligible cells that get a decoration. */
+const SCENERY_DENSITY = 26;
+
+/**
+ * A stable hash of a cell position — the terrain's only source of variety.
+ *
+ * Not the sim PRNG: drawing scenery must not consume a draw the simulation is
+ * counting, and this file is on the presentation side of a boundary that exists
+ * precisely so it cannot. Not `Math.random` either, because the map would then
+ * differ between two replays of the same match.
+ */
+function scatterHash(cx: number, cy: number, salt: number): number {
+  let h = (cx * 73856093) ^ (cy * 19349663) ^ (salt * 83492791);
+  h = Math.imul(h ^ (h >>> 13), 0x5bd1e995);
+  return (h ^ (h >>> 15)) >>> 0;
 }
 
 /** How long an order acknowledgement stays on screen, in real milliseconds. */
@@ -77,20 +94,74 @@ export class WorldRenderer {
   }
 
   /**
-   * The static tile background. Drawn once — the grid never changes during a
-   * match, so redrawing 220 tiles every frame would be 220 draw calls for a
-   * picture that is identical each time.
+   * The static tile background and its scenery. Drawn once — the grid never
+   * changes during a match, so redrawing it every frame would be hundreds of
+   * draw calls for a picture that is identical each time.
    */
   private drawGround(): void {
     for (let cy = 0; cy < MAP_TILES_Y; cy += 1) {
       for (let cx = 0; cx < MAP_TILES_X; cx += 1) {
-        // A fixed checker rather than a random pick: the background must look
-        // the same in every replay of the same match, and `Math.random` here
-        // would be the one un-linted way to make a screenshot irreproducible.
-        const key = TILE_KEYS[(cx + cy) % TILE_KEYS.length]!;
+        // Hashed rather than random: the background must look the same in every
+        // replay of the same match, and `Math.random` here would be the one
+        // un-linted way to make a screenshot irreproducible.
+        const key = TILE_KEYS[scatterHash(cx, cy, 1) % TILE_KEYS.length]!;
         this.scene.add
           .image(cx * TILE_PX + TILE_PX / 2, cy * TILE_PX + TILE_PX / 2, key)
           .setDepth(0);
+      }
+    }
+    this.drawScenery();
+  }
+
+  /**
+   * Scattered rock and vegetation — playtest round 1 called the terrain bland.
+   *
+   * Purely decorative: it is drawn under everything, never consulted by
+   * anything, and the passability grid does not know it exists. That is a real
+   * constraint rather than a shortcut — scenery that LOOKED solid while units
+   * walked through it would be worse than bare ground, because a player reads
+   * the map at a glance and would be reading it wrong.
+   *
+   * The layout is a pure function of cell position, so it is identical in every
+   * match and every replay, and it costs no state. Two exclusions matter:
+   *
+   *  - **The starting areas**, so nothing sits under a Base, Factory, Worker or
+   *    ore node, where it would compete with the things a player must find in
+   *    the first ten seconds.
+   *  - **The central band**, where the fighting happens. Decoration there buys
+   *    atmosphere at the cost of legibility, and FR-018's whole argument is that
+   *    legibility wins.
+   */
+  private drawScenery(): void {
+    const midY = Math.floor(MAP_TILES_Y / 2);
+
+    for (let cy = 0; cy < MAP_TILES_Y; cy += 1) {
+      for (let cx = 0; cx < MAP_TILES_X; cx += 1) {
+        // Keep the opening clear: bases sit at columns 2 and 17, factories at 4
+        // and 15, workers between them, and ore at 6 and 13 — all on the middle
+        // rows.
+        const nearStart =
+          Math.abs(cy - midY) <= 1 && (cx <= 7 || cx >= MAP_TILES_X - 8);
+        const centreLane = Math.abs(cy - midY) <= 1;
+        if (nearStart || centreLane) {
+          continue;
+        }
+
+        const roll = scatterHash(cx, cy, 7) % 100;
+        if (roll >= SCENERY_DENSITY) {
+          continue;
+        }
+
+        const key = SCENERY_KEYS[scatterHash(cx, cy, 13) % SCENERY_KEYS.length]!;
+        // Nudged off the cell centre and scaled a little, so a grid of decor does
+        // not read as a grid.
+        const jx = (scatterHash(cx, cy, 17) % 24) - 12;
+        const jy = (scatterHash(cx, cy, 23) % 24) - 12;
+        this.scene.add
+          .image(cx * TILE_PX + TILE_PX / 2 + jx, cy * TILE_PX + TILE_PX / 2 + jy, key)
+          .setDepth(1)
+          .setAlpha(0.85)
+          .setScale(0.7 + (scatterHash(cx, cy, 29) % 30) / 100);
       }
     }
   }

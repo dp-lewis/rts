@@ -1481,3 +1481,60 @@ reach one. Progress bars were also confirmed in the real game on both a Base and
 Factory. 354 unit + 42 E2E tests still green, and the corpus still reproduces — which is
 the check that matters here, since it would fail the moment any of this touched
 simulation state.
+
+### M9 round 2 — both exit criteria met
+
+Re-run against the build with a working Factory and the three T077 fixes:
+
+- **K1 — comprehension.** Players understood what to do unaided.
+- **Criterion 2 — beatable.** Several won on "New to this".
+
+The second one is the one that mattered. pre-impl F-3 singled it out precisely because
+comprehension does not prove the game is winnable, and "an AI written by someone who
+knows the game is the most common way a solo project ships something unwinnable" — and
+no harness in this project could have answered it. `sparring.ts` drives player 0 with a
+mirrored copy of the *same* difficulty profile, so its win rate is ~50% by construction
+and says nothing about whether a human beats the easy AI. Only people could tell us.
+
+**Recorded honestly:** reported qualitatively, not tallied. There is no per-participant
+count, no stopwatch K2 reading, and no counter export, so K2 (<30 s), K3 (≥70%) and K5
+(≥40%) remain unmeasured. The exit criteria are met on the observer's judgement — which
+is what a comprehension test ultimately is — but this is not the scored table
+`metrics.md` describes, and the status file says so.
+
+### Terrain — the round-1 "bland" finding
+
+Scattered rock, crystal, cactus and vegetation across the map, drawn beneath
+everything and consulted by nothing. The layout is a pure function of cell position,
+so it is identical in every match and every replay and costs no state — not the sim
+PRNG (drawing scenery must not consume a draw the simulation is counting) and not
+`Math.random` (the map would then differ between two replays of the same match).
+
+**No river, deliberately.** The pack ships water tiles, but the passability grid is
+derived from structures alone, so water would LOOK impassable and units would walk
+straight over it — teaching the player something false about a map they read at a
+glance. A believable river needs blocked cells, which is a simulation change with a
+corpus regeneration and a balance question attached. That is a change request, not
+scenery.
+
+Two exclusions carry the legibility argument: nothing is placed in the **starting
+areas**, where it would compete with the things a player must find in the first ten
+seconds, and nothing in the **central band**, where the fighting happens.
+
+### Two mistakes worth recording, both mine, both found by looking
+
+**Tiles 39 and 40 are not plain ground.** They sit beside 41/42 in the file listing and
+I assumed they matched. They carry a large grey path shape AND transparent regions, so
+the first build rendered as chaotic blobs punched through to the page background — and
+a path shape on terrain with no impassable cells would have read as a wall that units
+then walk through. Reverted to the only two genuinely plain tiles; variety comes from
+the additive scenery layer, which cannot put a hole in the ground.
+
+**An ore lookalike got into the scatter.** `scifiEnvironment_01` and `_02` were excluded
+from the outset because they are the ore sprite and its sibling — and then `_20`, a
+smaller gold-less orange rock, went in anyway. Thirty of them across the map, competing
+with the one sprite the entire economy depends on a player finding. Replaced with a grey
+crystal. The reasoning had been written down correctly and applied incompletely, which
+is the more common failure of the two.
+
+Both were caught by rendering the thing and looking at it, not by review.

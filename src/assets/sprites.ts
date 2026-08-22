@@ -51,11 +51,64 @@ const STRUCTURE_FILE: Partial<Record<Kind, string>> = {
 
 /** Plain ground. Two variants so a 20x11 field of one tile does not band. */
 export const TILE_KEYS = ['tile-ground-a', 'tile-ground-b'] as const;
+/**
+ * The ONLY two plain tiles in the pack.
+ *
+ * 39 and 40 were tried and reverted: they sit beside 41/42 in the listing but
+ * carry a large grey path shape AND transparent regions, so a map built from
+ * them rendered as chaotic blobs punched through to the page background. They
+ * would also have lied about the map — a path shape on terrain with no
+ * impassable cells reads as a wall that units then walk straight through.
+ * Variety comes from the scenery layer instead, which is additive and cannot
+ * put a hole in the ground.
+ */
 const TILE_FILES = ['scifiTile_42', 'scifiTile_41'];
 
 /** Ore. Orange rock shot with gold — the only sprite that reads as "resource". */
 export const ORE_KEY = 'ore-node';
 const ORE_FILE = 'scifiEnvironment_02';
+
+/**
+ * Scenery — playtest round 1: "the terrain is bland, would be nice to see some
+ * trees and rivers".
+ *
+ * Purely decorative and drawn beneath everything that matters. Deliberately
+ * excludes every ORANGE ROCK in the pack — `_01`, `_02` (the ore sprite itself)
+ * and `_20`. Ore is the one piece of scenery a player must be able to pick out
+ * instantly, and the first version of this list let `_20` through: a smaller,
+ * gold-less orange rock scattered thirty times across the map, competing with
+ * the sprite the whole economy depends on finding. The scatter is now grey
+ * crystal, grey rock, green cactus and purple tree — nothing that could be
+ * mistaken for ore at a glance.
+ *
+ * No river. The pack has water tiles, but the passability grid is derived from
+ * structures alone — water would LOOK impassable and units would walk straight
+ * over it, teaching the player something false about a map they have to read at
+ * a glance. A believable river needs blocked cells, which is a simulation change
+ * with a corpus regeneration and a balance question attached, not scenery.
+ */
+export const SCENERY_KEYS = [
+  'scenery-crystal-a',
+  'scenery-crystal-b',
+  'scenery-crystal-c',
+  'scenery-cactus-a',
+  'scenery-cactus-b',
+  'scenery-tree-a',
+  'scenery-tree-b',
+  'scenery-rock-a',
+  'scenery-crystal-d',
+] as const;
+const SCENERY_FILES = [
+  'scifiEnvironment_04',
+  'scifiEnvironment_05',
+  'scifiEnvironment_06',
+  'scifiEnvironment_09',
+  'scifiEnvironment_10',
+  'scifiEnvironment_13',
+  'scifiEnvironment_14',
+  'scifiEnvironment_17',
+  'scifiEnvironment_07',
+];
 
 /** The Phaser texture key for one entity kind and owner. */
 export function spriteKey(kind: Kind, owner: Owner): string {
@@ -80,6 +133,12 @@ export function spriteManifest(): SpriteAsset[] {
     assets.push({ key: TILE_KEYS[i]!, path: `${BASE_PATH}/Tile/${TILE_FILES[i]!}.png` });
   }
   assets.push({ key: ORE_KEY, path: `${BASE_PATH}/Environment/${ORE_FILE}.png` });
+  for (let i = 0; i < SCENERY_KEYS.length; i += 1) {
+    assets.push({
+      key: SCENERY_KEYS[i]!,
+      path: `${BASE_PATH}/Environment/${SCENERY_FILES[i]!}.png`,
+    });
+  }
 
   for (const kind of Object.values(KIND)) {
     const structure = STRUCTURE_FILE[kind];
