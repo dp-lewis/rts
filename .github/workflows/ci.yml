@@ -62,6 +62,13 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      # Constitution III sets a >=90% floor for src/sim. The threshold lives in
+      # vitest.config.ts, but a threshold nobody runs is not a gate — it was
+      # configured and unenforced until M5's review noticed CI never asked for
+      # coverage at all. Same lesson as the M0 boundary canary.
+      - name: Coverage thresholds
+        run: npm run test:coverage
+
       # The replay corpus (ADR-002) lands in M1. Until then the step exists and
       # runs green on an empty corpus, so the pipeline shape is real from M0
       # rather than bolted on later.

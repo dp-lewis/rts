@@ -1,8 +1,8 @@
-# Phase Digest — Implement (M0 only)
+# Phase Digest — Implement
 
-**Phase:** 6 · Implement · **Scope:** M0 Enforcement · M1 Determinism · M2 Grid/movement/economy · M3 Production/combat/victory
-**Date:** 2026-08-22 · **Tasks:** 44 / 82 complete
-**Status:** M0–M3 complete · `SIM_VERSION` 5 · 179 tests green · a headless match runs to a verdict
+**Phase:** 6 · Implement · **Scope:** M0 Enforcement · M1 Determinism · M2 Grid/movement/economy · M3 Production/combat/victory · M4 AI opponent · M5 Presentation
+**Date:** 2026-08-22 · **Tasks:** 56 / 82 complete
+**Status:** M0–M5 complete · `SIM_VERSION` 7 · 266 tests green · a match is watchable in a browser
 
 ---
 
@@ -344,3 +344,117 @@ landing on a non-firing tick.
   to it, split it first.
 - The `sim_version_history` block on `.forge-status.yml` records why each of the five
   versions exists; read it before assuming a corpus hash changed by accident.
+
+---
+
+# M4 — AI opponent
+
+> Recorded retroactively during the M5 run: the M4 pass updated
+> `.forge-status.yml` and `implementation-log.md` but never appended its digest
+> section, which `docs/runtime.md §8` requires before the phase can close.
+
+## Key decisions
+
+- **AI commands live in hashed state, not in a module queue.** `step()` is pure, so
+  commands the AI decides on tick *n* for tick *n+1* have to survive between calls.
+  They go in `state.pending`, and `aiSeq` — the AI's half of O-4's `(issuer, seq)`
+  ordering — goes with them, so two simulations in one process cannot interleave
+  their sequence numbers. Both are hashed (ADR-001 Amendment 5), which is what took
+  `SIM_VERSION` to 7.
+- **The AI is held to the same latency as a human.** It emits commands scheduled for a
+  future tick through the same ordering rule, so it cannot act on information a player
+  could not act on. Cost: nothing. Value: the fairness question never has to be argued.
+- **M4 is the first milestone in which `step()` consumes the PRNG at all.** Every
+  earlier corpus hash was produced by a simulation that never drew a random number.
+
+## Artifacts produced
+
+- `src/sim/ai.ts` — `aiThink` (pure, returns commands) and `runAi` (stage 2).
+- `tests/sim/ai.test.ts`, difficulty header assertions in `tests/replay/roundtrip.test.ts`.
+- `tests/replay/corpus/002-ai-vs-ai.json` — 1878 ticks, 16 units fielded, 45 commands,
+  no player input. Stops one tick short of a verdict so the case exercises a live match.
+
+## Open risks
+
+1. **The AI never builds Factories and never places structures**, so FR-012 is
+   unreachable from either side (REV-007).
+2. **Difficulty tuning is unvalidated** — the three profiles differ in re-plan cadence
+   and army target, and the only assertion is that harder fields an army no smaller
+   than easier. Whether they *feel* different is M8/M9's question.
+3. **REV-005 and REV-006 remain open** from the M3 code review.
+
+---
+
+# M5 — Presentation
+
+**Tasks:** T046, T047, T048, T049, T050, T051, T081, T082 · **Tests:** 266 green (was 246)
+**`SIM_VERSION`:** unchanged at 7 — M5 added no simulation behaviour.
+
+## Key decisions
+
+- **The accumulator is a pure function, not a scene method.** `advanceAccumulator`
+  takes the accumulator as an argument and returns `{steps, accumulator, alpha,
+  dropped}`. That makes frame-rate independence directly testable without booting
+  Phaser, and the return type carries no field a caller could mistake for "how much
+  time to simulate" — RF-3's habit becomes unrepresentable rather than discouraged.
+
+- **A floating-point epsilon on the tick boundary, sized from the drift.** 288 frames
+  of 144 Hz sum to one ulp short of 2000 ms, so an exact comparison made the tick rate
+  depend on the monitor. The 1e-6 ms tolerance is derived — the accumulator is bounded,
+  so each addition contributes at most ulp(250), and ten minutes at 144 Hz stays under
+  1e-8 ms — not guessed.
+
+- **Ownership is presence, not hue.** Friendly units carry a ring; enemy units carry
+  nothing. Blue/orange is a redundant second channel, chosen because it is the one
+  high-contrast pair that survives common colour vision deficiency. Confirmed at real
+  scale in colour and greyscale by the T081 spike before T051 was finalised.
+
+- **Jitter by golden angle, not by random offset.** Measured, not assumed: random
+  offsets gave a 0.36 px worst-case separation at ±11 px and 0.66 px at ±20 px, so the
+  approach could not be rescued by tuning. Fixed-radius golden angles guarantee 20.13 px
+  between consecutive ids against a 16.6 px ring.
+
+- **`src/sim/setup.ts` holds the standard opening**, in the simulation rather than the
+  presentation layer, because a match must stay headlessly constructible for corpus
+  cases and for M7's rematch (T069).
+
+- **`CommandQueue` kept and wired**, resolving M4-F1 — see M5-F3 on `.forge-status.yml`.
+
+## Artifacts produced
+
+- `src/game/loop.ts`, `src/game/main.ts`, `src/game/index.ts`, `src/game/scenes/Match.ts`
+- `src/game/render/world.ts`, `src/game/render/ownership.ts`, `src/game/render/jitter.ts`
+- `src/assets/sprites.ts` — the roster, resolving plan.md open question 3
+- `src/sim/setup.ts` — the standard skirmish opening
+- `tests/game/{loop,jitter,ownership,manifest}.test.ts`; two cases added to `tests/lint/boundary.test.ts`
+- `scripts/spike-underglow.{html,ts}`, `scripts/contact-sheet.html` — dev-only harnesses
+- `vite.config.ts` art-pack copy step; `index.html` entry point; `tsconfig.json` scope
+
+**Dependencies added: none.**
+
+## Open risks
+
+1. **Jitter draws units up to 18 px from their simulated position** (M5-F5). T052's
+   requirement that selection test collision circles rather than sprite bounds is now
+   load-bearing.
+2. **`src/sim/setup.ts` and corpus 001 describe the same map twice** (M5-F6), and only
+   the corpus copy is hashed.
+3. **Structures carry no ownership ring** (M5-F7) — correct per FR-018, unverified
+   against a first-time player until M9.
+4. **The health bar has never been seen taking damage on screen** — combat is tested
+   headlessly, but M5 has no input, so its in-match appearance is unverified until M6.
+5. **The bundle is 364 kB gzipped, all Phaser** (M5-F8). Meets the 3 s first-render
+   goal on broadband; nobody has measured cold load.
+
+## Handoff notes
+
+- **Read `loop.ts` before anything else in `src/game/`.** It is the only place
+  wall-clock time touches the simulation, and both the epsilon and the F-4 clamp have
+  reasoning that is invisible from the call site.
+- **`jitter.test.ts` asserts a relationship between two files' constants.** If the ring
+  radius in `ownership.ts` changes, that test is the one that will fail, and it is
+  supposed to.
+- **The art pack copy step in `vite.config.ts` is load-bearing.** Removing it produces a
+  bundle that builds cleanly and renders nothing.
+- **Verify presentation against `dist/`, not the dev server.** The missing-sprites
+  defect (M5-F1) was invisible in dev by construction.

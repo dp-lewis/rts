@@ -125,3 +125,35 @@ describe('the guard is scoped, not global', () => {
     ).not.toContain('no-restricted-globals');
   });
 });
+
+describe('T046 — the boundary holds after Phaser enters the tree', () => {
+  /**
+   * M0 proved the rules FIRE on planted violations. It could not prove the real
+   * `src/sim/` is clean of them, because in M0 there was no `src/sim/` and no
+   * Phaser. Both now exist, and this is the milestone where a presentation
+   * dependency could leak backwards across the boundary — an idle
+   * `import Phaser` for a type, a `performance.now()` borrowed for a profile.
+   *
+   * `npm run lint` would catch it too, but only for whoever reads the CI log.
+   * As a test it fails with the file and the rule that broke the arrow.
+   */
+  it('reports zero violations across every real file in src/sim', async () => {
+    const results = await createLinter().lintFiles([resolve(REPO_ROOT, 'src/sim/**/*.ts')]);
+
+    expect(results.length, 'expected src/sim to contain files to lint').toBeGreaterThan(0);
+
+    const violations = results.flatMap((result) =>
+      result.messages.map((m) => `${result.filePath.replace(REPO_ROOT, '')}: ${m.ruleId}`),
+    );
+
+    expect(violations, 'the simulation must not depend on the presentation layer').toEqual([]);
+  });
+
+  it('still refuses a Phaser import from inside src/sim, now that Phaser resolves', async () => {
+    // Before M5 this fixture was banned against a package that was not installed,
+    // so `no-restricted-imports` and "module not found" were indistinguishable.
+    // Phaser is a real, resolvable dependency now — the rule is what rejects it.
+    const result = await lintAsSimFile('phaser-import.ts');
+    expect(result.messages.map((m) => m.ruleId)).toContain('no-restricted-imports');
+  });
+});

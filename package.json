@@ -16,6 +16,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "test:corpus": "vitest run tests/replay",
     "e2e": "playwright test --pass-with-no-tests",
     "corpus:regen": "tsx scripts/corpus-regen.ts"

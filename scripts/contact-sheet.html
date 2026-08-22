@@ -1,0 +1,19 @@
+<!doctype html><meta charset="utf-8"><title>Sprite contact sheet</title>
+<style>
+ body{background:#2a2118;color:#eee;font:12px system-ui;margin:12px}
+ h2{margin:16px 0 6px;font-size:14px}
+ .row{display:flex;flex-wrap:wrap;gap:2px}
+ figure{margin:0;width:78px;text-align:center}
+ img{width:64px;height:64px;image-rendering:pixelated;background:#7a4a32;display:block}
+ figcaption{font-size:10px;color:#bbb}
+</style>
+<h2>Unit 01–48</h2><div class="row" id="u"></div>
+<h2>Structure 01–16</h2><div class="row" id="s"></div>
+<h2>Tile 01–42</h2><div class="row" id="t"></div>
+<h2>Environment 01–20</h2><div class="row" id="e"></div>
+<script>
+const add=(el,dir,pre,n)=>{let h='';for(let i=1;i<=n;i++){const k=String(i).padStart(2,'0');
+h+=`<figure><img src="../images/PNG/Default size/${dir}/${pre}_${k}.png"><figcaption>${k}</figcaption></figure>`;}
+document.getElementById(el).innerHTML=h;};
+add('u','Unit','scifiUnit',48); add('s','Structure','scifiStructure',16); add('t','Tile','scifiTile',42); add('e','Environment','scifiEnvironment',20);
+</script>

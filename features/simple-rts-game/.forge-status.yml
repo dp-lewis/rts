@@ -2,7 +2,7 @@ schema_version: 3
 feature: simple-rts-game
 feature_description: "Make a simple RTS game — local single-player vs AI, client-side Phaser, deterministic fixed-timestep simulation."
 created_at: "2026-08-21"
-last_updated: "2026-08-22T07:20:00Z"
+last_updated: "2026-08-22T11:45:00Z"
 feature_mode: standard
 flow_mode: gated
 v2_native: true
@@ -80,25 +80,26 @@ phases:
   implement:
     status: milestone_complete
     started_at: "2026-08-22T06:15:00Z"
-    milestone_completed_at: "2026-08-22T11:10:00Z"
+    milestone_completed_at: "2026-08-22T11:35:00Z"
     digest_path: "implement/digest.md"
-    run_scope: "M0 only (T001-T006) — enforcement skeleton. User-scoped at the Phase 6 kickoff gate."
-    milestones_complete: ["M0", "M1", "M2", "M3", "M4"]
+    run_scope: "M5 only (T046-T051, T081, T082) — presentation. User-scoped at the Phase 6 kickoff gate; prior runs scoped M0 through M4 the same way."
+    milestones_complete: ["M0", "M1", "M2", "M3", "M4", "M5"]
     red_gate:
       policy: per_milestone
       policy_rationale: "Greenfield repo: no package.json, no Vitest, no src/. The 27 Test-first tasks span M0-M9 and reference modules that will not exist for days, so a single upfront Red would be 27 bare import errors — a vacuous Red. Instead T001/T002 (pure INFRA, zero product code) scaffold the runner, then each milestone's test block must be observed failing before its implementation block runs. Chosen by the user at the Phase 6 kickoff gate 2026-08-22."
       status: confirmed_failing
       tests: ["T003 (tests/lint/boundary.test.ts)", "T007-T014 (rng, hash, commands, determinism, roundtrip, headless)", "T026-T030 (pathfind, economy, ordering)", "T034-T038 + T078-T080 (combat, production, victory)", "T042-T043 (ai, replay difficulty header)"]
       observed_at: "2026-08-22T06:17:37Z"
+      m5_note: "Rejected a THIRD time for the M1 reason, and this time the test was already written when the run started. tests/game/loop.test.ts failed with 'Cannot find module ../../src/game/loop' and ZERO tests collected — a failure an empty file turns green. A signature-only src/game/loop.ts (every export present, advanceAccumulator throwing) moved it to 17 failed | 1 passed of 18 collected; green after T048 at 18/18. The single Red-state pass reads only the two constants and is green by design in both states, the same scoping control M0 used. Worth recording that M5 carries NO Test-first: true task in tasks.md — all 27 markers sit in M0-M4 and M6 — so the loop test was a voluntary extension of the discipline, and it immediately caught a defect the milestone would otherwise have shipped."
       evidence: "5 failed | 1 passed. Each failure read 'X was planted in src/sim/... and ESLint reported no error. Rules that did fire: (none)'. Green after T004: 6 passed (6). The one pass in the Red state is the scoping control, green by design in both states."
       m1_note: "Red rejected a SECOND time for the same reason: running the eight new test files against a repo with no src/sim modules produced bare 'Cannot find module' errors with zero new tests collected. Signature-only stubs (every export present, every body throwing) moved the failure to 43 collected tests failing on real calls. Writing the stubs also forced the whole M1 API surface to be settled before any logic existed. Green after T015-T025: 86 passed."
       note: "The first Red draft was REJECTED as insufficient — it failed with 'ESLint returned no result' (no config file, so ESLint matched nothing), which would have gone green on an empty eslint.config.js. Rewritten to lint against a parser-only rule-free fallback so a rule-less config still fails."
       skip_reason: null
-    tasks_completed: 48
+    tasks_completed: 56
     tasks_total: 82
-    tasks_in_scope_this_run: 48
-    progressive_checkpoints: 10
-    progressive_warnings: 5
+    tasks_in_scope_this_run: 8
+    progressive_checkpoints: 12
+    progressive_warnings: 6
     progressive_critical: 0
     dependencies:
       added: 11
@@ -116,6 +117,44 @@ phases:
       - {version: 5, milestone: "M3", reason: "ADR-001 Amendment 4 — gatherNodeId split out of targetId. targetId was holding two id spaces (entity ids and ore node ids) and combat cleared it out from under the economy the moment both existed."}
       - {version: 3, milestone: "M2", reason: "economy and movement wired into the tick. NOT bumped in the same edit at first: the corpus caught it as a REGRESSION (first divergence tick 100) rather than as staleness, which is the more useful failure. Bumped by hand, regenerated, hashes matched the regression's 'got' column exactly."}
     findings_for_gate:
+      - id: "M5-F1"
+        severity: "resolved"
+        title: "The production build shipped no sprites, and every green build had hidden it"
+        detail: "`npm run build` was green from M0 and `npm run dev` rendered perfectly, but dist/ contained ZERO PNGs. Textures load by URL at run time rather than by import, so Vite never saw them; dev only worked because the dev server serves the project root. In production every texture would 404 and the match would render as Phaser's green missing-texture boxes on a blank field. M0 could not have caught it — there were no assets and no loader. What caught it was looking INSIDE dist/ instead of trusting the build's exit code."
+        resolution: "A closeBundle copy step that THROWS if the art pack is missing, chosen over relocating images/ to public/ because the pack's location is documented in plan.md and README.md. Verified by serving the real bundle through vite preview. tests/game/manifest.test.ts now checks every roster path against the filesystem, so a mistyped sprite number fails in milliseconds instead of drawing a green box in a moving match."
+        lesson: "A build's exit code says the bundler finished, not that the bundle works."
+      - id: "M5-F2"
+        severity: "resolved"
+        title: "Random jitter could not separate co-located units at ANY magnitude"
+        detail: "The T081 spike showed an enemy trooper sitting inside a friendly's ownership ring ~3 px away, so the ring read as the enemy's — the FR-018 cue INVERTED rather than weakened, which is worse than drawing no ring. The first fix raised the offset and tightened the ring; measurement showed raising the offset was useless. Worst-case separation between consecutive ids was 0.36 px at +/-11 and 0.66 px at +/-20 — nearly doubling the magnitude bought 0.3 px, because two independent uniform draws can coincide at any scale. 367 of 399 consecutive-id pairs landed inside one ring radius."
+        resolution: "Successive golden angles on a fixed-radius ellipse: consecutive ids sit ~137.5 degrees apart, giving a guaranteed 20.13 px separation against a 16.6 px ring. jitter.test.ts asserts the separation as a NUMBER against the ring radius, so restyling either cannot quietly re-break it."
+        lesson: "A screenshot that looks right proves one arrangement, not a property. The measurement is what showed the approach was unsound rather than under-tuned."
+      - id: "M5-F3"
+        severity: "resolved"
+        title: "M4-F1 answered: CommandQueue was never dead code, it was early"
+        detail: "The M4 gate left the choice as wire state.pending through the queue or delete it. Neither was right. plan.md's Command flow already names the caller — `this.queue.drain(this.sim.tick + 1)` — and that caller is MatchScene.update, which did not exist until T047. The two are different seams and both are load-bearing: state.pending holds the AI's scheduled commands and must live in hashed state so step() stays pure, while player intent arrives from OUTSIDE the simulation, buffers outside it, and enters through step()'s argument. Deleting the queue in M4 would have deleted the multiplayer seam Constitution II exists to preserve."
+        lesson: "\"Verified but unreachable\" is a real smell, but a milestone boundary is not proof of unreachability. The plan named the user two milestones ahead."
+      - id: "M5-F4"
+        severity: "resolved"
+        title: "Floating point made the tick rate depend on the monitor"
+        detail: "288 frames of a 144 Hz display sum to 1999.9999999999998 ms, one ulp short of the 40th tick boundary, so an exact >= comparison ran 39 ticks where 30 Hz ran 40 over identical wall time. RF-3 arriving by an unpredicted route: not delta leaking into step(), but delta never quite adding up. Fixed with a 1e-6 ms boundary epsilon SIZED FROM THE DRIFT — the accumulator is bounded at MAX_ACCUMULATOR_MS so each addition contributes at most ulp(250) ~ 5.7e-14 ms, and ten minutes at 144 Hz accumulates under 1e-8 ms."
+        lesson: "The test that caught it (144 Hz vs 30 Hz over the same wall time) was written before the implementation and is the only assertion in the file that could have."
+      - id: "M5-F5"
+        severity: "open — for M6"
+        title: "Jitter moves the drawn position up to 18 px from the simulated one"
+        detail: "The golden-angle offset is presentation-only and cannot touch a hash, but it does mean a unit is drawn up to 18 px from where it actually is on a 64 px tile. T052 already requires drag-select to test collision circles at SIMULATED positions rather than sprite bounds; that requirement is now load-bearing rather than merely tidy, because the two positions genuinely differ."
+      - id: "M5-F6"
+        severity: "open — watch"
+        title: "src/sim/setup.ts duplicates layout knowledge the corpus holds inline"
+        detail: "Corpus case 001 and the new standard opening describe the same mirrored 20x11 map in two places, and only the corpus copy is hashed. If the opening changes, 001 will not notice — it will keep certifying a layout the game no longer produces, which is exactly the failure M2-F2 already found once when 001 was testing a map the game could not produce."
+      - id: "M5-F7"
+        severity: "open — for M9"
+        title: "Structures carry no ownership ring"
+        detail: "Both bases use the same sprite, distinguished only by silhouette and screen position. Correct per FR-018, which scopes the cue to UNITS, and the difficulty gate will state the player is on the left. Untested against a first-time player under time pressure; M9's comprehension playtest is where it either holds or does not."
+      - id: "M5-F8"
+        severity: "open — informational"
+        title: "The bundle is 1.39 MB (364 kB gzipped), all Phaser"
+        detail: "Exceeds Vite's 500 kB warning. No NFR names a bundle budget and the plan's goal is first render under 3 s on a mid-tier laptop, which 364 kB gzipped meets on broadband. Flagged rather than fixed: code-splitting a single-scene game adds complexity for no measured gain, but nobody has measured cold load. T072's counters are where that number should come from."
       - id: "M4-F1"
         severity: "open — decide in M5 or delete"
         title: "CommandQueue is now genuinely dead code"
@@ -202,6 +241,15 @@ phases:
     completed_at: "2026-08-22T09:40:00Z"
     scope: "M0-M3 (44/82 tasks). Reviewed at a milestone boundary by explicit request; implement.status is milestone_complete, not completed."
     artifact: "code-review.md"
+    m5_review:
+      reviewed_at: "2026-08-22T11:45:00Z"
+      scope: "M5 delta (9 source files, ~640 LOC, 5 new test files). M4 was never separately reviewed; its files are included in this delta."
+      status: "RESOLVED — all 7 findings fixed or acknowledged in the same pass"
+      machine_gates: {lint: pass, types: pass, sca: pass, coverage: "FAIL -> fixed (REV-010)"}
+      findings: {critical: 1, high: 2, medium: 4, low: 0, fixed: 6, acknowledged: 1}
+      reviewed_by_model: null
+      cross_model_findings: 0
+      headline: "REV-009: the scene drained player commands for tick+1 while applyCommands only accepts state.tick, so every player order would have been silently discarded. Same defect class as the M3 review's 'the command layer never worked', one layer up, and inherited from plan.md's own sketch."
   verify:                 { status: pending }
   test_plan:              { status: pending }
   test_run:               { status: pending }
@@ -252,6 +300,13 @@ contracts:
 
 task_log: []
 gates:
+  - phase: code_review
+    decision: "approved_with_conditions"
+    timestamp: "2026-08-22T11:45:00Z"
+    notes: "M5 delta review. 1 CRITICAL (command drain off-by-one) and 2 HIGH (coverage reporting concealed three 0% files; CI never ran coverage) all fixed and mutation-verified in the same pass. 4 MEDIUM: 3 fixed, 1 acknowledged (REV-015 setup.ts duplicates corpus 001 layout — tracked as M5-F6)."
+    reviewed_by_model: null
+    cross_model_findings: 0
+    findings: {critical: 1, high: 2, medium: 4, low: 0, fixed: 6, acknowledged: 1}
   - phase: problem_discovery
     decision: approved_with_conditions
     at: "2026-08-21T09:56:17Z"

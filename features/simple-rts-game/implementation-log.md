@@ -712,3 +712,211 @@ opponent the ability to populate its own side. Narrowed to Bases.
    and army targets, and the only assertion is that harder fields an army *no smaller*
    than easier. Whether the levels feel different is M8/M9's question.
 5. **REV-005 and REV-006 remain open** from the code review and were not touched here.
+
+---
+
+## M5 — Presentation
+
+### Red gate — the vacuous Red, caught a third time
+
+`tests/game/loop.test.ts` was already written when this run started, and it failed
+with `Cannot find module '../../src/game/loop'` and **zero tests collected**. That is
+the same failure M1 rejected twice: a bare import error goes green against an empty
+file, so it proves nothing about the assertions. A signature-only `src/game/loop.ts`
+— every export present, `advanceAccumulator` throwing — moved it to a real Red:
+
+```
+before stub:  Test Files 1 failed | Tests (none collected)
+after stub:   Test Files 1 failed | Tests 17 failed | 1 passed (18)
+after T048:   Test Files 1 passed | Tests 18 passed (18)
+```
+
+The single pass in the Red state is `clamps at roughly a quarter second`, which reads
+only the two constants — green by design in both states, the same scoping control M0
+used. Worth noting M5 carries **no `Test-first: true` task** in tasks.md; all 27
+markers sit in M0–M4 and M6. The loop test is a voluntary extension of the discipline
+into a milestone that did not require it, and it earned its keep immediately.
+
+### T048 — floating point made the tick rate frame-rate dependent
+
+The test `produces the same tick count at 144Hz as at 30Hz over the same wall time`
+failed against the obvious implementation, and it was right to:
+
+| Frames | Wall time | Ticks run |
+|---|---|---|
+| 288 @ 144 Hz | 2000 ms | **39** |
+| 60 @ 30 Hz | 2000 ms | **40** |
+
+`1000/144` has no exact binary representation, so 288 frames sum to
+1999.9999999999998 ms — one ulp short of the 40th tick boundary. An exact `>=`
+comparison therefore makes the simulation rate a function of the player's monitor,
+which is the precise property the accumulator exists to rule out. This is RF-3
+arriving by a route nobody predicted: not `delta` leaking into `step()`, but `delta`
+never quite adding up.
+
+Fixed with a `TICK_BOUNDARY_EPSILON` of 1e-6 ms, sized from the drift rather than
+guessed. The accumulator is bounded at `MAX_ACCUMULATOR_MS`, so each addition
+contributes at most ulp(250) ≈ 5.7e-14 ms; ten minutes of 144 Hz frames accumulates
+under 1e-8 ms. A nanosecond of slack covers that with six orders of magnitude spare
+while sitting 2e-8 of a tick below the boundary. A tick consumed on the epsilon's
+credit can leave a negative remainder, so the carry is clamped at zero — otherwise
+`alpha` goes negative and the renderer interpolates backwards.
+
+### An invariant no behavioural test can see
+
+`alpha < 1` holds only because `MAX_ACCUMULATOR_MS` (250) is exactly
+`MAX_STEPS_PER_FRAME` (5) ticks, so a clamped frame is always fully consumable.
+Raise the clamp without raising the step guard and a whole unrun tick stays in the
+accumulator, `alpha` reaches 1, and the renderer extrapolates past a state the
+simulation has not produced. Every behavioural test still passes. Asserted directly
+as a relation between the two constants, which is the only place it is visible.
+
+### M4-F1 resolved — `CommandQueue` was never dead, just early
+
+The M4 gate left it open: wire `state.pending` through the queue or delete it.
+Neither. `plan.md` § Command flow already names its user —
+
+```ts
+const due = this.queue.drain(this.sim.tick + 1);
+this.sim = step(this.sim, due);
+```
+
+— and that caller is `MatchScene.update`, which did not exist until T047. The two are
+different seams and both are needed: `state.pending` holds the AI's scheduled commands
+and must live in hashed state so `step` stays pure, while player intent arrives from
+*outside* the simulation, buffers outside it, and enters through `step`'s argument.
+Deleting the queue in M4 would have deleted the multiplayer seam Constitution §II
+exists to preserve.
+
+### T049 — the roster, resolving open question 3
+
+Kenney's 48 unit sprites are four colour families of twelve with identical internal
+layout. Player 0 takes blue, player 1 orange — the one high-contrast pair that
+survives every common colour vision deficiency, where red/green does not. Picks are
+by **silhouette**, not lore: hard-hat worker, smallest infantry as scout, bulkiest as
+trooper, the only tracked-and-barrelled shape as tank. Structures are colour-neutral
+in the source art and were left that way, so silhouette answers "what is it" and the
+ring answers "whose is it" instead of both signals competing inside one 64 px sprite.
+
+`spriteManifest()` is built from `KIND` rather than hand-listed, so a kind added
+without a roster entry throws at load instead of silently drawing nothing.
+
+### Checkpoint #11 — after T046, T047, T048, T049, T050
+
+| Check | Status | Notes |
+|-------|:------:|-------|
+| Task-Code correspondence | ✅ | T046 → `boundary.test.ts` (+2 cases); T047 → `main.ts`, `scenes/Match.ts`; T048 → `loop.ts`; T049 → `assets/sprites.ts`; T050 → `render/world.ts`. |
+| Spec AC alignment | ✅ | FR-003 (delta never reaches `step`), FR-014 (fixed 1280x704, both bases in frame one — verified in browser), FR-015 (roster loads). 246/246 green. |
+| Unplanned changes | ⚠️ 4 files | `src/sim/setup.ts`, `src/game/index.ts`, `index.html`, `scripts/contact-sheet.html`. |
+| Plan alignment | ✅ | File-for-file with plan.md's `src/game/` tree. Accumulator matches the plan's sketch plus the F-4 clamp. |
+| Dependency / supply-chain | ✅ None added | Phaser 4.2.1 was already in the lockfile from M0. |
+
+**Unplanned changes, itemised.** `src/sim/setup.ts` is the standard skirmish opening —
+no task owns match construction, but T047 cannot start a match without one and M7's
+T069 (rematch from a fresh seed) will need the same function. Put in `src/sim/`
+because it is simulation data and must stay headless-constructible for corpus cases.
+`src/game/index.ts` is the browser entry point, kept separate from `main.ts` so
+`bootGame` stays callable from a test. `index.html` had a comment saying the entry
+point arrives in M5; it now does. `scripts/contact-sheet.html` is a dev-only sprite
+sheet used to choose the T049 roster and to host the T081 spike.
+
+**Verdict:** WARNING — four unplanned files, all additive, none contradicting plan.md.
+`src/sim/setup.ts` is the only one worth a reviewer's attention: it puts a fixed map
+layout in the simulation, which the corpus cases currently duplicate inline.
+
+### T081 — the spike found the jitter, not the ring
+
+The ring itself passed on first look and passed in greyscale: a bright rim on a dark
+seat carries contrast in both directions, so it does not depend on being lighter than
+whatever tile the unit is standing on — which matters because in greyscale luminance
+is the only channel left. Presence-vs-absence survived hue removal exactly as FR-018
+intends.
+
+What failed was **pre-impl F-2's jitter**. Two troopers ordered to the same cell, one
+friendly and one enemy, separated by ~3 px. The enemy sprite landed inside the
+friendly's 22 px ring and the ring read as belonging to the enemy — the ownership cue
+did not weaken, it **inverted**, which is worse than drawing no ring at all.
+
+The first fix was to raise the offset and tighten the ring. Tightening was right;
+raising the offset was measured and found useless:
+
+| strategy | worst separation, consecutive ids |
+|---|---|
+| random box, ±11 px | 0.36 px |
+| random box, ±20 px | 0.66 px |
+| golden angle, r = 18 | **20.13 px** |
+
+Nearly doubling the magnitude bought 0.3 px, because two independent uniform draws can
+coincide at any scale — 367 of 399 consecutive-id pairs landed closer than one ring
+radius. The approach was unsound, not under-tuned. Replaced with successive golden
+angles on a fixed-radius ellipse, which makes separation a guarantee rather than a
+probability: consecutive ids sit ~137.5° apart, clearing the 16.6 px ring. Units
+stacked in one cell are usually produced back-to-back from the same structure, so
+consecutive ids are both the common case and the bounded one.
+
+`tests/game/jitter.test.ts` now asserts the separation as a number against the ring
+radius, so a future restyle of either cannot quietly re-break it. The screenshot that
+started this would have looked fine again long before the property was safe.
+
+**Carried to M6:** the offset moves the DRAWN position up to 18 px from the simulated
+one. T052 already requires selection to test collision circles at simulated positions
+rather than sprite bounds — that requirement is now load-bearing, not merely tidy.
+
+### The production build shipped no sprites
+
+`npm run build` was green from M0 onward and `npm run dev` looked perfect, but `dist/`
+contained **zero PNGs**. Textures are loaded by URL at run time rather than imported,
+so Vite never saw them; the dev server only worked because it serves the project root.
+In production every texture would have 404'd and the match would have rendered as
+green boxes on a blank field.
+
+M0 could not have caught this — there were no assets and no loader. What caught it was
+looking inside `dist/` instead of trusting the build's exit code. Fixed with a
+`closeBundle` copy step that throws if the art pack is missing, rather than moving
+`images/` to `public/`: the pack's location is documented in plan.md and README.md and
+a copy step is the smaller change. Verified by serving the real bundle from
+`vite preview` and confirming sprites render.
+
+`tests/game/manifest.test.ts` now checks every roster path against the filesystem, so
+a mistyped sprite number fails in milliseconds instead of drawing Phaser's green
+missing-texture box in a moving match.
+
+### A page-relative asset path that only worked from the root
+
+The spike page lives in `/scripts/` and loaded nothing: `images/PNG/...` resolves
+against whichever page requested it. Rebased on Vite's `BASE_URL`, which keeps the
+bundle deployable from a subdirectory (`base: './'` is deliberate) while every page
+resolves the same textures.
+
+### Checkpoint #12 — after T081, T082, T051
+
+| Check | Status | Notes |
+|-------|:------:|-------|
+| Task-Code correspondence | ✅ | T081 → `scripts/spike-underglow.*`; T082 → `render/jitter.ts`; T051 → `render/ownership.ts`. |
+| Spec AC alignment | ✅ | FR-018 verified in colour AND greyscale at real scale, then pinned in `ownership.test.ts` (presence, not hue) and `jitter.test.ts` (separation ≥ ring radius). 266/266 green. |
+| Unplanned changes | ⚠️ 5 files | `vite.config.ts`, `tsconfig.json`, `tests/game/{jitter,ownership,manifest}.test.ts`. |
+| Plan alignment | ✅ | `render/ownership.ts` and `render/jitter.ts` sit where plan.md's tree puts them. |
+| Dependency / supply-chain | ✅ None added | No package added in M5. Phaser 4.2.1 predates it. |
+
+**Verdict:** CLEAN — M5 complete. The three new test files and the two config changes
+are all consequences of defects found this milestone, not scope creep.
+
+### Open items carried out of M5
+
+1. **The 1.39 MB bundle (364 kB gzipped) is all Phaser** and exceeds Vite's 500 kB
+   warning. No NFR names a bundle budget, and the plan's stated goal is first render
+   under 3 s on a mid-tier laptop — which 364 kB gzipped meets on any broadband
+   connection. Flagged rather than fixed: code-splitting a single-scene game would add
+   complexity for no measured gain, but nobody has measured cold load yet. T072's
+   counters are where that number should come from.
+2. **`src/sim/setup.ts` duplicates layout knowledge the corpus cases hold inline.**
+   Corpus 001 and the standard opening describe the same mirrored map in two places,
+   and only one of them is hashed. If the opening changes, 001 will not notice.
+3. **Both bases use the same sprite with no ownership ring** — structures are
+   distinguished by silhouette and position only. Correct per FR-018 (which scopes the
+   cue to *units*) and the difficulty gate will state that the player is on the left,
+   but it is untested against a first-time player. M9's comprehension playtest is where
+   that either holds or does not.
+4. **The health bar is drawn but nothing has ever damaged a unit on screen** — combat
+   is simulated and tested headlessly, but M5 has no input, so the bar's appearance in
+   a real match is unverified until M6.

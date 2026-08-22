@@ -235,7 +235,7 @@ update(_time: number, delta: number) {          // Phaser hands us wall-clock de
   this.accumulator += delta;                     // ...used ONLY to count whole ticks
   let steps = 0;
   while (this.accumulator >= TICK_MS && steps < MAX_STEPS_PER_FRAME) {
-    const due = this.queue.drain(this.sim.tick + 1);   // commands for the next tick
+    const due = this.queue.drain(this.sim.tick);       // commands FOR this tick
     this.sim = step(this.sim, due);                    // pure; never sees `delta`
     this.accumulator -= TICK_MS;
     steps++;
@@ -243,6 +243,14 @@ update(_time: number, delta: number) {          // Phaser hands us wall-clock de
   this.renderer.draw(this.sim, this.accumulator / TICK_MS);  // alpha = interpolation only
 }
 ```
+
+> **Corrected 2026-08-22 (code review REV-009).** This sketch originally drained
+> `this.sim.tick + 1`. That is wrong and M5 inherited the bug from it: `applyCommands`
+> skips any command whose `tick !== state.tick`, and `step` applies commands *before*
+> advancing the tick, so draining ahead hands `step` commands it is guaranteed to skip
+> — while `drain` has already removed them from the queue. Every player order would be
+> silently discarded. Commands are drained **for the current tick**; the one-tick
+> latency comes from `issue()` scheduling at `tick + 1`, not from the drain.
 
 **`delta` never crosses into `step()`.** It decides *how many* whole ticks to run and
 nothing else; the simulation is a pure function of `(previous state, commands for this

@@ -257,31 +257,31 @@ asserting on state, not rendered output (Principle II).
 
 ### Tests
 
-- [ ] T046 [INFRA] Regression: lint boundary still reports zero violations after Phaser enters the tree
+- [x] T046 [INFRA] Regression: lint boundary still reports zero violations after Phaser enters the tree
       Paths: tests/lint/boundary.test.ts
       Size: XS
 
 ### Implementation
 
-- [ ] T047 [FR-014] Phaser 4 boot + scene registration
+- [x] T047 [FR-014] Phaser 4 boot + scene registration
       Paths: src/game/main.ts, src/game/scenes/Match.ts
       Size: M
-- [ ] T048 [FR-003] **Accumulator loop** — steps whole ticks only, passes interpolation alpha to the renderer, `MAX_STEPS_PER_FRAME` spiral guard. **`delta` never crosses into `step()`**. Additionally **clamp the accumulator to ~250 ms and drop the excess** *(pre-impl F-4)* — otherwise a player returning from a backgrounded tab watches the simulation fast-forward through the match they just lost
+- [x] T048 [FR-003] **Accumulator loop** — steps whole ticks only, passes interpolation alpha to the renderer, `MAX_STEPS_PER_FRAME` spiral guard. **`delta` never crosses into `step()`**. Additionally **clamp the accumulator to ~250 ms and drop the excess** *(pre-impl F-4)* — otherwise a player returning from a backgrounded tab watches the simulation fast-forward through the match they just lost
       Paths: src/game/loop.ts
       Size: M
-- [ ] T049 [FR-015] Sprite key map — select the v1 roster from the 48 Kenney unit sprites and 16 structures (resolves open question 3)
+- [x] T049 [FR-015] Sprite key map — select the v1 roster from the 48 Kenney unit sprites and 16 structures (resolves open question 3)
       Paths: src/assets/sprites.ts
       Size: S
-- [ ] T050 [FR-014, FR-015] Render layer — fixed single screen, tile background, sprite draw with interpolation, both bases visible from frame one
+- [x] T050 [FR-014, FR-015] Render layer — fixed single screen, tile background, sprite draw with interpolation, both bases visible from frame one
       Paths: src/game/render/world.ts
       Size: L
-- [ ] T081 [FR-018] **Spike** *(pre-impl F-7)*: render ~12 mixed friendly/enemy units at real scale and confirm the underglow ring reads at a glance, **including in greyscale**. The ring is the entire WCAG 1.4.1 mitigation and the drawn sprite is materially smaller than its 64 px canvas. Timebox 30 min; do before T051
+- [x] T081 [FR-018] **Spike** *(pre-impl F-7)*: render ~12 mixed friendly/enemy units at real scale and confirm the underglow ring reads at a glance, **including in greyscale**. The ring is the entire WCAG 1.4.1 mitigation and the drawn sprite is materially smaller than its 64 px canvas. Timebox 30 min; do before T051
       Paths: unknown
       Size: XS
-- [ ] T082 [FR-014] Render-only unit jitter *(pre-impl F-2)* — a small deterministic-per-entity visual offset so co-located units do not perfectly overlap. **Presentation layer only; must never touch sim state.** Units do not collide in v1
+- [x] T082 [FR-014] Render-only unit jitter *(pre-impl F-2)* — a small deterministic-per-entity visual offset so co-located units do not perfectly overlap. **Presentation layer only; must never touch sim state.** Units do not collide in v1
       Paths: src/game/render/world.ts
       Size: S
-- [ ] T051 [FR-018] **Underglow ring** on friendly units — the non-colour ownership cue (WCAG 1.4.1); doubles as the selection affordance
+- [x] T051 [FR-018] **Underglow ring** on friendly units — the non-colour ownership cue (WCAG 1.4.1); doubles as the selection affordance
       Paths: src/game/render/ownership.ts
       Size: M
 

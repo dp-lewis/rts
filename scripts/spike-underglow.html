@@ -1,0 +1,21 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>T081 — underglow legibility spike</title>
+<style>
+  html,body{margin:0;background:#12141c;color:#e6e8ef;font:13px system-ui}
+  #bar{padding:8px 12px;display:flex;gap:16px;align-items:center}
+  #game{width:1280px;height:704px}
+  #game.grey{filter:grayscale(1)}
+  label{cursor:pointer}
+</style>
+<div id="bar">
+  <label><input type="checkbox" id="grey" /> greyscale</label>
+  <span id="note">12 mixed units at real scale — friendly ringed, enemy bare.</span>
+</div>
+<div id="game"></div>
+<script type="module" src="/scripts/spike-underglow.ts"></script>
+<script>
+  document.getElementById('grey').addEventListener('change', (e) => {
+    document.getElementById('game').classList.toggle('grey', e.target.checked);
+  });
+</script>

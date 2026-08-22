@@ -61,7 +61,7 @@ requirements:
     text: "Simulation advances in fixed-timestep ticks, decoupled from render frames"
     stories: []
     tasks: ["T011", "T013", "T014", "T015", "T021", "T022", "T023", "T024", "T025", "T028", "T045", "T048", "T075"]
-    code: ["src/sim/step.ts", "src/sim/replay.ts", "src/sim/version.ts", "tests/replay/run-corpus.ts", "scripts/corpus-regen.ts"]
+    code: ["src/sim/step.ts", "src/sim/replay.ts", "src/sim/version.ts", "tests/replay/run-corpus.ts", "scripts/corpus-regen.ts", "src/game/loop.ts", "src/game/scenes/Match.ts"]
     tests: []
   - id: "FR-004"
     text: "All player intent enters the simulation as commands queued for a future tick"
@@ -127,13 +127,13 @@ requirements:
     text: "Map is a fixed single screen: no scrolling, no camera, no minimap"
     stories: ["US-007"]
     tasks: ["T031", "T047", "T050"]
-    code: ["src/sim/grid.ts", "src/sim/constants.ts"]
+    code: ["src/sim/grid.ts", "src/sim/constants.ts", "src/game/main.ts", "src/game/render/world.ts", "src/sim/setup.ts"]
     tests: []
   - id: "FR-015"
     text: "No fog of war; both bases visible from the first frame"
     stories: ["US-007"]
     tasks: ["T049", "T050"]
-    code: []
+    code: ["src/assets/sprites.ts", "src/game/render/world.ts"]
     tests: []
   - id: "FR-016"
     text: "Ore nodes hold finite amounts and visibly deplete"
@@ -151,7 +151,7 @@ requirements:
     text: "Every friendly unit carries a persistent non-colour ownership cue"
     stories: ["US-009"]
     tasks: ["T051", "T066"]
-    code: []
+    code: ["src/game/render/ownership.ts", "src/game/render/jitter.ts"]
     tests: []
   - id: "FR-019"
     text: "Result screen's primary action is Rematch"
