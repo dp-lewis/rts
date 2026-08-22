@@ -4,7 +4,7 @@
   "description": "First corpus case with real gameplay. No player commands whatsoever — every action is the AI's, so these hashes are a signature of the opponent's decision-making and of the PRNG threading that M4 introduced. Difficulty 2 is recorded in the header (FR-029): replaying at any other level diverges, which is the point of difficulty being a field rather than part of the seed.",
   "defect": null,
   "createdAt": "2026-08-22",
-  "simVersion": 7,
+  "simVersion": 8,
   "input": {
     "seed": 90210,
     "difficulty": 2,
@@ -81,7 +81,7 @@
   },
   "expected": {
     "finalTick": 1878,
-    "stateHash": "734fd7d001574de5",
+    "stateHash": "b65e43f5d3b61388",
     "checkpoints": [
       {
         "tick": 600,
@@ -93,7 +93,7 @@
       },
       {
         "tick": 1800,
-        "stateHash": "7592f6b4d50ad981"
+        "stateHash": "decad312a3275aab"
       }
     ]
   }

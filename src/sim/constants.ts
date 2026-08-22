@@ -106,6 +106,17 @@ export const SUDDEN_DEATH = {
 } as const;
 
 /**
+ * Selection hit radius in world px — FR-030.
+ *
+ * One value for every unit kind, deliberately. Selection is a player-facing
+ * affordance, not a physics property: a tank being easier to box than a scout
+ * because its sprite is larger is a usability accident, not a design decision.
+ * It is NOT derived from the sprite, which is the whole point of FR-030 — the art
+ * may be reskinned without changing what a drag captures.
+ */
+export const COLLISION_RADIUS = 18;
+
+/**
  * Legibility ceiling, not a performance ceiling (pre-impl review F-5). Sixty
  * units on a 220-cell map is 27% occupancy with no camera to zoom out of; the
  * number that matters is how many units a player can still read.

@@ -1,7 +1,15 @@
 import type { Command } from './commands';
 import type { SimState } from './state';
 
-const COMMAND_TYPE_CODE: Record<Command['type'], number> = { move: 0, attack: 1, build: 2 };
+// Typed against Command['type'], so adding a command type fails compilation here
+// until it is given a code. Codes are append-only: changing one silently
+// invalidates every recorded corpus hash.
+const COMMAND_TYPE_CODE: Record<Command['type'], number> = {
+  move: 0,
+  attack: 1,
+  build: 2,
+  place: 3,
+};
 
 /**
  * Canonical state hash — ADR-001.
@@ -174,6 +182,24 @@ export function hashState(state: SimState): string {
         h.uint(command.builderId, 4);
         h.uint(command.kind, 1);
         break;
+      case 'place':
+        h.uint(command.builderId, 4);
+        h.uint(command.kind, 1);
+        h.float(command.x, `pending[${i}].x`);
+        h.float(command.y, `pending[${i}].y`);
+        break;
+      default: {
+        // M4-F2 closed. `pending` is the only variable-length hashed field, and
+        // the warning left at the M4 gate was that a new command type could be
+        // added whose FIELDS never reach the hash while its type code does — a
+        // divergence no test would necessarily notice, because the type code
+        // alone still makes two different commands hash differently.
+        //
+        // This makes it a compile error instead: a command type with no case here
+        // fails to narrow to `never` and the build stops.
+        const unhashed: never = command;
+        throw new Error(`command type not covered by the hash: ${JSON.stringify(unhashed)}`);
+      }
     }
   }
 

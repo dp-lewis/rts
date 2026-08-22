@@ -1,13 +1,22 @@
 import { ISSUER, sortCommands, type Command } from './commands';
 import { runAi } from './ai';
 import { acquireTargets, applyDamage, collectDamage } from './combat';
-import { ARRIVE_EPSILON, MAP_TILES_X, MAP_TILES_Y, SPEED } from './constants';
+import { ARRIVE_EPSILON, COST, MAP_TILES_X, MAP_TILES_Y, SPEED, TILE_PX } from './constants';
 import { runEconomy } from './economy';
-import { runProduction } from './production';
+import { isValidPlacement, runProduction } from './production';
 import { armSuddenDeath, resolveVictory, suddenDeathDamage } from './victory';
-import { cellCentreX, cellCentreY, cellOf, cellX, cellY, createGrid, isPassable, type Grid } from './grid';
+import { cellCentreX, cellCentreY, cellOf, cellX, cellY, createGrid, inBounds, isPassable, type Grid } from './grid';
 import { findPath } from './pathfind';
-import { ENTITY_STATE, KIND, cloneState, type Entity, type SimState } from './state';
+import {
+  ENTITY_STATE,
+  KIND,
+  cloneState,
+  type Entity,
+  type Kind,
+  type Owner,
+  type SimState,
+} from './state';
+import { MAX_HP } from './constants';
 
 /**
  * The tick function — `step(state, commands) → state`, pure.
@@ -52,6 +61,44 @@ function commandable(state: SimState, issuer: number, id: number): Entity | unde
     return undefined;
   }
   return entity.owner === ownerOf(issuer) ? entity : undefined;
+}
+
+/**
+ * Cost and max-hp keyed by numeric kind. Local to the command layer: production.ts
+ * keeps its own copies for the queue path, and duplicating two four-entry lookups
+ * is cheaper than exporting them and coupling the two modules' internals.
+ */
+const COST_BY_KIND: Record<Kind, number> = {
+  [KIND.BASE]: Number.POSITIVE_INFINITY, // never purchasable
+  [KIND.FACTORY]: COST.factory,
+  [KIND.WORKER]: COST.worker,
+  [KIND.SCOUT]: COST.scout,
+  [KIND.TROOPER]: COST.trooper,
+  [KIND.TANK]: COST.tank,
+};
+
+const MAX_HP_BY_KIND: Record<Kind, number> = {
+  [KIND.BASE]: MAX_HP.base,
+  [KIND.FACTORY]: MAX_HP.factory,
+  [KIND.WORKER]: MAX_HP.worker,
+  [KIND.SCOUT]: MAX_HP.scout,
+  [KIND.TROOPER]: MAX_HP.trooper,
+  [KIND.TANK]: MAX_HP.tank,
+};
+
+/**
+ * The bare (unblocked) grid, for turning a click into a cell.
+ *
+ * A module constant, matching `production.ts`: cell geometry depends only on the
+ * map dimensions, never on state. Rebuilding it per command would be the same
+ * waste `gridFor` deliberately accepts for PASSABILITY, which genuinely does
+ * change every tick.
+ */
+const bareGrid: Grid = createGrid(MAP_TILES_X, MAP_TILES_Y, []);
+
+/** Structures may be PLACED on chosen ground; units may not (FR-012). */
+function isPlaceableKind(kind: number): boolean {
+  return kind === KIND.FACTORY;
 }
 
 function isProducibleKind(kind: number): boolean {
@@ -126,6 +173,80 @@ function applyCommands(state: SimState, commands: readonly Command[]): void {
         builder.queuedKind = command.kind;
         builder.state = ENTITY_STATE.BUILDING;
         builder.progress = 0;
+        break;
+      }
+
+      case 'place': {
+        // FR-012 / REV-007. `isValidPlacement` has existed since T039 with no
+        // caller but the automatic spawn search; this is the verb that makes the
+        // requirement reachable.
+        const builder = commandable(state, command.issuer, command.builderId);
+        if (builder === undefined) {
+          break;
+        }
+        if (!isPlaceableKind(command.kind)) {
+          break;
+        }
+
+        // Snap to the cell centre BEFORE validating, so the check and the result
+        // agree about which cell is meant. Placement is judged by cell; leaving a
+        // structure at a raw click point would seat it off-centre in a blocked
+        // cell, which is the pixel-vs-cell mismatch that produced M3's deposit
+        // livelock.
+        // Bounds-check the RAW pixels before converting. `cellOf` derives a cell
+        // index arithmetically, so an x past the right edge aliases into the next
+        // ROW rather than going out of range — the index passes `inBounds` and a
+        // click off the map silently places a structure somewhere else entirely.
+        // `isValidPlacement` guards its pixel arguments first for the same reason.
+        if (
+          command.x < 0 ||
+          command.y < 0 ||
+          command.x >= MAP_TILES_X * TILE_PX ||
+          command.y >= MAP_TILES_Y * TILE_PX
+        ) {
+          break;
+        }
+        const cell = cellOf(bareGrid, command.x, command.y);
+        if (!inBounds(bareGrid, cell)) {
+          break;
+        }
+        const x = cellCentreX(bareGrid, cell);
+        const y = cellCentreY(bareGrid, cell);
+
+        if (!isValidPlacement(state, x, y)) {
+          break;
+        }
+
+        // Paid HERE, not on completion — deliberately unlike a queued unit (O-5).
+        // A placed structure occupies ground from this instant, so the ore goes
+        // with it; charging on completion would let an unaffordable Factory squat
+        // on a cell forever, blocking it for free and never finishing.
+        const price = COST_BY_KIND[command.kind];
+        const player = state.players[ownerOf(command.issuer)]!;
+        if (player.ore < price) {
+          break;
+        }
+        player.ore -= price;
+
+        state.entities.push({
+          id: state.nextEntityId,
+          kind: command.kind,
+          owner: ownerOf(command.issuer) as Owner,
+          x,
+          y,
+          hp: MAX_HP_BY_KIND[command.kind],
+          state: ENTITY_STATE.UNDER_CONSTRUCTION,
+          targetId: -1,
+          cooldown: 0,
+          progress: 0,
+          destX: -1,
+          destY: -1,
+          queuedKind: -1,
+          gatherNodeId: -1,
+        });
+        state.nextEntityId += 1;
+        // Entities must stay id-sorted (O-7). Ids are monotonic and this is the
+        // largest, so appending preserves the order without a sort.
         break;
       }
 

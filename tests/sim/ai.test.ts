@@ -138,7 +138,14 @@ describe('the AI plays — it is not a no-op that happens to be deterministic', 
       const commands = aiThink(s);
       for (const command of commands) {
         expect(command.issuer).toBe(ISSUER.AI);
-        const ids = command.type === 'build' ? [command.builderId] : command.units;
+        // Widened when `place` joined the union (M6). Switching on the type
+        // rather than testing for one of them keeps this exhaustive: a future
+        // command type carrying entity ids will fail to compile here instead of
+        // quietly escaping the ownership check.
+        const ids =
+          command.type === 'build' || command.type === 'place'
+            ? [command.builderId]
+            : command.units;
         for (const id of ids) {
           const owner = s.entities.find((e) => e.id === id)?.owner;
           if (owner !== undefined) {

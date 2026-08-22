@@ -1,8 +1,8 @@
 # Phase Digest — Implement
 
-**Phase:** 6 · Implement · **Scope:** M0 Enforcement · M1 Determinism · M2 Grid/movement/economy · M3 Production/combat/victory · M4 AI opponent · M5 Presentation
-**Date:** 2026-08-22 · **Tasks:** 56 / 82 complete
-**Status:** M0–M5 complete · `SIM_VERSION` 7 · 266 tests green · a match is watchable in a browser
+**Phase:** 6 · Implement · **Scope:** M0 Enforcement · M1 Determinism · M2 Grid/movement/economy · M3 Production/combat/victory · M4 AI opponent · M5 Presentation · M6 Input & HUD
+**Date:** 2026-08-22 · **Tasks:** 62 / 82 complete
+**Status:** M0–M6 complete · `SIM_VERSION` 8 · 320 tests green · **the game is playable**
 
 ---
 
@@ -458,3 +458,87 @@ landing on a non-firing tick.
   bundle that builds cleanly and renders nothing.
 - **Verify presentation against `dist/`, not the dev server.** The missing-sprites
   defect (M5-F1) was invisible in dev by construction.
+
+---
+
+# M6 — Input & HUD
+
+**Tasks:** T052–T057 · **Tests:** 320 green (was 266) · **`SIM_VERSION`:** 7 → 8
+**Scope extension approved at the kickoff gate:** the `place` command (REV-007) and
+REV-006, folded in because FR-012 was unreachable and all three needed one bump.
+
+This is the milestone where the thing becomes a game: drag-select, right-click orders,
+a build bar, a placement ghost, and an ore counter, all driven end to end through real
+pointer events and verified against simulation state read back from the running page.
+
+## Key decisions
+
+- **Every input decision is a pure function; the scene only wires pointers.**
+  `selectInRect`, `orderFor` and `placementAt` take simulation state and a point, and
+  return a decision. None imports Phaser. That is what let all three be tested
+  headlessly, and it is why `MatchScene.installInput` is thin enough to read.
+
+- **Selection judges collision circles at SIMULATED positions** (FR-030), never sprite
+  bounds — Kenney's units occupy an uneven fraction of their canvas, and M5's jitter
+  means drawn and simulated positions genuinely differ. One radius for every kind:
+  a tank being easier to box than a scout is an accident of the art, not a design.
+
+- **`JITTER_PX <= COLLISION_RADIUS` is asserted as an invariant.** It is what makes
+  two coordinate spaces safe to have at once — clicking what you see always selects
+  what is there. Break it and single-click selection fails intermittently, by entity id.
+
+- **`place` is its own command, not a `build` variant.** The two have different payment
+  models (placement charges immediately, production charges on completion) and different
+  validity questions. Folding them together would be one command type with two meanings,
+  which is the `targetId` mistake in command form.
+
+- **Placement charges at PLACEMENT.** A structure occupies ground the instant it is
+  ordered, so the ore goes with it; charging on completion would let an unaffordable
+  Factory squat on a cell forever, blocking it for free and never finishing.
+
+- **The ghost asks the simulation.** `placementAt` calls `isValidPlacement` rather than
+  reimplementing the rule. A ghost that disagreed with the rule would teach the player
+  something false — worse than no ghost.
+
+- **The order marker is timed in wall-clock milliseconds**, the one place that coupling
+  is correct: FR-009 is about how fast a human sees a response, so it must not slow down
+  when the simulation falls behind, and it never feeds back into sim timing.
+
+## Artifacts produced
+
+- `src/game/input/{select,orders,placement}.ts` — the three pure decisions
+- `src/game/render/ghost.ts`, selection rim added to `render/ownership.ts`,
+  drag rectangle and order markers added to `render/world.ts`
+- `src/game/hud/{buildbar,roster,resources}.ts`
+- `src/sim/commands.ts` `PlaceCommand`; `place` handling in `step.ts`; hashing plus an
+  exhaustiveness guard in `hash.ts`; `COLLISION_RADIUS` in `constants.ts`
+- `src/sim/combat.ts` cooldown ordering fixed (REV-006)
+- `tests/game/{selection,orders,hud}.test.ts`, `tests/sim/placement.test.ts`
+- `src/sim/version.ts` → 8; both corpus cases regenerated
+
+**Dependencies added: none.**
+
+## Open risks
+
+1. **The ghost is drawn above what blocks the cell** (M6-F6) — red says "no", not "because
+   of that".
+2. **Units block placement** (M6-F7), so ground near a Base is intermittently unbuildable.
+   Correct per T037; whether the rule is right is an M9 question.
+3. **The AI never places structures** (M6-F8), so FR-012 is exercised from one side only
+   and no corpus case covers the new command.
+4. **`buildbar.ts` and `resources.ts` are at 0% coverage** — Phaser classes needing a
+   scene. Phase 8's Playwright suite, not a mock that would assert itself.
+5. **`Match.ts` remains largely uncovered** despite growing considerably this milestone.
+   The pure decisions were extracted precisely so the untested remainder is only wiring,
+   but it is now the largest untested file in the project.
+
+## Handoff notes
+
+- **Read `installInput` and the three `input/` modules together.** The split is the
+  design: everything that can be decided without Phaser is, and the rest is wiring.
+- **`jitter.test.ts` and `selection.test.ts` both assert relations between constants
+  in other files.** If `COLLISION_RADIUS`, `JITTER_PX` or the ring radius move, those
+  are the tests that will fail, and they are supposed to.
+- **The corpus diff for `simVersion` 8 is one case and one checkpoint.** 001-baseline
+  did not move at all, because no shot is ever fired in it — worth knowing before
+  assuming a combat change should have touched both.

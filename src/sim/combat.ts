@@ -125,11 +125,15 @@ export function addDamage(ledger: DamageLedger, targetId: number, amount: number
 }
 
 /**
- * Stage 7. Works out what everyone would do and changes nothing.
+ * Stage 7. Works out who hits whom and by how much, and applies NO damage — that
+ * is stage 8's job, and the separation is what makes O-6 work.
  *
- * Cooldowns ARE decremented and reset here, because "did this unit fire" is the
- * same decision as "does its cooldown reset" — splitting them would let a unit
- * fire twice or never.
+ * It is not otherwise pure, and the previous version of this comment claimed it
+ * was: cooldowns are decremented and reset here, because "did this unit fire" is
+ * the same decision as "does its cooldown reset" — splitting them would let a
+ * unit fire twice or never. Documenting the exception rather than the rule was
+ * REV-006; the test asserting this function "changes nothing" only ever looked at
+ * `hp`, so the false claim survived review twice.
  */
 export function collectDamage(state: SimState): DamageLedger {
   const ledger: DamageLedger = new Map();
@@ -141,8 +145,17 @@ export function collectDamage(state: SimState): DamageLedger {
       continue;
     }
 
+    // Decrement, THEN test — not "test, else decrement". The old order set the
+    // cooldown on the firing tick and only began counting it down on the next, so
+    // the true interval was cooldownTicks + 1: with cooldownTicks = 16, shots
+    // measured at ticks 1, 18, 35, 52 — gaps of 17. The existing test asserted
+    // "at most one shot per window, plus the opening shot", which is true of both,
+    // so a 6% error in every damage-per-second figure sat under a green suite.
+    // M8 tunes against these numbers (REV-006).
     if (attacker.cooldown > 0) {
       attacker.cooldown -= 1;
+    }
+    if (attacker.cooldown > 0) {
       continue;
     }
     if (attacker.targetId < 0) {

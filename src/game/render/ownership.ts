@@ -43,11 +43,16 @@ const RIM_WIDTH = 2.5;
  */
 const SEAT_ALPHA = 0.35;
 
+/** Near-white, so the selected rim outranks the tinted one in luminance too. */
+const SELECTED_RIM_COLOUR = 0xf8fafc;
+const SELECTED_RIM_WIDTH = 2;
+
 export function drawOwnership(
   graphics: Phaser.GameObjects.Graphics,
   entity: Entity,
   x: number,
   y: number,
+  selected = false,
 ): void {
   if (entity.owner !== FRIENDLY) {
     return;
@@ -67,4 +72,13 @@ export function drawOwnership(
 
   graphics.lineStyle(RIM_WIDTH, OWNER_TINT[FRIENDLY], RIM_ALPHA);
   graphics.strokeEllipse(x, cy, RADIUS_X * 2, RADIUS_Y * 2);
+
+  // Selection reuses the ring rather than adding a second decoration: FR-018 says
+  // the underglow doubles as the selection affordance. A brighter, wider second
+  // rim OUTSIDE the first, so "selected" reads as a change of weight rather than
+  // of colour — and so it survives greyscale like the ring itself.
+  if (selected) {
+    graphics.lineStyle(SELECTED_RIM_WIDTH, SELECTED_RIM_COLOUR, 1);
+    graphics.strokeEllipse(x, cy, RADIUS_X * 2 + 7, RADIUS_Y * 2 + 7);
+  }
 }

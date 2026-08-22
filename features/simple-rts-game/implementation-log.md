@@ -920,3 +920,160 @@ are all consequences of defects found this milestone, not scope creep.
 4. **The health bar is drawn but nothing has ever damaged a unit on screen** — combat
    is simulated and tested headlessly, but M5 has no input, so the bar's appearance in
    a real match is unverified until M6.
+
+---
+
+## M6 — Input & HUD
+
+Scope extended at the kickoff gate: M6 as written could not deliver FR-012, because
+REV-007 had been open since the M3 review — `isValidPlacement` existed with no verb, so
+a Must requirement was unreachable from any input. Adding a `place` command means
+touching the hash, so REV-006 and REV-008 were folded into the same `simVersion` bump
+rather than spending three deliberate corpus regenerations on one milestone.
+
+### The Red gate was real this time
+
+T052 carries `Test-first: true` — the only marked test task in M6, and the first since
+M4. `selectInRect` stubbed to throw gave **12 failed | 1 passed of 13 collected**; the
+single pass is `selectInRect.length === 3`, structural and green in both states, the
+same scoping control M0 and M5 used.
+
+### The jitter/selection coupling, found by a wrong assumption
+
+The first version of the jitter test asserted that a box drawn around a unit's DRAWN
+position must miss it, on the theory that drawn and simulated positions are different
+places. It failed: entity 3's offset is 13.9 px, inside the 18 px selection radius.
+
+Chasing that produced a better property than the one intended. Jitter's maximum
+magnitude is `JITTER_PX` (18) and the selection radius is `COLLISION_RADIUS` (18), so
+**clicking what you see always selects what is there** — but only while that inequality
+holds. Raise `JITTER_PX` above `COLLISION_RADIUS` and single-click selection starts
+failing for units that happen to be offset horizontally: intermittently, by entity id,
+which is close to the worst bug shape available. Neither constant knows about the
+other and no behavioural test can see the relationship, so it is asserted directly —
+the same shape as M5's `MAX_ACCUMULATOR_MS` / `MAX_STEPS_PER_FRAME` coupling.
+
+### REV-006 was real, and the first test written for it could not see it
+
+Measured before fixing: `cooldownTicks = 16`, shots landing on ticks 1, 18, 35, 52 —
+**gaps of 17**. Cooldown was set on the firing tick and only decremented from the next.
+
+The first replacement test counted shots in a fixed window and passed against the
+broken code, because 4 shots land in 64 ticks under both a 16- and a 17-tick interval —
+the extra tick only shifts when the fifth would arrive. The existing combat test had
+failed the same way for two milestones ("at most one shot per window, plus the opening
+shot" is true of both). Counting cannot detect it; the GAP has to be measured. Every
+damage-per-second figure was 6% low, and M8 is a tuning pass that would have calibrated
+around it.
+
+### REV-008 was already fixed
+
+`step.ts:118` validates `isProducibleKind` before setting `queuedKind`; the M3
+corrective pass added it and `code-review.md` was never updated. The test written for it
+passed on the first run. Recorded rather than "fixed" — the finding was stale, not the
+code.
+
+### M4-F2 closed
+
+The M4 gate warned that `pending` is the only variable-length hashed field, and that a
+new command type could be added whose FIELDS never reach the hash while its type code
+does. `COMMAND_TYPE_CODE` is typed against `Command['type']`, so the code map already
+failed compilation — but the hash `switch` had no `default`, which was the actual hole.
+It now narrows to `never`, so a command type with no hashing case is a compile error.
+`place` was the first new command type since the warning was written, and it is what
+made the hole worth closing rather than noting again.
+
+### Two defects the tests caught in new code
+
+**Out-of-map placement was accepted.** `cellOf` derives a cell index arithmetically, so
+an x past the right edge aliases into the next ROW rather than going out of range — the
+index passed `inBounds` and a click off the map placed a structure somewhere else
+entirely. `isValidPlacement` guards its raw pixel arguments first for exactly this
+reason; the `place` handler now does too.
+
+**A dead parameter in `src/sim`.** `bareGridFor(_state)` never used its argument, and
+M5's T046 boundary regression — which asserts zero lint violations across every real
+file in `src/sim` — failed on it. The M5 guard caught an M6 defect one milestone after
+it was written, which is the second time that has happened (M1-F3 was the first).
+
+### The corpus behaved exactly as ADR-002 intends
+
+Before the version bump the suite failed as a **regression** — "first diverged at tick
+1800" — not as staleness, which is the more useful failure: it says behaviour moved and
+you did not declare it. After the hand bump to 8, the dry run showed the blast radius:
+
+| case | terminal | note |
+|---|---|---|
+| 001-baseline | `e23a750e…` → `e23a750e…` | unchanged — no shot is ever fired in this case |
+| 002-ai-vs-ai | `734fd7d0…` → `b65e43f5…` | matches the regression's "got" column exactly |
+
+One case, one checkpoint, and the values equal to what the failure had already reported.
+`place` contributes nothing because no corpus case uses it yet.
+
+### Checkpoint #13 — after T052, T053, T054 and the simulation work
+
+| Check | Status | Notes |
+|-------|:------:|-------|
+| Task-Code correspondence | ✅ | T052 → `selection.test.ts`; T053 → `input/select.ts`; T054 → `input/orders.ts`. |
+| Spec AC alignment | ✅ | FR-007, FR-008, FR-030 asserted headlessly; FR-012 reachable for the first time. |
+| Unplanned changes | ⚠️ | `place` command across `commands.ts` / `hash.ts` / `step.ts`; `COLLISION_RADIUS` added to the tuning surface. All gate-approved scope. |
+| Plan alignment | ✅ | Pipeline order unchanged; `place` joins stage 1 with the other commands. |
+| Dependency / supply-chain | ✅ None added | |
+
+### Checkpoint #14 — after T055, T056, T057 and the scene wiring
+
+| Check | Status | Notes |
+|-------|:------:|-------|
+| Task-Code correspondence | ✅ | T055 → `input/placement.ts` + `render/ghost.ts`; T056 → `hud/buildbar.ts` + `hud/roster.ts`; T057 → `hud/resources.ts`. |
+| Spec AC alignment | ✅ | FR-009 to FR-013 and FR-016 verified in the running game, not only by test. 320/320 green. |
+| Unplanned changes | ⚠️ 2 files | `render/ghost.ts` and `hud/roster.ts` — see below. |
+| Plan alignment | ✅ | `input/` holds decisions, `render/` holds drawing, `hud/` holds the panels, exactly as plan.md's tree has it. |
+| Dependency / supply-chain | ✅ None added | |
+
+**The two unplanned files are one finding.** `placement.ts` and `buildbar.ts` were each
+written as a pure decision plus a Phaser class in one module — and Phaser needs `window`,
+so `import { placementAt }` threw `ReferenceError: window is not defined` under Node and
+the test could not run at all. FR-010's "exactly 5 entries" and FR-013's ghost states
+were unassertable for a reason that had nothing to do with them. Split into
+`render/ghost.ts` and `hud/roster.ts`; both requirements are now pinned. It is the third
+time this codebase has learned that a decision trapped in a framework module is a
+decision nobody can test — after `advanceAccumulator` and `orderFor`, which were built
+that way deliberately.
+
+**Verdict:** CLEAN — M6 complete.
+
+### Verified by playing it, not only by testing it
+
+The whole stack was driven through real pointer events in the browser, and the
+simulation state read back at each step:
+
+- drag-select → `selection: [2, 3]`, both units drawn with the selection rim
+- right-click ground → `queued: 1`, then after two ticks `queued: 0` with both workers
+  carrying `dest: [575, 557]` and `gather: -1`
+- Factory placed → entity 9 at `[288, 160]` (a cell centre), `state: 6`
+  (UNDER_CONSTRUCTION), ore 600 → 400
+
+The middle one is the point. **That is exactly the path REV-009 would have broken** —
+the command would have drained to nothing and the destinations would never have changed,
+with no error anywhere.
+
+A detour worth recording: the simulation appeared frozen at tick 0 while being driven
+from the automation. It was not a defect — `document.hidden` was true and Chrome pauses
+`requestAnimationFrame` entirely in a hidden tab, so no frames ran. Phaser also
+processes queued pointer events inside its game step, so the selection never updated
+either: two symptoms, one cause, and the F-4 accumulator clamp is the thing that makes
+returning from it safe.
+
+### Open items carried out of M6
+
+1. **The ghost is drawn above the sprites it would collide with** (depth 35 vs 20), so
+   hovering an occupied cell hides what is blocking it. The red state says "no" but not
+   "because of that". Cheap to fix by dropping the ghost below the sprite layer.
+2. **Units block placement**, so workers milling around a Base make nearby ground
+   intermittently unbuildable. Correct per T037, but it means the most natural place to
+   put a Factory is the least reliable. One for the M9 playtest.
+3. **`buildbar.ts` and `resources.ts` remain at 0% coverage** — both are Phaser classes
+   needing a scene. Phase 8's Playwright suite is where they get exercised; mocking a
+   scene here would only assert the mock.
+4. **The AI still never places structures.** REV-007 is closed for the player, but the
+   opponent has no `place` behaviour, so FR-012 is exercised from one side only.

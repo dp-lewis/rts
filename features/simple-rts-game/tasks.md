@@ -291,26 +291,26 @@ asserting on state, not rendered output (Principle II).
 
 ### Tests (Red first)
 
-- [ ] T052 [FR-030] Test: drag-select tests unit **collision circles**, not sprite bounds — changing a sprite must not change what is captured
+- [x] T052 [FR-030] Test: drag-select tests unit **collision circles**, not sprite bounds — changing a sprite must not change what is captured
       Paths: tests/sim/selection.test.ts
       Test-first: true
       Size: S
 
 ### Implementation
 
-- [ ] T053 [FR-007, FR-030] Drag-rectangle selection against collision circles
+- [x] T053 [FR-007, FR-030] Drag-rectangle selection against collision circles
       Paths: src/game/input/select.ts
       Size: M
-- [ ] T054 [FR-008, FR-009] Right-click orders → commands queued to `tick + 1`; move marker acknowledged **within one rendered frame** (presentation only — must not touch sim timing)
+- [x] T054 [FR-008, FR-009] Right-click orders → commands queued to `tick + 1`; move marker acknowledged **within one rendered frame** (presentation only — must not touch sim timing)
       Paths: src/game/input/orders.ts
       Size: M
-- [ ] T055 [FR-012, FR-013] Placement ghost — live preview, valid/invalid state shown inline, never an error dialog *(presentation half of FR-012; the rules live in T039)*
+- [x] T055 [FR-012, FR-013] Placement ghost — live preview, valid/invalid state shown inline, never an error dialog *(presentation half of FR-012; the rules live in T039)*
       Paths: src/game/input/placement.ts
       Size: M
-- [ ] T056 [FR-010, FR-011] Build bar — **exactly 5 entries** (4 unit + 1 structure, visually separated), always visible, never nested; unaffordable greyed with cost shown
+- [x] T056 [FR-010, FR-011] Build bar — **exactly 5 entries** (4 unit + 1 structure, visually separated), always visible, never nested; unaffordable greyed with cost shown
       Paths: src/game/hud/buildbar.ts
       Size: M
-- [ ] T057 [FR-016] Ore counter + node depletion display
+- [x] T057 [FR-016] Ore counter + node depletion display
       Paths: src/game/hud/resources.ts
       Size: S
 

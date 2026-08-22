@@ -26,6 +26,9 @@ interface Snapshot {
   y: number;
 }
 
+/** How long an order acknowledgement stays on screen, in real milliseconds. */
+const MARKER_MS = 320;
+
 const HEALTH_BAR_WIDTH = 40;
 const HEALTH_BAR_HEIGHT = 4;
 
@@ -46,6 +49,11 @@ export class WorldRenderer {
   private readonly previous = new Map<number, Snapshot>();
   private readonly health: Phaser.GameObjects.Graphics;
   private readonly ownership: Phaser.GameObjects.Graphics;
+  /** The live drag rectangle and click acknowledgements — FR-009. */
+  private readonly overlay: Phaser.GameObjects.Graphics;
+  private selected: ReadonlySet<number> = new Set();
+  private dragRect: { x0: number; y0: number; x1: number; y1: number } | undefined;
+  private markers: { x: number; y: number; born: number; hostile: boolean }[] = [];
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -56,6 +64,7 @@ export class WorldRenderer {
     // rather than as an outline drawn on top of it.
     this.ownership = scene.add.graphics().setDepth(10);
     this.health = scene.add.graphics().setDepth(30);
+    this.overlay = scene.add.graphics().setDepth(40);
   }
 
   /**
@@ -88,7 +97,28 @@ export class WorldRenderer {
     }
   }
 
-  draw(state: SimState, alpha: number): void {
+  /** Presentation-only view state, pushed by the scene each frame. */
+  setSelection(selected: ReadonlySet<number>): void {
+    this.selected = selected;
+  }
+
+  setDragRect(rect: { x0: number; y0: number; x1: number; y1: number } | undefined): void {
+    this.dragRect = rect;
+  }
+
+  /**
+   * FR-009 — acknowledge an order within one rendered frame.
+   *
+   * Recorded with a WALL-CLOCK birth stamp and faded over real milliseconds, not
+   * ticks. That is the correct coupling for once: the requirement is about how
+   * quickly a human sees a response, so it must not slow down when the simulation
+   * falls behind, and it must never feed back into sim timing.
+   */
+  addMarker(x: number, y: number, hostile: boolean, now: number): void {
+    this.markers.push({ x, y, born: now, hostile });
+  }
+
+  draw(state: SimState, alpha: number, now = 0): void {
     this.drawOre(state);
 
     this.health.clear();
@@ -114,6 +144,8 @@ export class WorldRenderer {
       this.drawEntity(entity, x, y);
     }
 
+    this.drawOverlay(now);
+
     // A sprite whose entity died — or was never alive — must not linger.
     for (const [id, sprite] of this.sprites) {
       if (!live.has(id)) {
@@ -122,6 +154,38 @@ export class WorldRenderer {
         this.previous.delete(id);
       }
     }
+  }
+
+  /** Drag rectangle and order markers. Cleared and redrawn every frame. */
+  private drawOverlay(now: number): void {
+    this.overlay.clear();
+
+    if (this.dragRect !== undefined) {
+      const { x0, y0, x1, y1 } = this.dragRect;
+      const left = Math.min(x0, x1);
+      const top = Math.min(y0, y1);
+      const width = Math.abs(x1 - x0);
+      const height = Math.abs(y1 - y0);
+      this.overlay.fillStyle(0xf8fafc, 0.12);
+      this.overlay.fillRect(left, top, width, height);
+      this.overlay.lineStyle(1, 0xf8fafc, 0.9);
+      this.overlay.strokeRect(left, top, width, height);
+    }
+
+    // Expanding, fading ring. Drop finished markers by rebuilding the array —
+    // it holds at most a handful of entries for a fraction of a second.
+    const live: typeof this.markers = [];
+    for (let i = 0; i < this.markers.length; i += 1) {
+      const marker = this.markers[i]!;
+      const age = (now - marker.born) / MARKER_MS;
+      if (age >= 1) {
+        continue;
+      }
+      live.push(marker);
+      this.overlay.lineStyle(2, marker.hostile ? 0xef4444 : 0x8ee9ff, 1 - age);
+      this.overlay.strokeCircle(marker.x, marker.y, 6 + age * 16);
+    }
+    this.markers = live;
   }
 
   private drawEntity(entity: Entity, x: number, y: number): void {
@@ -137,7 +201,7 @@ export class WorldRenderer {
     // reads as "my ore vanished and nothing happened".
     sprite.setAlpha(entity.state === ENTITY_STATE.UNDER_CONSTRUCTION ? 0.45 : 1);
 
-    drawOwnership(this.ownership, entity, x, y);
+    drawOwnership(this.ownership, entity, x, y, this.selected.has(entity.id));
     this.drawHealth(entity, x, y);
   }
 

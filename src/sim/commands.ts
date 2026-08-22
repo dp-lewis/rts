@@ -46,7 +46,27 @@ export interface BuildCommand extends CommandBase {
   kind: Kind;
 }
 
-export type Command = MoveCommand | AttackCommand | BuildCommand;
+/**
+ * Place a structure on chosen ground — FR-012.
+ *
+ * Distinct from `build` rather than a variant of it, because the two have
+ * genuinely different rules: a built unit is queued on a producer and paid for on
+ * completion (O-5), while a placed structure occupies a specific cell from the
+ * instant it is ordered and is paid for then. Folding them together would mean one
+ * command type with two payment models and two validity questions, which is the
+ * `targetId` mistake (ADR-001 Amendment 4) in command form.
+ */
+export interface PlaceCommand extends CommandBase {
+  type: 'place';
+  /** The entity ordering the placement; must be alive and owned by the issuer. */
+  builderId: number;
+  kind: Kind;
+  /** World px. Snapped to the containing cell's centre when applied. */
+  x: number;
+  y: number;
+}
+
+export type Command = MoveCommand | AttackCommand | BuildCommand | PlaceCommand;
 
 export interface CommandQueue {
   readonly pending: readonly Command[];

@@ -85,43 +85,43 @@ requirements:
     text: "Drag-rectangle selects all own units intersecting it"
     stories: ["US-004"]
     tasks: ["T053"]
-    code: []
+    code: ["src/game/input/select.ts"]
     tests: []
   - id: "FR-008"
     text: "Right-click issues move on ground, attack on enemy entity"
     stories: ["US-004"]
     tasks: ["T054"]
-    code: []
+    code: ["src/game/input/orders.ts"]
     tests: []
   - id: "FR-009"
     text: "Command issue is visually acknowledged within one rendered frame"
     stories: []
     tasks: ["T054"]
-    code: []
+    code: ["src/game/render/world.ts"]
     tests: []
   - id: "FR-010"
     text: "Build bar shows exactly 5 entries — 4 unit + 1 structure, visually separated — always visible, never nested"
     stories: ["US-005"]
     tasks: ["T056"]
-    code: []
+    code: ["src/game/hud/roster.ts", "src/game/hud/buildbar.ts"]
     tests: []
   - id: "FR-011"
     text: "Unaffordable build entries are greyed inline with cost shown"
     stories: ["US-005"]
     tasks: ["T056", "T063"]
-    code: []
+    code: ["src/game/hud/buildbar.ts"]
     tests: []
   - id: "FR-012"
     text: "Player may place additional Factories on valid ground"
     stories: ["US-006"]
     tasks: ["T035", "T039", "T055"]
-    code: ["src/sim/production.ts"]
+    code: ["src/sim/production.ts", "src/sim/commands.ts", "src/sim/step.ts", "src/game/input/placement.ts"]
     tests: []
   - id: "FR-013"
     text: "Invalid placement is indicated by ghost state, not an error dialog"
     stories: ["US-006"]
     tasks: ["T055", "T064"]
-    code: []
+    code: ["src/game/input/placement.ts", "src/game/render/ghost.ts"]
     tests: []
   - id: "FR-014"
     text: "Map is a fixed single screen: no scrolling, no camera, no minimap"
@@ -139,7 +139,7 @@ requirements:
     text: "Ore nodes hold finite amounts and visibly deplete"
     stories: ["US-008"]
     tasks: ["T030", "T033", "T057"]
-    code: ["src/sim/economy.ts"]
+    code: ["src/sim/economy.ts", "src/game/hud/resources.ts"]
     tests: []
   - id: "FR-017"
     text: "Destroying the enemy Base wins; losing own Base loses"
@@ -223,7 +223,7 @@ requirements:
     text: "Selection tests against unit collision circles, not sprite bounds"
     stories: ["US-004"]
     tasks: ["T052", "T053"]
-    code: []
+    code: ["src/game/input/select.ts"]
     tests: []
   - id: "FR-031"
     text: "Valid placement = full footprint passable, in-bounds, unoccupied by structure or unit"

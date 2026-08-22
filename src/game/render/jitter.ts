@@ -36,10 +36,14 @@
  */
 
 /**
- * Offset radius in px. Chosen so that the separation between consecutive ids
- * (2r·sin(137.5°/2) ≈ 1.86r) clears the ownership ring's 16.6 px radius.
+ * Offset radius in px, and therefore the largest distance a unit is ever drawn
+ * from where it actually is.
+ *
+ * Chosen so the separation between consecutive ids (2r·sin(137.5°/2) ≈ 1.86r)
+ * clears the ownership ring's 16.6 px radius. Exported because it is also bounded
+ * from ABOVE by `COLLISION_RADIUS` — see the coupling test in selection.test.ts.
  */
-const JITTER_PX = 18;
+export const JITTER_PX = 18;
 
 /** Vertical squash, matching the ring's — the map reads as a ground plane. */
 const VERTICAL_SCALE = 0.6;
