@@ -4,7 +4,7 @@
   "description": "M1/M2 harness baseline on the real 20x11 map, mirrored across x=640. Player and AI commands land on the same tick twice with the AI listed first, so applying arrival order instead of (issuer, seq) changes the hash (O-4). Both sides gather from tick 0 with no player input (FR-006). Not a defect regression: this is the case that proves the corpus machinery works before any defect needs it. M9: one Factory per side added to the opening and combat builds routed to it — product-spec.md line 128 has always said the Factory trains Scout/Trooper/Tank, and until now every build command named the Base, so these commands were being refused and the case recorded nothing about production. M10: the tech tree. Scout retired (kind 3 is a permanently empty slot), a Barracks added per side, and every build command routed to the building that now makes its unit — Worker at the Base, Trooper at a Barracks, Tank at a Factory.",
   "defect": null,
   "createdAt": "2026-08-22",
-  "simVersion": 11,
+  "simVersion": 12,
   "input": {
     "seed": 20260822,
     "difficulty": 1,
@@ -154,19 +154,19 @@
   },
   "expected": {
     "finalTick": 400,
-    "stateHash": "e0331db96d570f0a",
+    "stateHash": "5f3cb7168fb19561",
     "checkpoints": [
       {
         "tick": 100,
-        "stateHash": "7eae1a4e53cf5cdb"
+        "stateHash": "43ec1f201bf4fa95"
       },
       {
         "tick": 200,
-        "stateHash": "c8a522530a10f4a6"
+        "stateHash": "464a76a2692d56eb"
       },
       {
         "tick": 300,
-        "stateHash": "366338c27672983b"
+        "stateHash": "ba5590d7c6175d62"
       }
     ]
   }

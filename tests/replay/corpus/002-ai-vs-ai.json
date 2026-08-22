@@ -4,7 +4,7 @@
   "description": "First corpus case with real gameplay. No player commands whatsoever — every action is the AI's, so these hashes are a signature of the opponent's decision-making and of the PRNG threading that M4 introduced. Difficulty 2 is recorded in the header (FR-029): replaying at any other level diverges, which is the point of difficulty being a field rather than part of the seed. M10: the tech tree. Scout retired (kind 3 is a permanently empty slot), a Barracks added per side, and every build command routed to the building that now makes its unit — Worker at the Base, Trooper at a Barracks, Tank at a Factory.",
   "defect": null,
   "createdAt": "2026-08-22",
-  "simVersion": 11,
+  "simVersion": 12,
   "input": {
     "seed": 90210,
     "difficulty": 2,
@@ -95,19 +95,19 @@
   },
   "expected": {
     "finalTick": 1878,
-    "stateHash": "1b326931a711e8d4",
+    "stateHash": "cef0da26e91e8d9b",
     "checkpoints": [
       {
         "tick": 600,
-        "stateHash": "a73cf5741e028f07"
+        "stateHash": "eee30e5f57e47ba8"
       },
       {
         "tick": 1200,
-        "stateHash": "1c8bf3e6fb1d6a63"
+        "stateHash": "78dd37b754aba192"
       },
       {
         "tick": 1800,
-        "stateHash": "b3c6d009e02c9f58"
+        "stateHash": "6deba88cc28a1ba5"
       }
     ]
   }

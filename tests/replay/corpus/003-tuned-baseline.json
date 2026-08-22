@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "003-tuned-baseline",
-  "description": "The M8 tuned baseline, and the first corpus case to exercise the `place` command. Recorded after the balance pass that moved the median match from 1.6 minutes to 6.2 (base hp 1500->10500, build times up ~70%, ore/node 1500->3400, and a sharper CR-001 ramp). It carries player commands AND the AI's, so the hashes cover both command sources interleaving under O-4. The placement at tick 900 closes M7-F5: `place` was added in M6 and hashed with an exhaustiveness guard, but until now no recorded case replayed one, so its encoding was asserted by unit test and never across platforms. M9: one Factory per side added to the opening and combat builds routed to it — product-spec.md line 128 has always said the Factory trains Scout/Trooper/Tank, and until now every build command named the Base, so these commands were being refused and the case recorded nothing about production. M10: the tech tree. Scout retired (kind 3 is a permanently empty slot), a Barracks added per side, and every build command routed to the building that now makes its unit — Worker at the Base, Trooper at a Barracks, Tank at a Factory.",
+  "description": "The M8 tuned baseline, and the first corpus case to exercise the `place` command. Recorded after the balance pass that moved the median match from 1.6 minutes to 6.2 (base hp 1500->10500, build times up ~70%, ore/node 1500->3400, and a sharper CR-001 ramp). It carries player commands AND the AI's, so the hashes cover both command sources interleaving under O-4. The placement at tick 900 closes M7-F5: `place` was added in M6 and hashed with an exhaustiveness guard, but until now no recorded case replayed one, so its encoding was asserted by unit test and never across platforms. M9: one Factory per side added to the opening and combat builds routed to it — product-spec.md line 128 has always said the Factory trains Scout/Trooper/Tank, and until now every build command named the Base, so these commands were being refused and the case recorded nothing about production. M10: the tech tree. Scout retired (kind 3 is a permanently empty slot), a Barracks added per side, and every build command routed to the building that now makes its unit — Worker at the Base, Trooper at a Barracks, Tank at a Factory. Node layout brought in line with the real opening: eight smaller nodes in four mirrored pairs rather than two on the centre row, so the recorded case exercises the depletion-and-relocation path instead of a map the game no longer produces — which is exactly the drift M2-F2 caught the first time.",
   "defect": null,
   "createdAt": "2026-08-22",
-  "simVersion": 11,
+  "simVersion": 12,
   "input": {
     "seed": 31337,
     "difficulty": 1,
@@ -63,15 +63,51 @@
       "nodes": [
         {
           "id": 0,
-          "x": 416,
-          "y": 352,
-          "remaining": 3400
+          "x": 288,
+          "y": 160,
+          "remaining": 520
         },
         {
           "id": 1,
-          "x": 864,
-          "y": 352,
-          "remaining": 3400
+          "x": 288,
+          "y": 544,
+          "remaining": 520
+        },
+        {
+          "id": 2,
+          "x": 992,
+          "y": 160,
+          "remaining": 520
+        },
+        {
+          "id": 3,
+          "x": 992,
+          "y": 544,
+          "remaining": 520
+        },
+        {
+          "id": 4,
+          "x": 544,
+          "y": 224,
+          "remaining": 520
+        },
+        {
+          "id": 5,
+          "x": 544,
+          "y": 480,
+          "remaining": 520
+        },
+        {
+          "id": 6,
+          "x": 736,
+          "y": 224,
+          "remaining": 520
+        },
+        {
+          "id": 7,
+          "x": 736,
+          "y": 480,
+          "remaining": 520
         }
       ],
       "entities": [
@@ -150,23 +186,23 @@
   },
   "expected": {
     "finalTick": 3000,
-    "stateHash": "272038294357d084",
+    "stateHash": "cf6670265909cbf3",
     "checkpoints": [
       {
         "tick": 900,
-        "stateHash": "3a581f7c0bab95b5"
+        "stateHash": "dff2f0fee5523e0b"
       },
       {
         "tick": 1500,
-        "stateHash": "0fdff058a6e65f31"
+        "stateHash": "511382cda3109c84"
       },
       {
         "tick": 2100,
-        "stateHash": "c713b330407b438f"
+        "stateHash": "16d454150774f09c"
       },
       {
         "tick": 2700,
-        "stateHash": "247a8abddb56ff50"
+        "stateHash": "195a70e5ca7b4cd0"
       }
     ]
   }

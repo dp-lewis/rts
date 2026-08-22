@@ -37,17 +37,34 @@ interface Outcome {
   verdict: number;
   peakUnits: number;
   settled: boolean;
+  /** Ore nodes fully mined out by the end of the match. */
+  nodesDrained: number;
+  /** Times a worker changed which node it was mining — forced relocation. */
+  relocations: number;
 }
 
 function playMatch(seed: number, difficulty: Difficulty): Outcome {
   let state = createMatch(seed, difficulty);
   let seq = 0;
   let peak = 0;
+  let relocations = 0;
+  const miningAt = new Map<number, number>();
 
   while (state.verdict === VERDICT.NONE && state.tick < TICK_BUDGET) {
     const mine = sparringCommands(state, seq);
     seq += mine.length;
     state = step(state, mine);
+
+    for (const entity of state.entities) {
+      if (entity.kind !== KIND.WORKER || entity.gatherNodeId < 0) {
+        continue;
+      }
+      const previous = miningAt.get(entity.id);
+      if (previous !== undefined && previous !== entity.gatherNodeId) {
+        relocations += 1;
+      }
+      miningAt.set(entity.id, entity.gatherNodeId);
+    }
 
     if (state.tick % 40 === 0) {
       for (const owner of [0, 1] as const) {
@@ -67,6 +84,8 @@ function playMatch(seed: number, difficulty: Difficulty): Outcome {
     verdict: state.verdict,
     peakUnits: peak,
     settled: state.verdict !== VERDICT.NONE,
+    nodesDrained: state.nodes.filter((n) => n.remaining === 0).length,
+    relocations,
   };
 }
 
@@ -119,6 +138,32 @@ describe('K4 — match duration', () => {
     // design decision. The number that matters is how many a player can read.
     const peak = Math.max(...outcomes.map((o) => o.peakUnits));
     expect(peak, `peak ${peak} units on one side`).toBeLessThanOrEqual(MAX_UNITS_PER_SIDE);
+  });
+
+  it('exhausts ore, so the map gets used rather than one corner of it', () => {
+    // Requested from play: "more ores scattered across the map and for them to
+    // get exhausted after a time. This will force players to move around."
+    //
+    // Depletion always worked — `remaining` counts down and workers retarget when
+    // a node runs dry (T030). With two nodes, both on the centre row, there was
+    // nowhere to retarget TO, so the mechanic never showed itself. Eight smaller
+    // nodes in mirrored pairs is what makes it visible.
+    const drained = Math.max(...outcomes.map((o) => o.nodesDrained));
+    expect(drained, 'no match ever mined a node out').toBeGreaterThan(0);
+
+    const median = outcomes.map((o) => o.nodesDrained).sort((a, b) => a - b)[
+      Math.floor(outcomes.length / 2)
+    ]!;
+    expect(median, 'the typical match barely touches the map').toBeGreaterThanOrEqual(2);
+  });
+
+  it('forces workers to relocate, which is the point of the change', () => {
+    // A drained node that nobody had to move away from would mean the ore ran out
+    // exactly as the match ended — depletion without consequence.
+    const relocations = outcomes.reduce((a, o) => a + o.relocations, 0);
+    expect(relocations, 'workers never changed which node they mined').toBeGreaterThan(
+      outcomes.length,
+    );
   });
 
   it('produces a decisive result, not a field of draws', () => {

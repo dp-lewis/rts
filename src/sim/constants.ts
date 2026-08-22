@@ -29,6 +29,19 @@
  * an imperfect one: see `tests/sim/sparring.ts`. The band is confirmed against
  * real players in M9, not here.
  *
+ * ## Re-tuned again for the scattered ore (2026-08-22)
+ *
+ * Eight nodes in mirrored pairs instead of two on the centre row, each much
+ * smaller. Depletion always worked; with two nodes there was nowhere to move to,
+ * so it never showed. `WORKER_CARRY_CAPACITY` 10 → 14 is the lever that made it
+ * work: shrinking nodes alone drained them faster but starved the economy and
+ * pushed easy matches to 12.3 minutes. Raising extraction drains a node quickly
+ * WITHOUT reducing income, so the map gets walked and the pacing holds.
+ *
+ * Result: median 6.40, p90 10.64, and sudden death now fires in 8 of 24 matches
+ * where it fired in none — total ore is finally low enough for CR-001's backstop
+ * to be reachable, which was M8-F3's complaint from the other direction.
+ *
  * ## Re-tuned in M9 (2026-08-22)
  *
  * The first playtest found the Factory did nothing — every build command named
@@ -75,8 +88,8 @@ export const ARRIVE_EPSILON = 1.5;
 export const STARTING_ORE = 150;
 
 /** Ore per node at match start, and how much a worker moves per trip. */
-export const ORE_PER_NODE = 3400;
-export const WORKER_CARRY_CAPACITY = 10;
+export const ORE_PER_NODE = 520;
+export const WORKER_CARRY_CAPACITY = 14;
 export const WORKER_GATHER_PER_TICK = 1;
 
 /** Build costs, in ore. Five build-bar entries (FR: exactly five). */

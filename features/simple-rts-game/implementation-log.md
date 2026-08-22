@@ -1596,3 +1596,44 @@ caught by it, after M8's AI-versus-nobody harness.
 
 Pinned by an E2E test, because the failure mode is invisible in a screenshot: both
 states look correct on their own, and only the transition is wrong.
+
+### Scattered ore — eight nodes, and a map that gets used
+
+Requested from play: *"more ores scattered across the map and for them to get exhausted
+after a time. This will force players to move around the map more."*
+
+Worth stating what was already true: **depletion has worked since M2.** `remaining`
+counts down, and a worker whose node runs dry retargets deterministically (T030). The
+missing half was that with two nodes, both on the centre row, there was nowhere to
+retarget TO — so a mechanic that existed and was tested never once showed itself in
+play.
+
+Now eight nodes in four mirrored pairs: one pair beside each Base, two pairs mid-field
+where both sides can reach them. Every pair mirrors across x = 640, so the map stays
+fair. Ore nodes are not blocked terrain — workers stand on them — so six more of them
+changes the economy and nothing about pathing.
+
+**Shrinking the nodes alone was the wrong fix.** At 520 ore a node the map got used
+(6/8 drained on easy) but the economy starved and easy matches ran to 12.3 minutes —
+past the product's own name. The lever that worked was `WORKER_CARRY_CAPACITY` 10 → 14:
+extraction gets faster, so a node empties quickly *without* income dropping.
+
+| | median | p90 | nodes drained | relocations |
+|---|---|---|---|---|
+| 2 nodes × 3400 | 7.78 | 10.84 | 0 | 0 |
+| 8 × 850 | 7.61 | 10.63 | 2/8 | 6–15 |
+| 8 × 520 | 7.29 | 12.33 | 4–6/8 | 8–26 |
+| 8 × 520, carry 14 | **6.40** | **10.64** | **4–8/8** | **16–26** |
+
+A side effect worth having: **sudden death now fires in 8 of 24 matches, where it fired
+in none.** Total ore is finally low enough for CR-001's backstop to be reachable —
+M8-F3's complaint from the other direction, closed by accident.
+
+Pinned by two assertions in `duration.test.ts` rather than left to a screenshot: the
+typical match must mine out at least two nodes, and workers must relocate more times
+than there are matches. A drained node nobody had to walk away from would be depletion
+without consequence.
+
+Corpus case 003 was updated to the new node layout as well. It is the *tuned baseline*,
+and leaving it on a two-node centre-row map would have had it certifying terrain the
+game no longer produces — which is exactly the drift M2-F2 caught the first time.
