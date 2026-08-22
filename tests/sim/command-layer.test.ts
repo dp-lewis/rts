@@ -45,18 +45,44 @@ function world(entities: readonly EntitySeed[], ore = 5000): SimState {
 }
 
 const BASE: EntitySeed = { id: 1, kind: KIND.BASE, owner: 0, x: 160, y: 352 };
+/**
+ * Combat units train at a Factory, Workers at the Base — product-spec.md line
+ * 128, enforced by `canProduce` in step.ts. These fixtures queued Troopers and
+ * Tanks on the Base, which is now refused, so the ones that test combat
+ * production build here instead.
+ */
+const FACTORY: EntitySeed = { id: 9, kind: KIND.FACTORY, owner: 0, x: 288, y: 352 };
 
 describe('build commands actually produce units (REV-001)', () => {
   it('queues the requested kind', () => {
-    const state = issue(world([BASE]), {
+    const state = issue(world([BASE, FACTORY]), {
+      tick: 0, issuer: ISSUER.PLAYER, seq: 0, type: 'build', builderId: 9, kind: KIND.TROOPER,
+    });
+    expect(state.entities.find((e) => e.id === 9)!.queuedKind).toBe(KIND.TROOPER);
+  });
+
+  it('refuses a combat unit ordered at the Base — that is what a Factory is for', () => {
+    // The defect a playtester found as "the factory seems pointless": every build
+    // command named the Base, so a placed Factory did nothing at all.
+    const state = issue(world([BASE, FACTORY]), {
       tick: 0, issuer: ISSUER.PLAYER, seq: 0, type: 'build', builderId: 1, kind: KIND.TROOPER,
     });
-    expect(state.entities.find((e) => e.id === 1)!.queuedKind).toBe(KIND.TROOPER);
+    expect(state.entities.find((e) => e.id === 1)!.queuedKind).toBe(-1);
+  });
+
+  it('refuses a Worker ordered at a Factory — the Base is the floor that keeps a player alive', () => {
+    // pre-impl F-6: a player with no Workers and no ore can still get one from the
+    // Base at zero cost. Routing Workers through a Factory would put that escape
+    // hatch behind a structure the player might not have.
+    const state = issue(world([BASE, FACTORY]), {
+      tick: 0, issuer: ISSUER.PLAYER, seq: 0, type: 'build', builderId: 9, kind: KIND.WORKER,
+    });
+    expect(state.entities.find((e) => e.id === 9)!.queuedKind).toBe(-1);
   });
 
   it('produces the unit after its build time and charges for it', () => {
-    let state = issue(world([BASE]), {
-      tick: 0, issuer: ISSUER.PLAYER, seq: 0, type: 'build', builderId: 1, kind: KIND.TROOPER,
+    let state = issue(world([BASE, FACTORY]), {
+      tick: 0, issuer: ISSUER.PLAYER, seq: 0, type: 'build', builderId: 9, kind: KIND.TROOPER,
     });
     state = run(state, BUILD_TICKS.trooper + 2);
 
@@ -85,14 +111,14 @@ describe('build commands actually produce units (REV-001)', () => {
   });
 
   it('ignores a second build order while one is already in progress', () => {
-    let state = issue(world([BASE]), {
-      tick: 0, issuer: ISSUER.PLAYER, seq: 0, type: 'build', builderId: 1, kind: KIND.TANK,
+    let state = issue(world([BASE, FACTORY]), {
+      tick: 0, issuer: ISSUER.PLAYER, seq: 0, type: 'build', builderId: 9, kind: KIND.TANK,
     });
     state = issue(state, {
-      tick: 1, issuer: ISSUER.PLAYER, seq: 1, type: 'build', builderId: 1, kind: KIND.WORKER,
+      tick: 1, issuer: ISSUER.PLAYER, seq: 1, type: 'build', builderId: 9, kind: KIND.SCOUT,
     });
-    // The Tank order stands; the Worker order is dropped rather than replacing it.
-    expect(state.entities.find((e) => e.id === 1)!.queuedKind).toBe(KIND.TANK);
+    // The Tank order stands; the Scout order is dropped rather than replacing it.
+    expect(state.entities.find((e) => e.id === 9)!.queuedKind).toBe(KIND.TANK);
   });
 
   it('refuses an out-of-range kind instead of poisoning the state (REV-008)', () => {

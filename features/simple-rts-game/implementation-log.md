@@ -1338,3 +1338,102 @@ factories at end: id13 owner0 state0 (operational)
    a number this harness can produce.
 4. **`MAX_UNITS_PER_SIDE` is now decorative.** Peak is 19 against a ceiling of 30;
    nothing enforces it and nothing approaches it.
+
+---
+
+## M9 — K1 comprehension playtest (round 1)
+
+### The playtest found a requirement that was never implemented
+
+Eight pieces of feedback came back. Three of them were one defect:
+
+> - The scout seems pointless
+> - The factory seems pointless
+> - It would be good to only get the trooper and the tank after building a building to produce them
+
+`product-spec.md` line 128 has said since Phase 2:
+
+| **Factory** | Trains Scout / Trooper / Tank | One pre-placed per side; more may be built |
+
+**Neither half was implemented.** `createMatch` seeded two Bases and four Workers and
+no Factory; `queueBuild` always named the Base, so every unit trained there and a
+placed Factory was a 200-ore ornament. The Scout read as pointless for the same reason
+— Scout, Trooper and Tank were meant to sit behind a build-order decision, and coming
+free from the Base the cheap one has no role.
+
+The player independently proposed the missing rule. That is the strongest evidence
+available that the original design was right and the implementation drifted.
+
+### How it survived seven milestones and two code reviews
+
+Worth recording, because each layer had a reason not to catch it:
+
+- **The M6 review** verified placement *created a structure* and never asked what the
+  structure then does.
+- **The E2E specs** assert the build bar has five entries, not that any of them route
+  anywhere.
+- **The AI never placed structures** (M6-F8), so the AI-vs-AI harness never built one.
+- **M8's tuning** measured an economy in which 200 ore bought nothing, so the pacing was
+  calibrated around a dead cost sink.
+- **Phase 7 verify-full — which exists precisely to catch spec↔code drift — has never
+  been run.**
+
+### The fix, and where it had to go
+
+`canProduce` in `step.ts`, not in the build bar. A UI-only rule would have gated the
+player and left the AI producing an army from thin air, because the AI issues commands
+through the same path. Workers stay on the Base — pre-impl F-6's zero-cost Worker is the
+floor that stops a player with nothing being unable to act, and putting it behind a
+structure would reintroduce the dead state it exists to prevent.
+
+The AI needed the matching change: it now trains at a Factory and **places a replacement
+when it has none**, which closes M6-F8. Without that, gating production would simply
+have stopped the opponent fielding an army.
+
+### Re-tuning, as predicted
+
+Two producers working in parallel is faster than one:
+
+| | median | p90 | range |
+|---|---|---|---|
+| M8 tuned (no working Factory) | 6.19 | 9.97 | 4.27–15.26 |
+| Factory implemented, untuned | 4.47 | 6.09 | 3.94–9.87 |
+| Re-tuned (base hp 17000, combat +25%) | **6.24** | **9.32** | **5.25–10.72** |
+
+Better than M8's numbers, not merely equal: the 15-minute tail is gone entirely, and
+**difficulty separates by duration for the first time** (d0 8.6m, d1 5.9m, d2 5.7m) —
+which is exactly what M8-F7 recorded as missing.
+
+### Fixture assumptions the change exposed
+
+Six test files assumed the old opening. Two are worth noting:
+
+- **An E2E test raced itself.** `expect.poll(factoryCount).toBe(1)` passed *instantly*
+  once a Factory existed from tick 0, so the ore assertion after it ran before the
+  placement command had ever drained. It now waits for a DELTA. An absolute count only
+  ever worked while the spec's own opening was missing.
+- **`tests/sim/ai.test.ts`'s fixture had no Factory**, so every AI test would have been
+  measuring an opponent that could never field an army.
+
+### M9 is NOT scored
+
+The exit criteria are **≥4 of 5 players understand the game unaided** and **≥3 of 5 win
+at least one match on "New to this"**. Round 1 returned design feedback, not those
+measurements: no player count, no comprehension observation, no win/loss. This round is
+recorded as findings, and T076 needs a scored re-run.
+
+Note the harness cannot substitute: `sparring.ts` drives player 0 with a mirrored copy of
+the *same difficulty profile*, so p0's win rate is ~50% by construction and says nothing
+about whether a human beats the easy AI.
+
+### Still outstanding from round 1
+
+Three cheap presentation remedies, squarely T077's remit and not yet done:
+
+1. **No indication anything is building** — no progress shown at Base or Factory.
+2. **No combat feedback** — no lasers, no explosions; only health bars change.
+3. **Sprites never turn** — a tank faces the same way whatever it is doing.
+
+And two out of v1 scope, needing a change request rather than a patch: terrain
+decoration (the tile pack has unused trees and rivers) and defensive walls (a new
+mechanic, in no requirement).

@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "003-tuned-baseline",
-  "description": "The M8 tuned baseline, and the first corpus case to exercise the `place` command. Recorded after the balance pass that moved the median match from 1.6 minutes to 6.2 (base hp 1500->10500, build times up ~70%, ore/node 1500->3400, and a sharper CR-001 ramp). It carries player commands AND the AI's, so the hashes cover both command sources interleaving under O-4. The placement at tick 900 closes M7-F5: `place` was added in M6 and hashed with an exhaustiveness guard, but until now no recorded case replayed one, so its encoding was asserted by unit test and never across platforms.",
+  "description": "The M8 tuned baseline, and the first corpus case to exercise the `place` command. Recorded after the balance pass that moved the median match from 1.6 minutes to 6.2 (base hp 1500->10500, build times up ~70%, ore/node 1500->3400, and a sharper CR-001 ramp). It carries player commands AND the AI's, so the hashes cover both command sources interleaving under O-4. The placement at tick 900 closes M7-F5: `place` was added in M6 and hashed with an exhaustiveness guard, but until now no recorded case replayed one, so its encoding was asserted by unit test and never across platforms. M9: one Factory per side added to the opening and combat builds routed to it — product-spec.md line 128 has always said the Factory trains Scout/Trooper/Tank, and until now every build command named the Base, so these commands were being refused and the case recorded nothing about production.",
   "defect": null,
   "createdAt": "2026-08-22",
-  "simVersion": 9,
+  "simVersion": 10,
   "input": {
     "seed": 31337,
     "difficulty": 1,
@@ -23,7 +23,7 @@
         "issuer": 0,
         "seq": 1,
         "type": "build",
-        "builderId": 1,
+        "builderId": 7,
         "kind": 3
       },
       {
@@ -124,29 +124,43 @@
           "owner": 1,
           "x": 1056,
           "y": 416
+        },
+        {
+          "id": 7,
+          "kind": 1,
+          "owner": 0,
+          "x": 288,
+          "y": 352
+        },
+        {
+          "id": 8,
+          "kind": 1,
+          "owner": 1,
+          "x": 992,
+          "y": 352
         }
       ]
     }
   },
   "expected": {
     "finalTick": 3000,
-    "stateHash": "e8032a231c4cb844",
+    "stateHash": "31e9088863f59545",
     "checkpoints": [
       {
         "tick": 900,
-        "stateHash": "6f2eca51de381e84"
+        "stateHash": "cf4cdf1400d95fc5"
       },
       {
         "tick": 1500,
-        "stateHash": "3527b95206a0b807"
+        "stateHash": "66956d9c238a08d5"
       },
       {
         "tick": 2100,
-        "stateHash": "59b94168ce42015f"
+        "stateHash": "83cd6fb36076f020"
       },
       {
         "tick": 2700,
-        "stateHash": "9fd4c2e320b83360"
+        "stateHash": "4caf7d578d4a4ece"
       }
     ]
   }

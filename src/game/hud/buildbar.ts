@@ -13,13 +13,15 @@
  */
 
 import { BUILD_ENTRIES, type BuildEntry } from './roster';
-import type { Kind, SimState } from '../../sim/state';
+import { KIND, type Kind, type SimState } from '../../sim/state';
 
 export interface BuildBarHandlers {
-  /** A unit entry: queue it on the Base. */
+  /** A unit entry: queue it on whichever producer the kind belongs to. */
   onQueue: (kind: Kind) => void;
   /** The structure entry: arm placement rather than queueing. */
   onPlace: (kind: Kind) => void;
+  /** Whether a combat order currently has a Factory to go to. */
+  hasFactory: () => boolean;
 }
 
 const TESTID: Record<string, string> = {
@@ -32,9 +34,12 @@ const TESTID: Record<string, string> = {
 
 export class BuildBar {
   private readonly buttons = new Map<Kind, HTMLButtonElement>();
+  private readonly reason = new Map<Kind, boolean>();
+  private readonly handlers: BuildBarHandlers;
   private armed: Kind | undefined;
 
   constructor(root: HTMLElement, handlers: BuildBarHandlers) {
+    this.handlers = handlers;
     root.replaceChildren();
 
     for (const entry of BUILD_ENTRIES) {
@@ -72,7 +77,12 @@ export class BuildBar {
     // that tells a new player how long to keep mining.
     cost.textContent = `${entry.cost} ore`;
 
-    button.append(name, cost);
+    // A second line, empty unless there is something to say. Reserved rather than
+    // inserted on demand so the bar never changes height mid-match.
+    const note = document.createElement('span');
+    note.className = 'build-note';
+
+    button.append(name, cost, note);
     return button;
   }
 
@@ -83,14 +93,28 @@ export class BuildBar {
 
   draw(state: SimState): void {
     const ore = state.players[0].ore;
+    const factory = this.handlers.hasFactory();
+
     for (const entry of BUILD_ENTRIES) {
       const button = this.buttons.get(entry.kind)!;
-      const affordable = ore >= entry.cost;
+      // Two reasons an entry can be unavailable, and they are NOT the same thing.
+      // "You cannot afford it" is answered by the cost already on screen; "you
+      // have no Factory" is not answered by anything, so it says so. FR-013's
+      // principle — refuse inline, explain inline, never a dialog.
+      const needsFactory = entry.kind !== KIND.WORKER && !entry.placed && !factory;
+      const affordable = ore >= entry.cost && !needsFactory;
+      button.title = needsFactory ? 'Needs a Factory' : '';
+      this.reason.set(entry.kind, needsFactory);
       // aria-disabled rather than `disabled`: a disabled button is removed from
       // the tab order and from the accessibility tree, so a keyboard player would
       // lose the ability to read what they cannot yet afford.
       button.setAttribute('aria-disabled', String(!affordable));
       button.setAttribute('aria-pressed', String(this.armed === entry.kind));
+
+      const note = button.querySelector<HTMLElement>('.build-note');
+      if (note !== null) {
+        note.textContent = this.reason.get(entry.kind) === true ? 'needs a Factory' : '';
+      }
     }
   }
 }

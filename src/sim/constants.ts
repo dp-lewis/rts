@@ -17,7 +17,7 @@
  *
  * | change | from → to | reason |
  * |---|---|---|
- * | `MAX_HP.base` | 1500 → 10500 | The Base is the win condition, so its hp is the single biggest lever on how long the closing fight lasts. |
+ * | `MAX_HP.base` | 1500 → 10500 → **17000 (M9)** | The Base is the win condition, so its hp is the single biggest lever on how long the closing fight lasts. |
  * | `BUILD_TICKS` | +~70% across the board | Slower production means the armies that decide a match take longer to exist, which is where most of the added length came from. |
  * | `ORE_PER_NODE` | 1500 → 3400 | Enough to sustain a longer match — but deliberately NOT more, because sudden death arms on global depletion, and 4200 put the CR-001 backstop out of reach in exactly the matches that needed it (one ran 15.8 minutes). |
  * | `SUDDEN_DEATH` | grace 60s → 30s, ramp +1/15s → +4/10s | The backstop was written against 1500hp Bases and was far too slow against 10500. This is what pulled p90 from 13.1 to 9.97. |
@@ -28,6 +28,19 @@
  * The measurements come from AI-vs-mirrored-AI, which is a proxy for a human and
  * an imperfect one: see `tests/sim/sparring.ts`. The band is confirmed against
  * real players in M9, not here.
+ *
+ * ## Re-tuned in M9 (2026-08-22)
+ *
+ * The first playtest found the Factory did nothing — every build command named
+ * the Base, so a 200-ore structure was an ornament. Implementing the spec (one
+ * Factory per side, combat units trained there) gave each player TWO producers
+ * working in parallel, armies arrived sooner, and the median fell 6.19 → 4.47.
+ *
+ * Base hp 10500 → 17000 and combat build times +25% put it back at **6.24 median,
+ * p90 9.32** — and tighter than before: the whole 30-match range is now
+ * 5.25–10.72 minutes, where it used to reach 15.3. Difficulty also separates by
+ * duration for the first time (d0 8.6m, d1 5.9m, d2 5.7m), which M8-F7 flagged as
+ * missing: a weaker opponent now visibly takes longer to finish you.
  */
 
 /** Fixed simulation rate. The renderer interpolates between ticks; it never sets the rate. */
@@ -78,15 +91,15 @@ export const COST = {
 /** Build times, in ticks. */
 export const BUILD_TICKS = {
   worker: 170,
-  scout: 160,
-  trooper: 250,
-  tank: 460,
+  scout: 200,
+  trooper: 310,
+  tank: 560,
   factory: 520,
 } as const;
 
 /** Maximum hit points by kind. */
 export const MAX_HP = {
-  base: 10500,
+  base: 17000,
   factory: 900,
   worker: 40,
   scout: 50,

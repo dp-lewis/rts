@@ -391,7 +391,7 @@ asserting on state, not rendered output (Principle II).
 
 **Exit criteria: (1) ≥4 of 5 first-time players understand what to do, unaided; (2) ≥3 of 5 win at least one match on "New to this"** *(pre-impl F-3)*.
 
-- [ ] T076 [K1] Run the comprehension playtest — 3–5 first-time players, cold, no instruction. Say nothing. Record time-to-first-action, whether they understood the goal, **and whether they won** *(pre-impl F-3: comprehension alone does not prove the game is beatable, and an AI written by someone who knows the game is the most common way a solo project ships something unwinnable)*
+- [~] T076 [K1] Run the comprehension playtest — 3–5 first-time players, cold, no instruction. Say nothing. Record time-to-first-action, whether they understood the goal, **and whether they won** *(pre-impl F-3: comprehension alone does not prove the game is beatable, and an AI written by someone who knows the game is the most common way a solo project ships something unwinnable)*
       Paths: unknown
       Size: M
 - [ ] T077 [K1] Address playtest findings and re-run. Cheap remedies first: first-frame framing, AI opening pace, affordance size

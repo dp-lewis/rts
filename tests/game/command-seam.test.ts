@@ -72,14 +72,15 @@ describe('player commands scheduled by the scene actually apply', () => {
   it('leaves the command queued until its tick arrives, not before', () => {
     let state = createMatch(20260822, 1);
     let queue = createCommandQueue();
-    const base = state.entities.find((e) => e.kind === KIND.BASE && e.owner === 0)!;
+    // Combat units train at a FACTORY, not the Base (product-spec.md line 128).
+    const factory = state.entities.find((e) => e.kind === KIND.FACTORY && e.owner === 0)!;
 
     queue = enqueueCommand(queue, {
       type: 'build',
       tick: 10,
       issuer: 0,
       seq: 0,
-      builderId: base.id,
+      builderId: factory.id,
       kind: KIND.TROOPER,
     });
 
@@ -92,7 +93,7 @@ describe('player commands scheduled by the scene actually apply', () => {
 
     ({ state, queue } = runTick(state, queue));
     expect(queue.pending).toHaveLength(0);
-    expect(state.entities.find((e) => e.id === base.id)?.queuedKind).toBe(KIND.TROOPER);
+    expect(state.entities.find((e) => e.id === factory.id)?.queuedKind).toBe(KIND.TROOPER);
   });
 
   it('honours the one-tick latency the scene schedules with', () => {
@@ -100,7 +101,7 @@ describe('player commands scheduled by the scene actually apply', () => {
     // already being computed. The scene issues at `state.tick + 1`.
     let state = createMatch(20260822, 1);
     let queue = createCommandQueue();
-    const base = state.entities.find((e) => e.kind === KIND.BASE && e.owner === 0)!;
+    const factory = state.entities.find((e) => e.kind === KIND.FACTORY && e.owner === 0)!;
 
     const issuedAt = state.tick;
     queue = enqueueCommand(queue, {
@@ -108,15 +109,15 @@ describe('player commands scheduled by the scene actually apply', () => {
       tick: issuedAt + LATENCY_TICKS,
       issuer: 0,
       seq: 0,
-      builderId: base.id,
+      builderId: factory.id,
       kind: KIND.SCOUT,
     });
 
     ({ state, queue } = runTick(state, queue));
-    expect(state.entities.find((e) => e.id === base.id)?.queuedKind).toBe(-1);
+    expect(state.entities.find((e) => e.id === factory.id)?.queuedKind).toBe(-1);
 
     ({ state } = runTick(state, queue));
-    expect(state.entities.find((e) => e.id === base.id)?.queuedKind).toBe(KIND.SCOUT);
+    expect(state.entities.find((e) => e.id === factory.id)?.queuedKind).toBe(KIND.SCOUT);
   });
 });
 
@@ -167,6 +168,10 @@ describe('the standard opening is a playable, mirrored map', () => {
       expect(
         state.entities.filter((e) => e.owner === owner && e.kind === KIND.WORKER).length,
       ).toBeGreaterThan(0);
+      // One pre-placed Factory per side — product-spec.md line 128.
+      expect(
+        state.entities.filter((e) => e.owner === owner && e.kind === KIND.FACTORY),
+      ).toHaveLength(1);
     }
     expect(state.players[0].ore).toBe(state.players[1].ore);
     expect(state.verdict).toBe(VERDICT.NONE);

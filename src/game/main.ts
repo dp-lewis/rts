@@ -87,6 +87,7 @@ export function bootGame(): App {
       scene()?.armPlacement(kind);
       buildBar.setArmed(kind);
     },
+    hasFactory: () => scene()?.hasOperationalFactory() ?? false,
   });
 
   const show = (screen: 'gate' | 'match' | 'result'): void => {

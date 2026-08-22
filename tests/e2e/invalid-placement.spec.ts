@@ -49,6 +49,7 @@ test.describe('EDGE-005 — placing a Factory somewhere it cannot go', () => {
   }) => {
     await page.getByTestId('build-factory').click();
     const before = await page.evaluate(() => window.__tmw!.ore());
+    const factoriesBefore = await page.evaluate(() => window.__tmw!.factoryCount());
 
     const base = await page.evaluate(() => window.__tmw!.ownBaseScreenPoint());
     await page.mouse.move(base.x, base.y);
@@ -56,7 +57,9 @@ test.describe('EDGE-005 — placing a Factory somewhere it cannot go', () => {
 
     await expect(page.locator('dialog, [role=dialog], [role=alertdialog]')).toHaveCount(0);
     expect(await page.evaluate(() => window.__tmw!.ore())).toBe(before);
-    expect(await page.evaluate(() => window.__tmw!.factoryCount())).toBe(0);
+    // A DELTA, not an absolute: one Factory is pre-placed per side, so asserting
+    // zero would only ever have passed while the spec's own opening was missing.
+    expect(await page.evaluate(() => window.__tmw!.factoryCount())).toBe(factoriesBefore);
   });
 
   test('clicking a valid cell commits the placement and deducts the ore', async ({ page }) => {
@@ -64,6 +67,7 @@ test.describe('EDGE-005 — placing a Factory somewhere it cannot go', () => {
     // does if acceptance is also demonstrated.
     await page.getByTestId('build-factory').click();
     const before = await page.evaluate(() => window.__tmw!.ore());
+    const factoriesBefore = await page.evaluate(() => window.__tmw!.factoryCount());
 
     const canvas = (await page.getByTestId('game-canvas').boundingBox())!;
     const x = canvas.x + canvas.width * 0.5;
@@ -71,7 +75,12 @@ test.describe('EDGE-005 — placing a Factory somewhere it cannot go', () => {
     await page.mouse.move(x, y);
     await page.mouse.click(x, y);
 
-    await expect.poll(async () => page.evaluate(() => window.__tmw!.factoryCount())).toBe(1);
+    // Polling for an absolute count of 1 passed INSTANTLY once a Factory was
+    // pre-placed, so the ore assertion below raced ahead of the command ever
+    // being applied. Waiting for the delta is what makes this a real wait.
+    await expect
+      .poll(async () => page.evaluate(() => window.__tmw!.factoryCount()))
+      .toBe(factoriesBefore + 1);
     expect(await page.evaluate(() => window.__tmw!.ore())).toBeLessThan(before);
   });
 });

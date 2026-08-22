@@ -246,6 +246,27 @@ export class MatchScene extends Phaser.Scene {
     );
   }
 
+  /**
+   * The Factory a combat order goes to — lowest id, an idle one preferred, so a
+   * second click queues at a second Factory rather than being dropped.
+   * Deterministic by id like every other tie-break (O-1, O-5).
+   */
+  private ownFactory() {
+    const usable = this.state.entities.filter(
+      (e) =>
+        e.kind === KIND.FACTORY &&
+        e.owner === 0 &&
+        e.state !== ENTITY_STATE.DEAD &&
+        e.state !== ENTITY_STATE.UNDER_CONSTRUCTION,
+    );
+    return usable.find((e) => e.queuedKind < 0) ?? usable[0];
+  }
+
+  /** Whether a combat order has anywhere to go — drives the build bar's gating. */
+  hasOperationalFactory(): boolean {
+    return this.ownFactory() !== undefined;
+  }
+
   // ── Called by the DOM build bar ───────────────────────────────────────────
 
   armPlacement(kind: Kind): void {
@@ -266,11 +287,14 @@ export class MatchScene extends Phaser.Scene {
   }
 
   queueBuild(kind: Kind): void {
-    const base = this.ownBase();
-    if (base === undefined) {
+    // Workers at the Base, combat units at a Factory — product-spec.md line 128.
+    // The simulation enforces this too (`canProduce`); routing correctly here is
+    // what stops a click silently doing nothing.
+    const builder = kind === KIND.WORKER ? this.ownBase() : this.ownFactory();
+    if (builder === undefined) {
       return;
     }
-    this.issue({ type: 'build', builderId: base.id, kind });
+    this.issue({ type: 'build', builderId: builder.id, kind });
   }
 
   /**

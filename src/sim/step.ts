@@ -96,6 +96,33 @@ const MAX_HP_BY_KIND: Record<Kind, number> = {
  */
 const bareGrid: Grid = createGrid(MAP_TILES_X, MAP_TILES_Y, []);
 
+/**
+ * Who may produce what — the Factory's reason to exist.
+ *
+ * product-spec.md line 128 has always said the Factory "Trains Scout / Trooper /
+ * Tank", with one pre-placed per side. Neither half was implemented: no Factory
+ * was seeded, and every build command named the Base, so a placed Factory was a
+ * 200-ore ornament. A playtester reported it as "the factory seems pointless" and
+ * then independently proposed the missing rule — "only get the trooper and the
+ * tank after building a building to produce them" — which is the spec.
+ *
+ * Enforced HERE rather than in the build bar because the AI issues commands too.
+ * A UI-only rule would gate the player and leave the opponent producing an army
+ * from thin air.
+ */
+function canProduce(builder: Entity, kind: number): boolean {
+  if (kind === KIND.WORKER) {
+    // Workers stay on the Base — pre-impl F-6's zero-cost Worker is the floor
+    // that stops a player with nothing being unable to act, and routing it
+    // through a Factory would reintroduce the dead state it exists to prevent.
+    return builder.kind === KIND.BASE;
+  }
+  if (kind === KIND.FACTORY) {
+    return false; // Structures are PLACED on chosen ground, never queued.
+  }
+  return builder.kind === KIND.FACTORY && builder.state !== ENTITY_STATE.UNDER_CONSTRUCTION;
+}
+
 /** Structures may be PLACED on chosen ground; units may not (FR-012). */
 function isPlaceableKind(kind: number): boolean {
   return kind === KIND.FACTORY;
@@ -163,6 +190,9 @@ function applyCommands(state: SimState, commands: readonly Command[]): void {
         // whole match on the next hash. Commands are the simulation's only
         // external input, so this is the boundary where they get validated.
         if (!isProducibleKind(command.kind)) {
+          break;
+        }
+        if (!canProduce(builder, command.kind)) {
           break;
         }
         // Already busy. Dropped rather than replacing the order, so a stray

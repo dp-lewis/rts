@@ -82,6 +82,46 @@ export function isValidPlacement(state: SimState, x: number, y: number): boolean
 }
 
 /**
+ * The first cell around `origin` a structure could legally be placed in, searched
+ * in a fixed ring order. Returns undefined when the surroundings are full.
+ *
+ * Exported so the AI can site a replacement Factory without duplicating the ring
+ * search — the search order is part of what makes the AI deterministic, and two
+ * copies of it would drift.
+ */
+export function openCellNear(
+  state: SimState,
+  origin: Entity,
+  maxRadius = 4,
+): { x: number; y: number } | undefined {
+  const cell = cellOf(bareGrid, origin.x, origin.y);
+  const ox = cellX(bareGrid, cell);
+  const oy = cellY(bareGrid, cell);
+
+  for (let radius = 1; radius <= maxRadius; radius += 1) {
+    for (let dy = -radius; dy <= radius; dy += 1) {
+      for (let dx = -radius; dx <= radius; dx += 1) {
+        if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) {
+          continue; // interior of the ring, already searched
+        }
+        const cx = ox + dx;
+        const cy = oy + dy;
+        if (cx < 0 || cy < 0 || cx >= MAP_TILES_X || cy >= MAP_TILES_Y) {
+          continue;
+        }
+        const candidate = cellIndex(bareGrid, cx, cy);
+        const px = cellCentreX(bareGrid, candidate);
+        const py = cellCentreY(bareGrid, candidate);
+        if (isValidPlacement(state, px, py)) {
+          return { x: px, y: py };
+        }
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
  * The first free cell around a producer, searched in a fixed ring order so two
  * units queued on the same tick never contend for one cell by accident.
  */

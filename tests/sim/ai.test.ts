@@ -40,9 +40,14 @@ function mirrorMatch(difficulty: Difficulty, seed = 777): SimState {
       { id: 1, kind: KIND.BASE, owner: 0, x: 160, y: 352 },
       { id: 2, kind: KIND.WORKER, owner: 0, x: 224, y: 288 },
       { id: 3, kind: KIND.WORKER, owner: 0, x: 224, y: 416 },
-      { id: 4, kind: KIND.BASE, owner: 1, x: 1120, y: 352 },
-      { id: 5, kind: KIND.WORKER, owner: 1, x: 1056, y: 288 },
-      { id: 6, kind: KIND.WORKER, owner: 1, x: 1056, y: 416 },
+      // One Factory per side, operational from tick 0 (product-spec.md line 128).
+      // Combat units train there, not at the Base, so an AI fixture without one
+      // measures an opponent that can never field an army.
+      { id: 4, kind: KIND.FACTORY, owner: 0, x: 288, y: 352 },
+      { id: 5, kind: KIND.BASE, owner: 1, x: 1120, y: 352 },
+      { id: 6, kind: KIND.WORKER, owner: 1, x: 1056, y: 288 },
+      { id: 7, kind: KIND.WORKER, owner: 1, x: 1056, y: 416 },
+      { id: 8, kind: KIND.FACTORY, owner: 1, x: 992, y: 352 },
     ],
   });
 }

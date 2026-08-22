@@ -39,9 +39,15 @@ export function createMatch(seed: number, difficulty: Difficulty): SimState {
       { id: 1, kind: KIND.BASE, owner: 0, x: centre(2), y: centre(midY) },
       { id: 2, kind: KIND.WORKER, owner: 0, x: centre(3), y: centre(midY - 1) },
       { id: 3, kind: KIND.WORKER, owner: 0, x: centre(3), y: centre(midY + 1) },
-      { id: 4, kind: KIND.BASE, owner: 1, x: centre(17), y: centre(midY) },
-      { id: 5, kind: KIND.WORKER, owner: 1, x: centre(16), y: centre(midY - 1) },
-      { id: 6, kind: KIND.WORKER, owner: 1, x: centre(16), y: centre(midY + 1) },
+      // One Factory per side, operational from tick 0 — product-spec.md line 128.
+      // Without it a new player has a build bar whose combat entries cannot be
+      // used until they work out that a Factory must come first, which is a
+      // puzzle the game never sets and never explains.
+      { id: 4, kind: KIND.FACTORY, owner: 0, x: centre(4), y: centre(midY) },
+      { id: 5, kind: KIND.BASE, owner: 1, x: centre(17), y: centre(midY) },
+      { id: 6, kind: KIND.WORKER, owner: 1, x: centre(16), y: centre(midY - 1) },
+      { id: 7, kind: KIND.WORKER, owner: 1, x: centre(16), y: centre(midY + 1) },
+      { id: 8, kind: KIND.FACTORY, owner: 1, x: centre(15), y: centre(midY) },
     ],
   });
 }

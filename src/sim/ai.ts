@@ -1,5 +1,6 @@
 import { ISSUER, type Command } from './commands';
 import { COST } from './constants';
+import { openCellNear } from './production';
 import { nextIntRng } from './rng';
 import { ENTITY_STATE, KIND, VERDICT, type Difficulty, type Entity, type Kind, type SimState } from './state';
 
@@ -52,6 +53,32 @@ const HUMAN_OWNER = 0;
 
 function isAlive(entity: Entity): boolean {
   return entity.state !== ENTITY_STATE.DEAD && entity.hp > 0;
+}
+
+/**
+ * The Factory this side trains at — lowest id first, and an idle one preferred.
+ *
+ * Deterministic by id like every other tie-break in the simulation (O-1, O-5):
+ * "whichever factory" would make the AI's output depend on array order.
+ */
+function factoryOf(state: SimState, owner: number): Entity | undefined {
+  let busy: Entity | undefined;
+  for (let i = 0; i < state.entities.length; i += 1) {
+    const entity = state.entities[i]!;
+    if (
+      entity.kind !== KIND.FACTORY ||
+      entity.owner !== owner ||
+      !isAlive(entity) ||
+      entity.state === ENTITY_STATE.UNDER_CONSTRUCTION
+    ) {
+      continue;
+    }
+    if (entity.queuedKind < 0) {
+      return entity;
+    }
+    busy ??= entity;
+  }
+  return busy;
 }
 
 function baseOf(state: SimState, owner: number): Entity | undefined {
@@ -117,11 +144,39 @@ function plan(state: SimState): Plan {
   // as a player does.
   const tick = state.tick + 1;
 
-  if (base.queuedKind < 0 && base.state !== ENTITY_STATE.UNDER_CONSTRUCTION) {
-    if (workers < profile.workerTarget) {
-      commands.push({ tick, issuer: ISSUER.AI, seq, type: 'build', builderId: base.id, kind: KIND.WORKER });
-      seq += 1;
-    } else if (army.length < profile.armyTarget) {
+  // Workers train at the Base; combat units train at a Factory. Both sides are
+  // held to the same rule — `canProduce` in step.ts enforces it, so an AI that
+  // ignored it would simply have its commands dropped and never field an army.
+  if (
+    workers < profile.workerTarget &&
+    base.queuedKind < 0 &&
+    base.state !== ENTITY_STATE.UNDER_CONSTRUCTION
+  ) {
+    commands.push({ tick, issuer: ISSUER.AI, seq, type: 'build', builderId: base.id, kind: KIND.WORKER });
+    seq += 1;
+  } else if (workers >= profile.workerTarget && army.length < profile.armyTarget) {
+    const factory = factoryOf(state, AI_OWNER);
+
+    if (factory === undefined) {
+      // No Factory means no army, ever. Rebuilding one is not opportunism, it is
+      // the only route out of a losing position — and until M9 the AI could not
+      // place structures at all (M6-F8), which was survivable only because
+      // nothing needed one.
+      const spot = openCellNear(state, base);
+      if (spot !== undefined && state.players[AI_OWNER]!.ore >= COST.factory) {
+        commands.push({
+          tick,
+          issuer: ISSUER.AI,
+          seq,
+          type: 'place',
+          builderId: base.id,
+          kind: KIND.FACTORY,
+          x: spot.x,
+          y: spot.y,
+        });
+        seq += 1;
+      }
+    } else if (factory.queuedKind < 0) {
       // Choose among what it can actually afford, and choose randomly so the
       // opponent is not perfectly predictable across matches. This is the AI's
       // only draw, and it comes from the simulation's own generator — so the
@@ -135,7 +190,7 @@ function plan(state: SimState): Plan {
           issuer: ISSUER.AI,
           seq,
           type: 'build',
-          builderId: base.id,
+          builderId: factory.id,
           kind: affordable[draw.value]!,
         });
         seq += 1;

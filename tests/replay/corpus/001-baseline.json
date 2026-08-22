@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "001-baseline",
-  "description": "M1/M2 harness baseline on the real 20x11 map, mirrored across x=640. Player and AI commands land on the same tick twice with the AI listed first, so applying arrival order instead of (issuer, seq) changes the hash (O-4). Both sides gather from tick 0 with no player input (FR-006). Not a defect regression: this is the case that proves the corpus machinery works before any defect needs it.",
+  "description": "M1/M2 harness baseline on the real 20x11 map, mirrored across x=640. Player and AI commands land on the same tick twice with the AI listed first, so applying arrival order instead of (issuer, seq) changes the hash (O-4). Both sides gather from tick 0 with no player input (FR-006). Not a defect regression: this is the case that proves the corpus machinery works before any defect needs it. M9: one Factory per side added to the opening and combat builds routed to it — product-spec.md line 128 has always said the Factory trains Scout/Trooper/Tank, and until now every build command named the Base, so these commands were being refused and the case recorded nothing about production.",
   "defect": null,
   "createdAt": "2026-08-22",
-  "simVersion": 9,
+  "simVersion": 10,
   "input": {
     "seed": 20260822,
     "difficulty": 1,
@@ -33,7 +33,7 @@
         "issuer": 1,
         "seq": 1,
         "type": "build",
-        "builderId": 4,
+        "builderId": 8,
         "kind": 4
       },
       {
@@ -41,7 +41,7 @@
         "issuer": 0,
         "seq": 1,
         "type": "build",
-        "builderId": 1,
+        "builderId": 7,
         "kind": 4
       },
       {
@@ -120,25 +120,39 @@
           "owner": 1,
           "x": 1056,
           "y": 416
+        },
+        {
+          "id": 7,
+          "kind": 1,
+          "owner": 0,
+          "x": 288,
+          "y": 352
+        },
+        {
+          "id": 8,
+          "kind": 1,
+          "owner": 1,
+          "x": 992,
+          "y": 352
         }
       ]
     }
   },
   "expected": {
     "finalTick": 400,
-    "stateHash": "ba933196a140897d",
+    "stateHash": "ceee62603cf719bf",
     "checkpoints": [
       {
         "tick": 100,
-        "stateHash": "3e8863c2add730ef"
+        "stateHash": "834512c3d50469c2"
       },
       {
         "tick": 200,
-        "stateHash": "71320feb4e44bf46"
+        "stateHash": "cab5e58d7e58faac"
       },
       {
         "tick": 300,
-        "stateHash": "5798031debf8bba0"
+        "stateHash": "c9ea91aeb2e06917"
       }
     ]
   }

@@ -2,7 +2,7 @@ schema_version: 3
 feature: simple-rts-game
 feature_description: "Make a simple RTS game — local single-player vs AI, client-side Phaser, deterministic fixed-timestep simulation."
 created_at: "2026-08-21"
-last_updated: "2026-08-22T14:40:00Z"
+last_updated: "2026-08-22T15:30:00Z"
 feature_mode: standard
 flow_mode: gated
 v2_native: true
@@ -110,8 +110,9 @@ phases:
       warned: 0
       blocked: 0
       log_path: "features/simple-rts-game/dependency-log.md"
-    sim_version: 9
+    sim_version: 10
     sim_version_history:
+      - {version: 10, milestone: "M9", reason: "The Factory made real. product-spec.md line 128 has always said the Factory trains Scout/Trooper/Tank with one pre-placed per side; neither half was implemented, so a playtester reported it as pointless and independently proposed the missing rule. canProduce added to step.ts, one Factory seeded per side, AI routed through Factories and taught to replace a lost one (closes M6-F8). Two producers in parallel dropped the median to 4.47, so base hp 10500->17000 and combat build times +25% brought it back to 6.24 with a TIGHTER spread than M8 achieved."}
       - {version: 9, milestone: "M8", reason: "The balance tuning pass: base hp 1500->10500, build times +~70%, ore/node 1500->3400, and a sharper CR-001 ramp. Median match 1.6 -> 6.2 min, p90 2.0 -> 9.97. Every recorded hash in both existing cases moved, which is the expected size for a change to hp, build times AND the economy — unlike M6, which touched one case because 001 never fires a shot. Case 003 added in the same bump."}
       - {version: 8, milestone: "M6", reason: "The `place` command (FR-012 / REV-007) joins the hashed command set, and REV-006's cooldown off-by-one changes combat timing. Deliberate regen: 001-baseline's hashes did not move at all (no shot is fired in that case) and 002-ai-vs-ai's matched the regression's `got` column exactly — one case, one checkpoint, the blast radius expected of a combat-timing change."}
       - {version: 1, milestone: "M1", reason: "initial simulation behaviour"}
@@ -122,6 +123,28 @@ phases:
       - {version: 5, milestone: "M3", reason: "ADR-001 Amendment 4 — gatherNodeId split out of targetId. targetId was holding two id spaces (entity ids and ore node ids) and combat cleared it out from under the economy the moment both existed."}
       - {version: 3, milestone: "M2", reason: "economy and movement wired into the tick. NOT bumped in the same edit at first: the corpus caught it as a REGRESSION (first divergence tick 100) rather than as staleness, which is the more useful failure. Bumped by hand, regenerated, hashes matched the regression's 'got' column exactly."}
     findings_for_gate:
+      - id: "M9-F1"
+        severity: "resolved"
+        title: "The Factory did nothing, and a playtester found it before any test did"
+        detail: "product-spec.md line 128 specifies the Factory trains Scout/Trooper/Tank with one pre-placed per side. Neither half existed: createMatch seeded no Factory and queueBuild always named the Base, so a 200-ore structure was an ornament and the Scout had no role. Three of eight feedback items were this one defect, and the player proposed the missing rule unprompted — the strongest available evidence that the spec's design was right and the implementation drifted."
+        resolution: "canProduce enforced in step.ts (NOT the build bar — the AI issues commands through the same path and a UI-only rule would have gated only the player). Workers stay on the Base so pre-impl F-6's zero-cost floor is not put behind a structure. AI trains at a Factory and places a replacement when it has none, closing M6-F8."
+        lesson: "Every automated layer had a reason to miss it: the M6 review checked that placement created a structure and never asked what it does, E2E asserts the bar has five entries and not that they route anywhere, the AI never placed one, and M8 tuned an economy where 200 ore bought nothing. Phase 7 verify-full, which exists for exactly this drift, has still never run."
+      - id: "M9-F2"
+        severity: "resolved"
+        title: "An E2E test raced itself once the opening changed"
+        detail: "`expect.poll(factoryCount).toBe(1)` passed INSTANTLY once a Factory existed from tick 0, so the ore assertion following it ran before the placement command had drained. The absolute count only ever worked while the spec's own opening was missing. Now waits for a delta."
+      - id: "M9-F3"
+        severity: "open — BLOCKING"
+        title: "M9 is not scored"
+        detail: "Exit criteria are >=4 of 5 players understanding the game unaided and >=3 of 5 winning at least one match on New to this. Round 1 returned design feedback and none of those measurements — no player count, no comprehension observation, no win/loss. T076 needs a scored re-run. The AI harness cannot substitute: sparring.ts drives player 0 with a mirrored copy of the SAME difficulty profile, so its win rate is ~50% by construction and says nothing about whether a human beats the easy AI."
+      - id: "M9-F4"
+        severity: "open — T077"
+        title: "Three cheap presentation remedies from round 1, not yet done"
+        detail: "(1) Nothing indicates a unit is being produced, at either the Base or a Factory. (2) No combat feedback at all — no lasers, no explosions, only health bars changing. (3) Sprites never turn, so a tank faces the same way whatever it is doing. All three are presentation-only and squarely in T077's stated remit of cheap remedies."
+      - id: "M9-F5"
+        severity: "open — change request"
+        title: "Two round-1 requests are outside v1 scope"
+        detail: "Terrain decoration (the Kenney tile pack ships unused trees, rivers and crystals) and defensive walls to slow an attacker. Walls are a new mechanic present in no requirement; both need a change request rather than a patch."
       - id: "M6M8-F1"
         severity: "resolved"
         title: "Pure logic sat at 0% coverage for the third milestone running"

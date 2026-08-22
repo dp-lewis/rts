@@ -304,3 +304,11 @@ body {
 .debug-overlay[hidden] {
   display: none;
 }
+
+/* Empty unless an entry has a reason beyond cost — reserved so the bar never
+   changes height mid-match. */
+.build-note {
+  font-size: 11px;
+  color: #fbbf24;
+  min-height: 13px;
+}
