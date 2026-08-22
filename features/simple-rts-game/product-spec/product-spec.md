@@ -125,7 +125,8 @@ Two types only.
 | Structure | Function | Notes |
 |---|---|---|
 | **Base** | Ore drop-off; trains Workers; **its destruction ends the match** | One per side, pre-placed at start |
-| **Factory** | Trains Scout / Trooper / Tank | One pre-placed per side; more may be built |
+| **Barracks** | Trains Trooper | *(CR-002)* None pre-placed; built by the player |
+| **Factory** | Trains Tank | *(CR-002)* None pre-placed; built by the player |
 
 Building additional Factories is the only construction action in the game. It
 preserves the "build" pillar of the RTS arc with exactly one new interaction, and
@@ -275,7 +276,7 @@ appearing in project config) · localisation (English only) · analytics provide
 | **No tutorial** | In a 10-minute game there is no "later" to teach in; players arrive pre-trained on RTS grammar | 2026-08-21 |
 | **Difficulty gate before play** | Accepted cost to the cold-start advantage; labels self-declare experience and absorb some of the absent tutorial's job | 2026-08-21 |
 | **Fixed single screen, no camera** | Removes camera control, search, and fog in one stroke; makes "enemy visible from frame one" literally true | 2026-08-21 |
-| **Two structures; Factory is the only buildable** | Preserves the RTS "build" pillar with exactly one new interaction and one real economic decision | 2026-08-21 |
+| ~~Two structures; Factory is the only buildable~~ **Three structures, two buildable, tech-gated** | Superseded by CR-002 (2026-08-22). The original bought one interaction and one decision; the playtest asked for a build order, which needs two tiers to exist. | 2026-08-21, revised 2026-08-22 |
 | **Ownership: colour + underglow ring** | Resolves WCAG 1.4.1 against baked-in sprite colour; doubles as the selection affordance | 2026-08-21 |
 | **Measurement: local counters + playtest** | No backend, no analytics dependency; §V-compliant and honest for a game with no users | 2026-08-21 |
 | Balance numbers left unspecified | Feel is tuned, not specified (R4); spec fixes shape only | 2026-08-21 |

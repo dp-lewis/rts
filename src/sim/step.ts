@@ -14,6 +14,7 @@ import {
   type Entity,
   type Kind,
   type Owner,
+  isStructureKind,
   type SimState,
 } from './state';
 import { MAX_HP } from './constants';
@@ -71,8 +72,8 @@ function commandable(state: SimState, issuer: number, id: number): Entity | unde
 const COST_BY_KIND: Record<Kind, number> = {
   [KIND.BASE]: Number.POSITIVE_INFINITY, // never purchasable
   [KIND.FACTORY]: COST.factory,
+  [KIND.BARRACKS]: COST.barracks,
   [KIND.WORKER]: COST.worker,
-  [KIND.SCOUT]: COST.scout,
   [KIND.TROOPER]: COST.trooper,
   [KIND.TANK]: COST.tank,
 };
@@ -80,8 +81,8 @@ const COST_BY_KIND: Record<Kind, number> = {
 const MAX_HP_BY_KIND: Record<Kind, number> = {
   [KIND.BASE]: MAX_HP.base,
   [KIND.FACTORY]: MAX_HP.factory,
+  [KIND.BARRACKS]: MAX_HP.barracks,
   [KIND.WORKER]: MAX_HP.worker,
-  [KIND.SCOUT]: MAX_HP.scout,
   [KIND.TROOPER]: MAX_HP.trooper,
   [KIND.TANK]: MAX_HP.tank,
 };
@@ -110,29 +111,45 @@ const bareGrid: Grid = createGrid(MAP_TILES_X, MAP_TILES_Y, []);
  * A UI-only rule would gate the player and leave the opponent producing an army
  * from thin air.
  */
+/**
+ * The tech tree, as one table.
+ *
+ * Every unit has exactly one building that makes it, and a match now starts with
+ * only a Base — so the opening is a real sequence: Worker, then ore, then choose
+ * whether Troopers (Barracks, cheaper and sooner) or Tanks (Factory, dearer and
+ * later) come first.
+ *
+ * `undefined` means "no building makes this", which covers the structures: they
+ * are PLACED on chosen ground and never queued.
+ */
+const PRODUCED_BY: Record<number, number | undefined> = {
+  // Workers stay on the Base. pre-impl F-6's zero-cost Worker is the floor that
+  // stops a player with nothing being unable to act, and putting it behind a
+  // structure would reintroduce the dead state it exists to prevent — doubly so
+  // now that every match STARTS with zero Workers.
+  [KIND.WORKER]: KIND.BASE,
+  [KIND.TROOPER]: KIND.BARRACKS,
+  [KIND.TANK]: KIND.FACTORY,
+};
+
 function canProduce(builder: Entity, kind: number): boolean {
-  if (kind === KIND.WORKER) {
-    // Workers stay on the Base — pre-impl F-6's zero-cost Worker is the floor
-    // that stops a player with nothing being unable to act, and routing it
-    // through a Factory would reintroduce the dead state it exists to prevent.
-    return builder.kind === KIND.BASE;
+  const required = PRODUCED_BY[kind];
+  if (required === undefined) {
+    return false;
   }
-  if (kind === KIND.FACTORY) {
-    return false; // Structures are PLACED on chosen ground, never queued.
-  }
-  return builder.kind === KIND.FACTORY && builder.state !== ENTITY_STATE.UNDER_CONSTRUCTION;
+  return builder.kind === required && builder.state !== ENTITY_STATE.UNDER_CONSTRUCTION;
 }
 
 /** Structures may be PLACED on chosen ground; units may not (FR-012). */
 function isPlaceableKind(kind: number): boolean {
-  return kind === KIND.FACTORY;
+  return kind === KIND.FACTORY || kind === KIND.BARRACKS;
 }
 
 function isProducibleKind(kind: number): boolean {
   return (
     kind === KIND.FACTORY ||
+    kind === KIND.BARRACKS ||
     kind === KIND.WORKER ||
-    kind === KIND.SCOUT ||
     kind === KIND.TROOPER ||
     kind === KIND.TANK
   );
@@ -305,8 +322,6 @@ function speedOf(entity: Entity): number {
   switch (entity.kind) {
     case KIND.WORKER:
       return SPEED.worker;
-    case KIND.SCOUT:
-      return SPEED.scout;
     case KIND.TROOPER:
       return SPEED.trooper;
     case KIND.TANK:
@@ -332,7 +347,7 @@ function gridFor(state: SimState): Grid {
     if (entity.state === ENTITY_STATE.DEAD) {
       continue;
     }
-    if (entity.kind === KIND.BASE || entity.kind === KIND.FACTORY) {
+    if (isStructureKind(entity.kind)) {
       blocked.push(cellOf(bare, entity.x, entity.y));
     }
   }

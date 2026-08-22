@@ -82,27 +82,27 @@ export const WORKER_GATHER_PER_TICK = 1;
 /** Build costs, in ore. Five build-bar entries (FR: exactly five). */
 export const COST = {
   worker: 50,
-  scout: 60,
   trooper: 80,
   tank: 160,
+  barracks: 150,
   factory: 200,
 } as const;
 
 /** Build times, in ticks. */
 export const BUILD_TICKS = {
   worker: 170,
-  scout: 200,
   trooper: 310,
   tank: 560,
+  barracks: 400,
   factory: 520,
 } as const;
 
 /** Maximum hit points by kind. */
 export const MAX_HP = {
   base: 17000,
+  barracks: 700,
   factory: 900,
   worker: 40,
-  scout: 50,
   trooper: 90,
   tank: 260,
 } as const;
@@ -110,7 +110,6 @@ export const MAX_HP = {
 /** Movement speed in world px per tick. */
 export const SPEED = {
   worker: 3.2,
-  scout: 5.6,
   trooper: 3.6,
   tank: 2.4,
 } as const;
@@ -118,7 +117,6 @@ export const SPEED = {
 /** Combat. Ranges are in world px and compared as SQUARED distances (never sqrt in a hot loop). */
 export const ATTACK = {
   worker: { damage: 2, range: 40, cooldownTicks: 20 },
-  scout: { damage: 4, range: 72, cooldownTicks: 12 },
   trooper: { damage: 9, range: 96, cooldownTicks: 16 },
   tank: { damage: 26, range: 128, cooldownTicks: 30 },
 } as const;

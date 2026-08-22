@@ -39,14 +39,17 @@ const FAMILY: Record<Owner, number> = { 0: 0, 1: 12 };
 const UNIT_OFFSET: Partial<Record<Kind, number>> = {
   [KIND.TROOPER]: 1, //  armoured, bulkiest infantry outline
   [KIND.WORKER]: 2, //   hard hat — reads as non-combatant at a glance
-  [KIND.SCOUT]: 5, //    smallest infantry outline; smallest reads as fastest
   [KIND.TANK]: 9, //     the only tracked silhouette with a barrel
 };
 
 /** Structures are shared between players; the ring carries ownership. */
 const STRUCTURE_FILE: Partial<Record<Kind, string>> = {
-  [KIND.BASE]: 'scifiStructure_01', //   wide command centre with a landing pad
-  [KIND.FACTORY]: 'scifiStructure_02', // hangar with bay doors — things emerge
+  [KIND.BASE]: 'scifiStructure_01', //    wide command centre with a landing pad
+  [KIND.FACTORY]: 'scifiStructure_02', // hangar with bay doors — vehicles emerge
+  // Angular and red-roofed, so the three structures are told apart by SHAPE
+  // before colour. They are the only buildings on the map and a player has to
+  // know at a glance which one makes infantry.
+  [KIND.BARRACKS]: 'scifiStructure_05',
 };
 
 /** Plain ground. Two variants so a 20x11 field of one tile does not band. */

@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "001-baseline",
-  "description": "M1/M2 harness baseline on the real 20x11 map, mirrored across x=640. Player and AI commands land on the same tick twice with the AI listed first, so applying arrival order instead of (issuer, seq) changes the hash (O-4). Both sides gather from tick 0 with no player input (FR-006). Not a defect regression: this is the case that proves the corpus machinery works before any defect needs it. M9: one Factory per side added to the opening and combat builds routed to it — product-spec.md line 128 has always said the Factory trains Scout/Trooper/Tank, and until now every build command named the Base, so these commands were being refused and the case recorded nothing about production.",
+  "description": "M1/M2 harness baseline on the real 20x11 map, mirrored across x=640. Player and AI commands land on the same tick twice with the AI listed first, so applying arrival order instead of (issuer, seq) changes the hash (O-4). Both sides gather from tick 0 with no player input (FR-006). Not a defect regression: this is the case that proves the corpus machinery works before any defect needs it. M9: one Factory per side added to the opening and combat builds routed to it — product-spec.md line 128 has always said the Factory trains Scout/Trooper/Tank, and until now every build command named the Base, so these commands were being refused and the case recorded nothing about production. M10: the tech tree. Scout retired (kind 3 is a permanently empty slot), a Barracks added per side, and every build command routed to the building that now makes its unit — Worker at the Base, Trooper at a Barracks, Tank at a Factory.",
   "defect": null,
   "createdAt": "2026-08-22",
-  "simVersion": 10,
+  "simVersion": 11,
   "input": {
     "seed": 20260822,
     "difficulty": 1,
@@ -33,7 +33,7 @@
         "issuer": 1,
         "seq": 1,
         "type": "build",
-        "builderId": 8,
+        "builderId": 9,
         "kind": 4
       },
       {
@@ -41,7 +41,7 @@
         "issuer": 0,
         "seq": 1,
         "type": "build",
-        "builderId": 7,
+        "builderId": 9,
         "kind": 4
       },
       {
@@ -134,25 +134,39 @@
           "owner": 1,
           "x": 992,
           "y": 352
+        },
+        {
+          "id": 9,
+          "kind": 6,
+          "owner": 0,
+          "x": 288,
+          "y": 352
+        },
+        {
+          "id": 10,
+          "kind": 6,
+          "owner": 1,
+          "x": 992,
+          "y": 352
         }
       ]
     }
   },
   "expected": {
     "finalTick": 400,
-    "stateHash": "ceee62603cf719bf",
+    "stateHash": "e0331db96d570f0a",
     "checkpoints": [
       {
         "tick": 100,
-        "stateHash": "834512c3d50469c2"
+        "stateHash": "7eae1a4e53cf5cdb"
       },
       {
         "tick": 200,
-        "stateHash": "cab5e58d7e58faac"
+        "stateHash": "c8a522530a10f4a6"
       },
       {
         "tick": 300,
-        "stateHash": "c9ea91aeb2e06917"
+        "stateHash": "366338c27672983b"
       }
     ]
   }

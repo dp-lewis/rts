@@ -37,12 +37,12 @@ const SEEDS: EntitySeed[] = [
     state: ENTITY_STATE.ATTACKING, targetId: 3, cooldown: ATTACK.trooper.cooldownTicks },
 
   // Mid-cooldown — should be faded or gone, not a permanent line.
-  { id: 5, kind: KIND.SCOUT, owner: 0, x: centre(6), y: centre(4),
+  { id: 5, kind: KIND.TROOPER, owner: 0, x: centre(6), y: centre(4),
     state: ENTITY_STATE.ATTACKING, targetId: 6,
-    cooldown: Math.round(ATTACK.scout.cooldownTicks * 0.5) },
-  { id: 6, kind: KIND.SCOUT, owner: 1, x: centre(8), y: centre(4),
+    cooldown: Math.round(ATTACK.trooper.cooldownTicks * 0.5) },
+  { id: 6, kind: KIND.TROOPER, owner: 1, x: centre(8), y: centre(4),
     state: ENTITY_STATE.ATTACKING, targetId: 5,
-    cooldown: Math.round(ATTACK.scout.cooldownTicks * 0.5) },
+    cooldown: Math.round(ATTACK.trooper.cooldownTicks * 0.5) },
 
   // Tanks, fresh — the thickest beam, and the kind that must also rotate.
   { id: 7, kind: KIND.TANK, owner: 0, x: centre(6), y: centre(7),

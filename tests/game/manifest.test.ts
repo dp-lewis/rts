@@ -54,7 +54,7 @@ describe('sprite manifest', () => {
     // Colour is the redundant channel behind the ring (FR-018). If both sides
     // resolved to one family the ring would be the ONLY cue rather than the
     // primary one, and a single regression would remove ownership entirely.
-    for (const kind of [KIND.WORKER, KIND.SCOUT, KIND.TROOPER, KIND.TANK]) {
+    for (const kind of [KIND.WORKER, KIND.TROOPER, KIND.TANK]) {
       const zero = manifest.find((a) => a.key === spriteKey(kind, 0))?.path;
       const one = manifest.find((a) => a.key === spriteKey(kind, 1))?.path;
       expect(zero).not.toBe(one);

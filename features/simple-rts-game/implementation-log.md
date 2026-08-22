@@ -1538,3 +1538,37 @@ crystal. The reasoning had been written down correctly and applied incompletely,
 is the more common failure of the two.
 
 Both were caught by rendering the thing and looking at it, not by review.
+
+---
+
+## CR-002 — the tech tree
+
+Requested after M9 round 2. Full record in `change-request-002.md`; the parts worth
+carrying forward:
+
+**Four locked requirements moved**, three of them Must — FR-006, FR-010, FR-012 and
+the 2026-08-21 "two structures" decision. Recorded rather than violated quietly,
+because two of them exist to protect research findings: cold-start-straight-into-
+playable (line 37) and always-visible-never-nested (line 41). The game now opens on a
+Base doing nothing until clicked, and a first-time player can no longer see the whole
+roster at once. Both are real trades, made knowingly.
+
+**Three defects found while implementing**, all in code written for this change:
+
+- The AI could not reach the Factory tier. It gated on `ore >= factory + trooper`
+  while spending on Troopers as fast as it mined, so the balance never accumulated:
+  zero Factories and zero Tanks across three seeds. The top of the tech tree was
+  unreachable for the opponent — REV-007's shape in a new place, found by measuring
+  rather than by reading.
+- The AI built two Factories, because `producerOf` excludes under-construction
+  buildings and was being used to answer "should I build one".
+- `isStructureKind` was extracted after finding `kind === BASE || kind === FACTORY`
+  written longhand in five places. The one in `gridFor` would have been the expensive
+  miss: a structure missing from the passability grid is a building units walk through.
+
+**Retuned**: median 7.78 min, p90 10.84, range 6.67–10.84 — inside the K4 band and the
+tightest spread recorded. Difficulty separates properly for the first time: 10.8 / 7.8
+/ 6.7 min across the three levels.
+
+**M9 does not carry over.** K1 was measured against an opening that no longer exists,
+and the first thirty seconds are precisely what it tests.

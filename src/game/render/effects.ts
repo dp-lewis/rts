@@ -20,15 +20,14 @@ import { ENTITY_STATE, KIND, type Entity, type Kind, type SimState } from '../..
 /** Cooldown ticks by kind, so a shot's freshness can be read from `cooldown`. */
 const COOLDOWN: Partial<Record<number, number>> = {
   [KIND.WORKER]: ATTACK.worker.cooldownTicks,
-  [KIND.SCOUT]: ATTACK.scout.cooldownTicks,
   [KIND.TROOPER]: ATTACK.trooper.cooldownTicks,
   [KIND.TANK]: ATTACK.tank.cooldownTicks,
 };
 
 const BUILD_TICKS_BY_KIND: Partial<Record<number, number>> = {
   [KIND.FACTORY]: BUILD_TICKS.factory,
+  [KIND.BARRACKS]: BUILD_TICKS.barracks,
   [KIND.WORKER]: BUILD_TICKS.worker,
-  [KIND.SCOUT]: BUILD_TICKS.scout,
   [KIND.TROOPER]: BUILD_TICKS.trooper,
   [KIND.TANK]: BUILD_TICKS.tank,
 };

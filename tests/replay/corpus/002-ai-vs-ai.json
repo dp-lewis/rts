@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "002-ai-vs-ai",
-  "description": "First corpus case with real gameplay. No player commands whatsoever — every action is the AI's, so these hashes are a signature of the opponent's decision-making and of the PRNG threading that M4 introduced. Difficulty 2 is recorded in the header (FR-029): replaying at any other level diverges, which is the point of difficulty being a field rather than part of the seed.",
+  "description": "First corpus case with real gameplay. No player commands whatsoever — every action is the AI's, so these hashes are a signature of the opponent's decision-making and of the PRNG threading that M4 introduced. Difficulty 2 is recorded in the header (FR-029): replaying at any other level diverges, which is the point of difficulty being a field rather than part of the seed. M10: the tech tree. Scout retired (kind 3 is a permanently empty slot), a Barracks added per side, and every build command routed to the building that now makes its unit — Worker at the Base, Trooper at a Barracks, Tank at a Factory.",
   "defect": null,
   "createdAt": "2026-08-22",
-  "simVersion": 10,
+  "simVersion": 11,
   "input": {
     "seed": 90210,
     "difficulty": 2,
@@ -75,25 +75,39 @@
           "owner": 1,
           "x": 1056,
           "y": 416
+        },
+        {
+          "id": 7,
+          "kind": 6,
+          "owner": 0,
+          "x": 288,
+          "y": 352
+        },
+        {
+          "id": 8,
+          "kind": 6,
+          "owner": 1,
+          "x": 992,
+          "y": 352
         }
       ]
     }
   },
   "expected": {
     "finalTick": 1878,
-    "stateHash": "7e7008adb0d3ffb8",
+    "stateHash": "1b326931a711e8d4",
     "checkpoints": [
       {
         "tick": 600,
-        "stateHash": "3a9ad279efe4430a"
+        "stateHash": "a73cf5741e028f07"
       },
       {
         "tick": 1200,
-        "stateHash": "4047f73d4b6c494a"
+        "stateHash": "1c8bf3e6fb1d6a63"
       },
       {
         "tick": 1800,
-        "stateHash": "fe6b2f882d5411ed"
+        "stateHash": "b3c6d009e02c9f58"
       }
     ]
   }

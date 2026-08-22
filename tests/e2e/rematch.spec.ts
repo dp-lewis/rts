@@ -68,8 +68,9 @@ test.describe('JRN-002 — rematch', () => {
     }));
     expect(fresh.tick).toBeLessThan(spentMatch.tick);
     expect(fresh.verdict).toBe(VERDICT.NONE);
-    // The standard opening: 2 Bases, 4 Workers, 2 Factories (product-spec.md line 128).
-    expect(fresh.entities).toBe(8);
+    // The standard opening is now a Base per side and nothing else — the first
+    // move belongs to the player.
+    expect(fresh.entities).toBe(2);
   });
 
   test('EDGE-001: rematch after defeat behaves identically — no penalty, no extra step', async ({

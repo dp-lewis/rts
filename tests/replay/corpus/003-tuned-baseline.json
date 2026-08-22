@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "003-tuned-baseline",
-  "description": "The M8 tuned baseline, and the first corpus case to exercise the `place` command. Recorded after the balance pass that moved the median match from 1.6 minutes to 6.2 (base hp 1500->10500, build times up ~70%, ore/node 1500->3400, and a sharper CR-001 ramp). It carries player commands AND the AI's, so the hashes cover both command sources interleaving under O-4. The placement at tick 900 closes M7-F5: `place` was added in M6 and hashed with an exhaustiveness guard, but until now no recorded case replayed one, so its encoding was asserted by unit test and never across platforms. M9: one Factory per side added to the opening and combat builds routed to it — product-spec.md line 128 has always said the Factory trains Scout/Trooper/Tank, and until now every build command named the Base, so these commands were being refused and the case recorded nothing about production.",
+  "description": "The M8 tuned baseline, and the first corpus case to exercise the `place` command. Recorded after the balance pass that moved the median match from 1.6 minutes to 6.2 (base hp 1500->10500, build times up ~70%, ore/node 1500->3400, and a sharper CR-001 ramp). It carries player commands AND the AI's, so the hashes cover both command sources interleaving under O-4. The placement at tick 900 closes M7-F5: `place` was added in M6 and hashed with an exhaustiveness guard, but until now no recorded case replayed one, so its encoding was asserted by unit test and never across platforms. M9: one Factory per side added to the opening and combat builds routed to it — product-spec.md line 128 has always said the Factory trains Scout/Trooper/Tank, and until now every build command named the Base, so these commands were being refused and the case recorded nothing about production. M10: the tech tree. Scout retired (kind 3 is a permanently empty slot), a Barracks added per side, and every build command routed to the building that now makes its unit — Worker at the Base, Trooper at a Barracks, Tank at a Factory.",
   "defect": null,
   "createdAt": "2026-08-22",
-  "simVersion": 10,
+  "simVersion": 11,
   "input": {
     "seed": 31337,
     "difficulty": 1,
@@ -17,14 +17,6 @@
         "type": "build",
         "builderId": 1,
         "kind": 2
-      },
-      {
-        "tick": 400,
-        "issuer": 0,
-        "seq": 1,
-        "type": "build",
-        "builderId": 7,
-        "kind": 3
       },
       {
         "tick": 900,
@@ -138,29 +130,43 @@
           "owner": 1,
           "x": 992,
           "y": 352
+        },
+        {
+          "id": 9,
+          "kind": 6,
+          "owner": 0,
+          "x": 288,
+          "y": 352
+        },
+        {
+          "id": 10,
+          "kind": 6,
+          "owner": 1,
+          "x": 992,
+          "y": 352
         }
       ]
     }
   },
   "expected": {
     "finalTick": 3000,
-    "stateHash": "31e9088863f59545",
+    "stateHash": "272038294357d084",
     "checkpoints": [
       {
         "tick": 900,
-        "stateHash": "cf4cdf1400d95fc5"
+        "stateHash": "3a581f7c0bab95b5"
       },
       {
         "tick": 1500,
-        "stateHash": "66956d9c238a08d5"
+        "stateHash": "0fdff058a6e65f31"
       },
       {
         "tick": 2100,
-        "stateHash": "83cd6fb36076f020"
+        "stateHash": "c713b330407b438f"
       },
       {
         "tick": 2700,
-        "stateHash": "4caf7d578d4a4ece"
+        "stateHash": "247a8abddb56ff50"
       }
     ]
   }

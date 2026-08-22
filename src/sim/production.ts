@@ -20,8 +20,8 @@ import { ENTITY_STATE, KIND, type Entity, type Kind, type SimState } from './sta
 const COST_BY_KIND: Record<Kind, number> = {
   [KIND.BASE]: Infinity,
   [KIND.FACTORY]: COST.factory,
+  [KIND.BARRACKS]: COST.barracks,
   [KIND.WORKER]: COST.worker,
-  [KIND.SCOUT]: COST.scout,
   [KIND.TROOPER]: COST.trooper,
   [KIND.TANK]: COST.tank,
 };
@@ -29,8 +29,8 @@ const COST_BY_KIND: Record<Kind, number> = {
 const BUILD_TICKS_BY_KIND: Record<Kind, number> = {
   [KIND.BASE]: Infinity,
   [KIND.FACTORY]: BUILD_TICKS.factory,
+  [KIND.BARRACKS]: BUILD_TICKS.barracks,
   [KIND.WORKER]: BUILD_TICKS.worker,
-  [KIND.SCOUT]: BUILD_TICKS.scout,
   [KIND.TROOPER]: BUILD_TICKS.trooper,
   [KIND.TANK]: BUILD_TICKS.tank,
 };
@@ -38,8 +38,8 @@ const BUILD_TICKS_BY_KIND: Record<Kind, number> = {
 const MAX_HP_BY_KIND: Record<Kind, number> = {
   [KIND.BASE]: MAX_HP.base,
   [KIND.FACTORY]: MAX_HP.factory,
+  [KIND.BARRACKS]: MAX_HP.barracks,
   [KIND.WORKER]: MAX_HP.worker,
-  [KIND.SCOUT]: MAX_HP.scout,
   [KIND.TROOPER]: MAX_HP.trooper,
   [KIND.TANK]: MAX_HP.tank,
 };

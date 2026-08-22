@@ -16,15 +16,40 @@ import { seedRng } from './rng';
  *    always a number, so the hash encoding has no branches and no absent case.
  */
 
+/**
+ * Entity kinds.
+ *
+ * `3` is RETIRED and must never be reused. It was the Scout, dropped when the
+ * tech tree arrived — round-1 playtesters found it purposeless, and with Trooper
+ * behind a Barracks and Tank behind a Factory it had no rung of its own. Leaving
+ * the slot empty rather than renumbering means an old recorded corpus case
+ * carrying `"kind": 3` FAILS loudly instead of being silently reinterpreted as
+ * some other unit, which is what renumbering into the gap would have caused.
+ */
 export const KIND = {
   BASE: 0,
   FACTORY: 1,
   WORKER: 2,
-  SCOUT: 3,
+  // 3 — retired (was SCOUT). Do not reuse.
   TROOPER: 4,
   TANK: 5,
+  BARRACKS: 6,
 } as const;
 export type Kind = (typeof KIND)[keyof typeof KIND];
+
+/**
+ * Structures block movement, are placed rather than queued, carry no ownership
+ * ring, and never jitter.
+ *
+ * One function because the test was written out longhand as
+ * `kind === BASE || kind === FACTORY` in five places, and adding the Barracks
+ * meant finding all five. The one in `gridFor` would have been the expensive
+ * miss: a structure absent from the passability grid is a building units walk
+ * straight through.
+ */
+export function isStructureKind(kind: number): boolean {
+  return kind === KIND.BASE || kind === KIND.FACTORY || kind === KIND.BARRACKS;
+}
 
 export const ENTITY_STATE = {
   IDLE: 0,
@@ -191,8 +216,8 @@ const byId = (a: { id: number }, b: { id: number }): number => a.id - b.id;
 const DEFAULT_HP: Record<Kind, number> = {
   [KIND.BASE]: MAX_HP.base,
   [KIND.FACTORY]: MAX_HP.factory,
+  [KIND.BARRACKS]: MAX_HP.barracks,
   [KIND.WORKER]: MAX_HP.worker,
-  [KIND.SCOUT]: MAX_HP.scout,
   [KIND.TROOPER]: MAX_HP.trooper,
   [KIND.TANK]: MAX_HP.tank,
 };

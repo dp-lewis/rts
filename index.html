@@ -69,6 +69,11 @@
           Ore exhausted — all bases are taking damage
         </div>
 
+        <!-- Selecting one of your buildings shows what it trains. Empty and
+             hidden until then; the permanent bar below is never empty. -->
+        <div id="production" class="production" data-testid="production-panel"
+             role="group" aria-label="Selected building" hidden></div>
+
         <div id="build-bar" class="build-bar" data-testid="build-bar" role="group"
              aria-label="Build"></div>
       </section>

@@ -87,7 +87,11 @@ describe('FR-002 / T042 — an AI-vs-AI match is reproducible', () => {
     // slowed worker production, after which the AI never reached the branch that
     // draws and this test failed for a reason that had nothing to do with the
     // PRNG. Derived from the constants so a later tuning pass cannot repeat it.
-    const budget = BUILD_TICKS.worker * PROFILE_WORKER_TARGET + BUILD_TICKS.scout * 2;
+    // A match now starts with NO workers and no buildings, so the AI must build
+    // its worker line, bank for a Barracks and raise it before it ever reaches
+    // the choice that draws.
+    const budget =
+      BUILD_TICKS.worker * PROFILE_WORKER_TARGET + BUILD_TICKS.barracks + BUILD_TICKS.trooper * 2;
 
     const initial = mirrorMatch(1);
     const later = run(initial, budget);

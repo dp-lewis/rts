@@ -47,15 +47,30 @@ test.describe('JRN-001 — first match', () => {
     await expect(page.getByTestId('game-canvas')).toBeVisible();
   });
 
-  test('STEP-003: ore rises with no player input at all', async ({ page }) => {
-    // FR-006: workers gather from tick 0. This is the step that proves a new
-    // player who touches nothing still sees the game doing something.
+  test('STEP-003: ore rises once a Worker is trained — the opening move', async ({ page }) => {
+    // CHANGED. FR-006 used to read "starting workers auto-gather from tick 0 with
+    // no player input", and the assertion here was that a player who touches
+    // nothing still sees the game doing something. The tech-tree change removed
+    // the starting Workers: a match now begins with a Base and 150 ore, and the
+    // first move is the player's.
+    //
+    // That is a real trade against the research finding that cold-start-straight-
+    // into-playable is this game's biggest structural advantage, and it is
+    // recorded as a change request rather than buried in a fixture. What the test
+    // asserts now is the new promise: one click and the economy starts.
     await openGame(page);
     await startMatch(page, 'easy');
 
     const before = await page.evaluate(() => window.__tmw!.ore());
+    // `ownBaseScreenPoint` converts world px to page px. Clicking the canvas at
+    // raw world coordinates misses: the canvas is scaled to fit, so Playwright's
+    // element-relative position is not the simulation's coordinate space.
+    const base = await page.evaluate(() => window.__tmw!.ownBaseScreenPoint());
+    await page.mouse.click(base.x, base.y);
+    await page.getByTestId('train-worker').click();
+
     await expect
-      .poll(async () => page.evaluate(() => window.__tmw!.ore()), { timeout: 20_000 })
+      .poll(async () => page.evaluate(() => window.__tmw!.ore()), { timeout: 40_000 })
       .toBeGreaterThan(before);
   });
 
@@ -75,17 +90,31 @@ test.describe('JRN-001 — first match', () => {
     expect(scrollable).toEqual({ x: false, y: false });
   });
 
-  test('STEP-007: the build bar is exactly five flat entries, always visible', async ({ page }) => {
+  test('STEP-007: the permanent bar carries the buildings, always visible', async ({ page }) => {
+    // CHANGED from FR-010's "exactly five entries — four unit plus one structure".
+    // Units moved onto the building that makes them. What is still asserted is
+    // what the original requirement was protecting: the bar is never empty and
+    // never nested, so a cold-start player always has something to click.
     await openGame(page);
     await startMatch(page, 'easy');
 
     const bar = page.getByTestId('build-bar');
     await expect(bar).toBeVisible();
-    await expect(bar.locator('[data-testid^=build-]')).toHaveCount(5);
+    await expect(bar.locator('[data-testid^=build-]')).toHaveCount(2);
+    expect(await bar.locator('[data-testid^=build-] [data-testid^=build-]').count()).toBe(0);
+  });
 
-    // "Never nested" (FR-010): no entry may contain another entry.
-    const nested = await bar.locator('[data-testid^=build-] [data-testid^=build-]').count();
-    expect(nested).toBe(0);
+  test('STEP-007: selecting a building shows what it trains', async ({ page }) => {
+    await openGame(page);
+    await startMatch(page, 'easy');
+
+    // Nothing selected: no panel.
+    await expect(page.getByTestId('production-panel')).toBeHidden();
+
+    const base = await page.evaluate(() => window.__tmw!.ownBaseScreenPoint());
+    await page.mouse.click(base.x, base.y);
+    await expect(page.getByTestId('production-panel')).toBeVisible();
+    await expect(page.getByTestId('train-worker')).toBeVisible();
   });
 
   test('STEP-010: destroying the enemy Base shows Victory with a duration', async ({ page }) => {

@@ -53,7 +53,7 @@ describe('selectInRect — what a drag captures', () => {
     // different points. A tight box around the TRUE position must select, for
     // every id, whichever way that id happens to be offset.
     for (let id = 1; id <= 40; id += 1) {
-      const state = world([{ id, kind: KIND.SCOUT, owner: 0, x: 300, y: 300 }]);
+      const state = world([{ id, kind: KIND.TROOPER, owner: 0, x: 300, y: 300 }]);
       expect(selectInRect(state, rect(298, 298, 302, 302), 0)).toEqual([id]);
     }
   });
@@ -94,7 +94,7 @@ describe('what a drag must never capture', () => {
     { id: 2, kind: KIND.TROOPER, owner: 1, x: 120, y: 100 },
     { id: 3, kind: KIND.BASE, owner: 0, x: 140, y: 100 },
     { id: 4, kind: KIND.FACTORY, owner: 0, x: 160, y: 100 },
-    { id: 5, kind: KIND.SCOUT, owner: 0, x: 180, y: 100, state: ENTITY_STATE.DEAD },
+    { id: 5, kind: KIND.TROOPER, owner: 0, x: 180, y: 100, state: ENTITY_STATE.DEAD },
   ]);
   const everything = rect(0, 0, 1000, 1000);
 
@@ -120,7 +120,7 @@ describe('what a drag must never capture', () => {
 describe('drag geometry', () => {
   const four = world([
     { id: 1, kind: KIND.TROOPER, owner: 0, x: 100, y: 100 },
-    { id: 2, kind: KIND.SCOUT, owner: 0, x: 200, y: 100 },
+    { id: 2, kind: KIND.TROOPER, owner: 0, x: 200, y: 100 },
     { id: 3, kind: KIND.WORKER, owner: 0, x: 100, y: 200 },
     { id: 4, kind: KIND.TANK, owner: 0, x: 200, y: 200 },
   ]);
@@ -143,7 +143,7 @@ describe('drag geometry', () => {
     // payloads are hashed. Insertion-order output would make the same drag produce
     // different commands depending on spawn history.
     const shuffled = world([
-      { id: 9, kind: KIND.SCOUT, owner: 0, x: 100, y: 100 },
+      { id: 9, kind: KIND.TROOPER, owner: 0, x: 100, y: 100 },
       { id: 2, kind: KIND.TROOPER, owner: 0, x: 110, y: 100 },
       { id: 5, kind: KIND.TANK, owner: 0, x: 120, y: 100 },
     ]);

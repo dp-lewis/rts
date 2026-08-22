@@ -31,7 +31,9 @@ import {
   ENTITY_STATE,
   KIND,
   VERDICT,
+  isStructureKind,
   type Difficulty,
+  type Entity,
   type Kind,
   type SimState,
   type Verdict,
@@ -39,6 +41,7 @@ import {
 import { step } from '../../sim/step';
 import { orderFor } from '../input/orders';
 import { placementAt } from '../input/placement';
+import { TILE_PX } from '../../sim/constants';
 import { selectInRect } from '../input/select';
 import { advanceAccumulator } from '../loop';
 import { PlacementGhost } from '../render/ghost';
@@ -95,6 +98,13 @@ export class MatchScene extends Phaser.Scene {
   private selection: Set<number> = new Set();
   private dragFrom: { x: number; y: number } | undefined;
   private placingKind: Kind | undefined;
+  /**
+   * The building the player has clicked, if any — presentation state that drives
+   * the production panel. Separate from `selection`, which is units: a drag that
+   * captures units must not also open a building's panel, and clicking one
+   * building must not clear a unit selection you are about to give orders to.
+   */
+  private selectedBuilding: number | undefined;
   private announcedVerdict = false;
   private firstActionSent = false;
 
@@ -199,6 +209,16 @@ export class MatchScene extends Phaser.Scene {
       this.confirmPlacement(pointer);
       return;
     }
+
+    // A click on one of your own buildings opens its production panel. Checked
+    // before the drag starts, so selecting a Barracks is a click rather than a
+    // one-pixel marquee that happens to contain it.
+    const building = this.buildingAt(pointer.worldX, pointer.worldY);
+    if (building !== undefined) {
+      this.selectedBuilding = building.id;
+      return;
+    }
+    this.selectedBuilding = undefined;
     this.dragFrom = { x: pointer.worldX, y: pointer.worldY };
   }
 
@@ -235,9 +255,49 @@ export class MatchScene extends Phaser.Scene {
     if (base === undefined) {
       return;
     }
-    this.issue({ type: 'place', builderId: base.id, kind: KIND.FACTORY, x: target.x, y: target.y });
+    this.issue({
+      type: 'place',
+      builderId: base.id,
+      kind: this.placingKind ?? KIND.FACTORY,
+      x: target.x,
+      y: target.y,
+    });
     this.world.addMarker(target.x, target.y, false, this.time.now);
     this.cancelPlacement();
+  }
+
+  /** One of the player's own buildings under a click, or undefined. */
+  private buildingAt(x: number, y: number): Entity | undefined {
+    for (let i = 0; i < this.state.entities.length; i += 1) {
+      const entity = this.state.entities[i]!;
+      if (
+        entity.owner !== 0 ||
+        entity.state === ENTITY_STATE.DEAD ||
+        !isStructureKind(entity.kind)
+      ) {
+        continue;
+      }
+      // Judged by CELL, matching how placement and blocking work: a structure
+      // occupies a whole tile, so anywhere in that tile is a hit on it.
+      if (Math.abs(entity.x - x) <= TILE_PX / 2 && Math.abs(entity.y - y) <= TILE_PX / 2) {
+        return entity;
+      }
+    }
+    return undefined;
+  }
+
+  /** The building whose panel is open, if it is still alive. */
+  selectedProducer(): Entity | undefined {
+    if (this.selectedBuilding === undefined) {
+      return undefined;
+    }
+    const entity = this.state.entities.find((e) => e.id === this.selectedBuilding);
+    return entity !== undefined && entity.state !== ENTITY_STATE.DEAD ? entity : undefined;
+  }
+
+  /** Queue a unit at a specific producer — the production panel's entry point. */
+  trainAt(kind: Kind, builderId: number): void {
+    this.issue({ type: 'build', builderId, kind });
   }
 
   private ownBase() {
@@ -251,22 +311,6 @@ export class MatchScene extends Phaser.Scene {
    * second click queues at a second Factory rather than being dropped.
    * Deterministic by id like every other tie-break (O-1, O-5).
    */
-  private ownFactory() {
-    const usable = this.state.entities.filter(
-      (e) =>
-        e.kind === KIND.FACTORY &&
-        e.owner === 0 &&
-        e.state !== ENTITY_STATE.DEAD &&
-        e.state !== ENTITY_STATE.UNDER_CONSTRUCTION,
-    );
-    return usable.find((e) => e.queuedKind < 0) ?? usable[0];
-  }
-
-  /** Whether a combat order has anywhere to go — drives the build bar's gating. */
-  hasOperationalFactory(): boolean {
-    return this.ownFactory() !== undefined;
-  }
-
   // ── Called by the DOM build bar ───────────────────────────────────────────
 
   armPlacement(kind: Kind): void {
@@ -284,17 +328,6 @@ export class MatchScene extends Phaser.Scene {
 
   ghostState(): { visible: boolean; valid: boolean } | undefined {
     return this.ghost.snapshot();
-  }
-
-  queueBuild(kind: Kind): void {
-    // Workers at the Base, combat units at a Factory — product-spec.md line 128.
-    // The simulation enforces this too (`canProduce`); routing correctly here is
-    // what stops a click silently doing nothing.
-    const builder = kind === KIND.WORKER ? this.ownBase() : this.ownFactory();
-    if (builder === undefined) {
-      return;
-    }
-    this.issue({ type: 'build', builderId: builder.id, kind });
   }
 
   /**

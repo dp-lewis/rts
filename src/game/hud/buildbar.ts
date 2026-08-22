@@ -26,9 +26,9 @@ export interface BuildBarHandlers {
 
 const TESTID: Record<string, string> = {
   Worker: 'build-worker',
-  Scout: 'build-scout',
   Trooper: 'build-trooper',
   Tank: 'build-tank',
+  Barracks: 'build-barracks',
   Factory: 'build-factory',
 };
 

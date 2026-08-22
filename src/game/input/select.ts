@@ -15,7 +15,7 @@
  */
 
 import { COLLISION_RADIUS } from '../../sim/constants';
-import { ENTITY_STATE, KIND, type Owner, type SimState } from '../../sim/state';
+import { ENTITY_STATE, isStructureKind, type Owner, type SimState } from '../../sim/state';
 
 export interface Rect {
   x0: number;
@@ -26,7 +26,7 @@ export interface Rect {
 
 /** Structures are not selectable: FR-007 is about units, and a Base never moves. */
 function isSelectableKind(kind: number): boolean {
-  return kind !== KIND.BASE && kind !== KIND.FACTORY;
+  return !isStructureKind(kind);
 }
 
 /**

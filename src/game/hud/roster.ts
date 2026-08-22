@@ -23,10 +23,26 @@ export interface BuildEntry {
   placed: boolean;
 }
 
+/**
+ * The permanent bar now carries BUILDINGS ONLY. Units moved to the building that
+ * makes them, reached by selecting it.
+ *
+ * This is a deliberate departure from FR-010's "exactly five entries — four unit
+ * plus one structure — always visible, never nested", recorded as a change
+ * request rather than taken quietly. What is kept from the original reasoning is
+ * the part research actually supports: SOMETHING is always on screen to click,
+ * and it is one flat row, never a menu that opens another menu.
+ */
 export const BUILD_ENTRIES: readonly BuildEntry[] = [
-  { kind: KIND.WORKER, label: 'Worker', cost: COST.worker, placed: false },
-  { kind: KIND.SCOUT, label: 'Scout', cost: COST.scout, placed: false },
-  { kind: KIND.TROOPER, label: 'Trooper', cost: COST.trooper, placed: false },
-  { kind: KIND.TANK, label: 'Tank', cost: COST.tank, placed: false },
+  { kind: KIND.BARRACKS, label: 'Barracks', cost: COST.barracks, placed: true },
   { kind: KIND.FACTORY, label: 'Factory', cost: COST.factory, placed: true },
 ];
+
+/** What each building trains, in the order it is offered when selected. */
+export const TRAINS: Record<number, readonly BuildEntry[]> = {
+  [KIND.BASE]: [{ kind: KIND.WORKER, label: 'Worker', cost: COST.worker, placed: false }],
+  [KIND.BARRACKS]: [
+    { kind: KIND.TROOPER, label: 'Trooper', cost: COST.trooper, placed: false },
+  ],
+  [KIND.FACTORY]: [{ kind: KIND.TANK, label: 'Tank', cost: COST.tank, placed: false }],
+};

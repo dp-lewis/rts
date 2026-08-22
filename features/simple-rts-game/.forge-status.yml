@@ -2,7 +2,7 @@ schema_version: 3
 feature: simple-rts-game
 feature_description: "Make a simple RTS game — local single-player vs AI, client-side Phaser, deterministic fixed-timestep simulation."
 created_at: "2026-08-21"
-last_updated: "2026-08-22T16:30:00Z"
+last_updated: "2026-08-22T17:30:00Z"
 feature_mode: standard
 flow_mode: gated
 v2_native: true
@@ -110,8 +110,9 @@ phases:
       warned: 0
       blocked: 0
       log_path: "features/simple-rts-game/dependency-log.md"
-    sim_version: 10
+    sim_version: 11
     sim_version_history:
+      - {version: 11, milestone: "CR-002", reason: "Tech tree: Barracks added, Trooper gated behind it and Tank behind the Factory, Scout retired (KIND slot 3 permanently empty, never renumbered), and the opening stripped to a Base per side. Four locked requirements moved — FR-006, FR-010, FR-012 and the two-structures design decision — recorded in change-request-002.md rather than violated quietly. Retuned to median 7.78 / p90 10.84 and corpus regenerated."}
       - {version: 10, milestone: "M9", reason: "The Factory made real. product-spec.md line 128 has always said the Factory trains Scout/Trooper/Tank with one pre-placed per side; neither half was implemented, so a playtester reported it as pointless and independently proposed the missing rule. canProduce added to step.ts, one Factory seeded per side, AI routed through Factories and taught to replace a lost one (closes M6-F8). Two producers in parallel dropped the median to 4.47, so base hp 10500->17000 and combat build times +25% brought it back to 6.24 with a TIGHTER spread than M8 achieved."}
       - {version: 9, milestone: "M8", reason: "The balance tuning pass: base hp 1500->10500, build times +~70%, ore/node 1500->3400, and a sharper CR-001 ramp. Median match 1.6 -> 6.2 min, p90 2.0 -> 9.97. Every recorded hash in both existing cases moved, which is the expected size for a change to hp, build times AND the economy — unlike M6, which touched one case because 001 never fires a shot. Case 003 added in the same bump."}
       - {version: 8, milestone: "M6", reason: "The `place` command (FR-012 / REV-007) joins the hashed command set, and REV-006's cooldown off-by-one changes combat timing. Deliberate regen: 001-baseline's hashes did not move at all (no shot is fired in that case) and 002-ai-vs-ai's matched the regression's `got` column exactly — one case, one checkpoint, the blast radius expected of a combat-timing change."}

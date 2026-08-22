@@ -56,7 +56,7 @@ function entity(kind: Kind, owner: Owner): Entity {
   };
 }
 
-const UNIT_KINDS: Kind[] = [KIND.WORKER, KIND.SCOUT, KIND.TROOPER, KIND.TANK];
+const UNIT_KINDS: Kind[] = [KIND.WORKER, KIND.TROOPER, KIND.TANK];
 
 describe('the ownership cue is presence, not colour', () => {
   it.each(UNIT_KINDS)('rings friendly unit kind %i', (kind) => {
@@ -74,7 +74,7 @@ describe('the ownership cue is presence, not colour', () => {
   });
 
   it('draws nothing for structures, whoever owns them', () => {
-    for (const kind of [KIND.BASE, KIND.FACTORY]) {
+    for (const kind of [KIND.BASE, KIND.FACTORY, KIND.BARRACKS]) {
       for (const owner of [0, 1] as const) {
         const { calls, graphics } = stubGraphics();
         drawOwnership(graphics, entity(kind, owner), 100, 100);
@@ -94,7 +94,7 @@ describe('the ownership cue is presence, not colour', () => {
     // The ring cannot rely on being lighter than the terrain: in greyscale that
     // is the only channel left, and a pale tile would erase it.
     const { calls, graphics } = stubGraphics();
-    drawOwnership(graphics, entity(KIND.SCOUT, FRIENDLY), 100, 100);
+    drawOwnership(graphics, entity(KIND.TROOPER, FRIENDLY), 100, 100);
     const fills = calls.filter((c) => c.op === 'fillStyle');
     expect(fills.length).toBeGreaterThanOrEqual(2);
     expect(fills[0]?.args[0]).toBe(0x000000);

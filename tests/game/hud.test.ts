@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { BUILD_ENTRIES } from '../../src/game/hud/roster';
+import { BUILD_ENTRIES, TRAINS } from '../../src/game/hud/roster';
 import { placementAt } from '../../src/game/input/placement';
 import { COST, MAP_TILES_X, MAP_TILES_Y, TILE_PX } from '../../src/sim/constants';
 import { KIND, createInitialState } from '../../src/sim/state';
@@ -15,37 +15,52 @@ import { KIND, createInitialState } from '../../src/sim/state';
  * adds a unit, so it is asserted here.
  */
 
-describe('the build bar is exactly five flat entries', () => {
-  it('has five, and not four or six', () => {
-    expect(BUILD_ENTRIES).toHaveLength(5);
+describe('the permanent bar carries buildings only', () => {
+  // FR-010 said "exactly five entries — four unit plus one structure — always
+  // visible, never nested". The tech-tree change moved units onto the building
+  // that makes them, so the bar now carries only what can be PLACED. Recorded as
+  // a change request; what survives from the original reasoning is asserted here:
+  // the bar is never empty, and it is one flat row.
+  it('offers exactly the placeable structures', () => {
+    expect(BUILD_ENTRIES.map((e) => e.kind).sort()).toEqual(
+      [KIND.BARRACKS, KIND.FACTORY].sort(),
+    );
   });
 
-  it('splits four units and one structure', () => {
-    const structures = BUILD_ENTRIES.filter((e) => e.placed);
-    expect(structures).toHaveLength(1);
-    expect(structures[0]?.kind).toBe(KIND.FACTORY);
-    expect(BUILD_ENTRIES.filter((e) => !e.placed)).toHaveLength(4);
+  it('is never empty, so a cold-start player always has something to click', () => {
+    expect(BUILD_ENTRIES.length).toBeGreaterThan(0);
   });
 
-  it('puts the structure last, so the visual separation is one gap', () => {
-    expect(BUILD_ENTRIES[BUILD_ENTRIES.length - 1]?.placed).toBe(true);
+  it('contains no units — those live on their building now', () => {
+    expect(BUILD_ENTRIES.every((e) => e.placed)).toBe(true);
   });
 
   it('quotes the simulation costs, never its own copies', () => {
-    // FR-011 shows the cost on the greyed entry. A HUD holding its own numbers
-    // would drift from the simulation the first time M8 retunes, and would tell
-    // the player a price the game does not charge.
     const byKind = new Map(BUILD_ENTRIES.map((e) => [e.kind, e.cost]));
-    expect(byKind.get(KIND.WORKER)).toBe(COST.worker);
-    expect(byKind.get(KIND.SCOUT)).toBe(COST.scout);
-    expect(byKind.get(KIND.TROOPER)).toBe(COST.trooper);
-    expect(byKind.get(KIND.TANK)).toBe(COST.tank);
+    expect(byKind.get(KIND.BARRACKS)).toBe(COST.barracks);
     expect(byKind.get(KIND.FACTORY)).toBe(COST.factory);
   });
+});
 
-  it('names every entry', () => {
-    for (const entry of BUILD_ENTRIES) {
-      expect(entry.label.length).toBeGreaterThan(0);
+describe('the tech tree — each unit has exactly one building', () => {
+  it('routes Worker to the Base, Trooper to the Barracks, Tank to the Factory', () => {
+    expect(TRAINS[KIND.BASE]?.map((e) => e.kind)).toEqual([KIND.WORKER]);
+    expect(TRAINS[KIND.BARRACKS]?.map((e) => e.kind)).toEqual([KIND.TROOPER]);
+    expect(TRAINS[KIND.FACTORY]?.map((e) => e.kind)).toEqual([KIND.TANK]);
+  });
+
+  it('quotes simulation costs here too', () => {
+    expect(TRAINS[KIND.BASE]?.[0]?.cost).toBe(COST.worker);
+    expect(TRAINS[KIND.BARRACKS]?.[0]?.cost).toBe(COST.trooper);
+    expect(TRAINS[KIND.FACTORY]?.[0]?.cost).toBe(COST.tank);
+  });
+
+  it('gives every trainable unit a home, so none is unreachable', () => {
+    // The Factory was a 200-ore ornament for three milestones because nothing
+    // routed to it. A unit with no building is the same defect waiting to happen.
+    const homed = new Set(Object.values(TRAINS).flat().map((e) => e.kind));
+    for (const kind of [KIND.WORKER, KIND.TROOPER, KIND.TANK]) {
+      expect(homed.has(kind), `kind ${kind} has no building that makes it`).toBe(true);
     }
   });
 });

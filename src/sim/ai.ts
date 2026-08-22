@@ -32,18 +32,20 @@ interface Profile {
   armyTarget: number;
   /** Army size at which it commits to an attack. */
   attackAt: number;
+  /** Army size at which it stops training and banks for the next tech tier. */
+  expandAt: number;
 }
 
 const PROFILE: Record<Difficulty, Profile> = {
-  0: { decideEveryTicks: 80, workerTarget: 3, armyTarget: 4, attackAt: 4 },
-  1: { decideEveryTicks: 45, workerTarget: 4, armyTarget: 8, attackAt: 5 },
-  2: { decideEveryTicks: 25, workerTarget: 6, armyTarget: 14, attackAt: 5 },
+  // expandAt 99 is deliberate: the easiest opponent never techs to Tanks, which
+  // is most of what makes "New to this" winnable for a first-time player.
+  0: { decideEveryTicks: 80, workerTarget: 3, armyTarget: 4, attackAt: 4, expandAt: 99 },
+  1: { decideEveryTicks: 45, workerTarget: 4, armyTarget: 8, attackAt: 5, expandAt: 3 },
+  2: { decideEveryTicks: 25, workerTarget: 6, armyTarget: 14, attackAt: 5, expandAt: 2 },
 };
 
-/** Combat units the AI will consider, cheapest first so a poor AI still fields something. */
-const COMBAT_KINDS: readonly Kind[] = [KIND.SCOUT, KIND.TROOPER, KIND.TANK];
+/** Combat unit costs, for affordability checks. */
 const COMBAT_COST: Record<number, number> = {
-  [KIND.SCOUT]: COST.scout,
   [KIND.TROOPER]: COST.trooper,
   [KIND.TANK]: COST.tank,
 };
@@ -61,12 +63,30 @@ function isAlive(entity: Entity): boolean {
  * Deterministic by id like every other tie-break in the simulation (O-1, O-5):
  * "whichever factory" would make the AI's output depend on array order.
  */
-function factoryOf(state: SimState, owner: number): Entity | undefined {
+/**
+ * Does this side have one of these buildings, INCLUDING one still going up?
+ *
+ * `producerOf` deliberately ignores under-construction buildings — they cannot
+ * train anything yet. Using it to decide whether to BUILD one meant the answer
+ * stayed "no" for the whole construction time, so the AI queued another every
+ * decision tick and finished with two Factories it had paid for separately.
+ */
+function hasStructure(state: SimState, owner: number, kind: number): boolean {
+  for (let i = 0; i < state.entities.length; i += 1) {
+    const entity = state.entities[i]!;
+    if (entity.kind === kind && entity.owner === owner && isAlive(entity)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function producerOf(state: SimState, owner: number, kind: number): Entity | undefined {
   let busy: Entity | undefined;
   for (let i = 0; i < state.entities.length; i += 1) {
     const entity = state.entities[i]!;
     if (
-      entity.kind !== KIND.FACTORY ||
+      entity.kind !== kind ||
       entity.owner !== owner ||
       !isAlive(entity) ||
       entity.state === ENTITY_STATE.UNDER_CONSTRUCTION
@@ -155,43 +175,49 @@ function plan(state: SimState): Plan {
     commands.push({ tick, issuer: ISSUER.AI, seq, type: 'build', builderId: base.id, kind: KIND.WORKER });
     seq += 1;
   } else if (workers >= profile.workerTarget && army.length < profile.armyTarget) {
-    const factory = factoryOf(state, AI_OWNER);
+    // The tech tree, walked in cost order. A match now starts with a Base and
+    // nothing else, so the opponent has to build its way up exactly as the player
+    // does — Barracks first because it is cheaper and sooner, Factory second.
+    const barracks = producerOf(state, AI_OWNER, KIND.BARRACKS);
+    const factory = producerOf(state, AI_OWNER, KIND.FACTORY);
+    const ore = state.players[AI_OWNER]!.ore;
 
-    if (factory === undefined) {
-      // No Factory means no army, ever. Rebuilding one is not opportunism, it is
-      // the only route out of a losing position — and until M9 the AI could not
-      // place structures at all (M6-F8), which was survivable only because
-      // nothing needed one.
-      const spot = openCellNear(state, base);
-      if (spot !== undefined && state.players[AI_OWNER]!.ore >= COST.factory) {
-        commands.push({
-          tick,
-          issuer: ISSUER.AI,
-          seq,
-          type: 'place',
-          builderId: base.id,
-          kind: KIND.FACTORY,
-          x: spot.x,
-          y: spot.y,
-        });
-        seq += 1;
+    if (!hasStructure(state, AI_OWNER, KIND.BARRACKS)) {
+      seq = placeStructure(state, commands, base, KIND.BARRACKS, COST.barracks, tick, seq);
+    } else if (!hasStructure(state, AI_OWNER, KIND.FACTORY) && army.length >= profile.expandAt) {
+      // SAVE for the Factory rather than requiring the ore to be spare.
+      //
+      // The first version gated on `ore >= factory + trooper`, which the AI never
+      // once reached: it spends on Troopers as fast as it mines, so the balance
+      // never accumulates. Measured over three seeds it built zero Factories and
+      // zero Tanks — the top of the tech tree was unreachable for the opponent,
+      // which is REV-007's shape in a new place. Once it has an army worth
+      // defending with, it stops training and banks for the next tier.
+      seq = placeStructure(state, commands, base, KIND.FACTORY, COST.factory, tick, seq);
+    } else {
+      // Choose among what it can actually afford AND has the building for, and
+      // choose randomly so the opponent is not perfectly predictable across
+      // matches. This is the AI's only draw, and it comes from the simulation's
+      // own generator — so the choice is recorded in the replay like everything
+      // else.
+      const options: { kind: Kind; producer: Entity }[] = [];
+      if (barracks !== undefined && barracks.queuedKind < 0 && COMBAT_COST[KIND.TROOPER]! <= ore) {
+        options.push({ kind: KIND.TROOPER, producer: barracks });
       }
-    } else if (factory.queuedKind < 0) {
-      // Choose among what it can actually afford, and choose randomly so the
-      // opponent is not perfectly predictable across matches. This is the AI's
-      // only draw, and it comes from the simulation's own generator — so the
-      // choice is recorded in the replay like everything else.
-      const affordable = COMBAT_KINDS.filter((kind) => COMBAT_COST[kind]! <= state.players[AI_OWNER]!.ore);
-      if (affordable.length > 0) {
-        const draw = nextIntRng(rng, affordable.length);
+      if (factory !== undefined && factory.queuedKind < 0 && COMBAT_COST[KIND.TANK]! <= ore) {
+        options.push({ kind: KIND.TANK, producer: factory });
+      }
+      if (options.length > 0) {
+        const draw = nextIntRng(rng, options.length);
         rng = draw.state;
+        const chosen = options[draw.value]!;
         commands.push({
           tick,
           issuer: ISSUER.AI,
           seq,
           type: 'build',
-          builderId: factory.id,
-          kind: affordable[draw.value]!,
+          builderId: chosen.producer.id,
+          kind: chosen.kind,
         });
         seq += 1;
       }
@@ -217,6 +243,39 @@ function plan(state: SimState): Plan {
   }
 
   return { commands, rng };
+}
+
+/**
+ * Queue a structure placement beside the Base, if there is room and ore for it.
+ * Returns the next `seq`.
+ */
+function placeStructure(
+  state: SimState,
+  commands: Command[],
+  base: Entity,
+  kind: Kind,
+  cost: number,
+  tick: number,
+  seq: number,
+): number {
+  if (state.players[base.owner]!.ore < cost) {
+    return seq;
+  }
+  const spot = openCellNear(state, base);
+  if (spot === undefined) {
+    return seq;
+  }
+  commands.push({
+    tick,
+    issuer: ISSUER.AI,
+    seq,
+    type: 'place',
+    builderId: base.id,
+    kind,
+    x: spot.x,
+    y: spot.y,
+  });
+  return seq + 1;
 }
 
 /** What the AI would decide, without advancing anything. */

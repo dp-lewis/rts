@@ -72,8 +72,15 @@ describe('player commands scheduled by the scene actually apply', () => {
   it('leaves the command queued until its tick arrives, not before', () => {
     let state = createMatch(20260822, 1);
     let queue = createCommandQueue();
-    // Combat units train at a FACTORY, not the Base (product-spec.md line 128).
-    const factory = state.entities.find((e) => e.kind === KIND.FACTORY && e.owner === 0)!;
+    // Troopers train at a BARRACKS. The opening has no buildings but the Base, so
+    // one is seeded directly — this test is about command scheduling, not tech.
+    state.entities.push({
+      id: 90, kind: KIND.BARRACKS, owner: 0, x: 352, y: 352, hp: 700, state: 0,
+      targetId: -1, gatherNodeId: -1, cooldown: 0, progress: 0, destX: -1, destY: -1,
+      queuedKind: -1,
+    });
+    state.entities.sort((a, b) => a.id - b.id);
+    const factory = state.entities.find((e) => e.id === 90)!;
 
     queue = enqueueCommand(queue, {
       type: 'build',
@@ -101,7 +108,13 @@ describe('player commands scheduled by the scene actually apply', () => {
     // already being computed. The scene issues at `state.tick + 1`.
     let state = createMatch(20260822, 1);
     let queue = createCommandQueue();
-    const factory = state.entities.find((e) => e.kind === KIND.FACTORY && e.owner === 0)!;
+    state.entities.push({
+      id: 91, kind: KIND.BARRACKS, owner: 0, x: 352, y: 352, hp: 700, state: 0,
+      targetId: -1, gatherNodeId: -1, cooldown: 0, progress: 0, destX: -1, destY: -1,
+      queuedKind: -1,
+    });
+    state.entities.sort((a, b) => a.id - b.id);
+    const factory = state.entities.find((e) => e.id === 91)!;
 
     const issuedAt = state.tick;
     queue = enqueueCommand(queue, {
@@ -110,14 +123,14 @@ describe('player commands scheduled by the scene actually apply', () => {
       issuer: 0,
       seq: 0,
       builderId: factory.id,
-      kind: KIND.SCOUT,
+      kind: KIND.TROOPER,
     });
 
     ({ state, queue } = runTick(state, queue));
     expect(state.entities.find((e) => e.id === factory.id)?.queuedKind).toBe(-1);
 
     ({ state } = runTick(state, queue));
-    expect(state.entities.find((e) => e.id === factory.id)?.queuedKind).toBe(KIND.SCOUT);
+    expect(state.entities.find((e) => e.id === factory.id)?.queuedKind).toBe(KIND.TROOPER);
   });
 });
 
@@ -160,19 +173,15 @@ describe('the standard opening is a playable, mirrored map', () => {
     }
   });
 
-  it('gives both sides a Base, workers, and equal ore', () => {
+  it('gives both sides a Base and nothing else, with equal ore', () => {
+    // The opening is now a Base per side. Everything after that is the player's
+    // decision — build a Worker, mine, then choose Barracks or Factory first.
     for (const owner of [0, 1] as const) {
       expect(state.entities.filter((e) => e.owner === owner && e.kind === KIND.BASE)).toHaveLength(
         1,
       );
-      expect(
-        state.entities.filter((e) => e.owner === owner && e.kind === KIND.WORKER).length,
-      ).toBeGreaterThan(0);
-      // One pre-placed Factory per side — product-spec.md line 128.
-      expect(
-        state.entities.filter((e) => e.owner === owner && e.kind === KIND.FACTORY),
-      ).toHaveLength(1);
     }
+    expect(state.entities).toHaveLength(2);
     expect(state.players[0].ore).toBe(state.players[1].ore);
     expect(state.verdict).toBe(VERDICT.NONE);
   });

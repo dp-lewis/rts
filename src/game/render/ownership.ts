@@ -18,7 +18,7 @@
 import type Phaser from 'phaser';
 
 import { TILE_PX } from '../../sim/constants';
-import { KIND, type Entity, type Owner } from '../../sim/state';
+import { isStructureKind, type Entity, type Owner } from '../../sim/state';
 import { OWNER_TINT } from '../../assets/sprites';
 
 /** The human player. Only this player's units are ringed. */
@@ -57,7 +57,7 @@ export function drawOwnership(
   if (entity.owner !== FRIENDLY) {
     return;
   }
-  if (entity.kind === KIND.BASE || entity.kind === KIND.FACTORY) {
+  if (isStructureKind(entity.kind)) {
     return; // Structures are unmistakable by silhouette and never move.
   }
 

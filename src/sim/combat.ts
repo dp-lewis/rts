@@ -30,7 +30,6 @@ export type DamageLedger = Map<number, DamageEntry>;
 
 const ATTACK_BY_KIND: Partial<Record<number, { damage: number; range: number; cooldownTicks: number }>> = {
   [KIND.WORKER]: ATTACK.worker,
-  [KIND.SCOUT]: ATTACK.scout,
   [KIND.TROOPER]: ATTACK.trooper,
   [KIND.TANK]: ATTACK.tank,
 };

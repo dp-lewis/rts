@@ -24,6 +24,7 @@ import {
 import { AlertBand } from './hud/alert';
 import { BuildBar } from './hud/buildbar';
 import { DebugOverlay, SessionCounters } from './hud/counters';
+import { ProductionPanel } from './hud/production';
 import { ResourceHud } from './hud/resources';
 import { Gate } from './scenes/Gate';
 import { MatchScene, MATCH_SCENE_KEY, WORLD_SIZE } from './scenes/Match';
@@ -81,14 +82,20 @@ export function bootGame(): App {
   const scene = (): MatchScene | undefined =>
     game?.scene.getScene(MATCH_SCENE_KEY) as MatchScene | undefined;
 
+  // The permanent bar carries BUILDINGS only; units live on the building that
+  // makes them, in the panel below.
   const buildBar = new BuildBar(el('build-bar'), {
-    onQueue: (kind: Kind) => scene()?.queueBuild(kind),
+    onQueue: () => undefined,
     onPlace: (kind: Kind) => {
       scene()?.armPlacement(kind);
       buildBar.setArmed(kind);
     },
-    hasFactory: () => scene()?.hasOperationalFactory() ?? false,
+    hasFactory: () => true,
   });
+
+  const production = new ProductionPanel(el('production'), (kind, builderId) =>
+    scene()?.trainAt(kind, builderId),
+  );
 
   const show = (screen: 'gate' | 'match' | 'result'): void => {
     gateEl.hidden = screen !== 'gate';
@@ -100,6 +107,7 @@ export function bootGame(): App {
     show('match');
     alerts.reset();
     buildBar.setArmed(undefined);
+    production.hide();
     counters.startMatch(performance.now(), isRematch, difficulty);
 
     const config = {
@@ -111,6 +119,7 @@ export function bootGame(): App {
         onFrame: (state: SimState, now: number) => {
           resources.draw(state);
           buildBar.draw(state);
+          production.update(state, scene()?.selectedProducer());
           alerts.update(state, now);
           debug.update(state, now);
           if (!scene()?.isPlacing()) {

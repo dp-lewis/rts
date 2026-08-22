@@ -48,7 +48,7 @@ describe('orderFor — what a right-click means', () => {
     // Right-clicking a friendly must never be an attack order. Friendly fire is
     // not a mechanic in this game, and an attack command naming a friendly target
     // would be silently dropped by the simulation — the unit would just stop.
-    const state = world([TROOPER, { id: 2, kind: KIND.SCOUT, owner: 0, x: 500, y: 400 }]);
+    const state = world([TROOPER, { id: 2, kind: KIND.TROOPER, owner: 0, x: 500, y: 400 }]);
     expect(orderFor(state, [1], 500, 400, 0)).toMatchObject({ type: 'move' });
   });
 
@@ -75,7 +75,7 @@ describe('orderFor — what a right-click means', () => {
     const state = world([
       TROOPER,
       { id: 5, kind: KIND.TANK, owner: 1, x: 500, y: 400 },
-      { id: 3, kind: KIND.SCOUT, owner: 1, x: 502, y: 400 },
+      { id: 3, kind: KIND.TROOPER, owner: 1, x: 502, y: 400 },
     ]);
     expect(orderFor(state, [1], 501, 400, 0)).toMatchObject({ targetId: 3 });
   });
@@ -88,7 +88,7 @@ describe('orderFor — what a right-click means', () => {
   it('carries the selection through unchanged, in order', () => {
     const state = world([
       TROOPER,
-      { id: 2, kind: KIND.SCOUT, owner: 0, x: 120, y: 100 },
+      { id: 2, kind: KIND.TROOPER, owner: 0, x: 120, y: 100 },
       { id: 7, kind: KIND.TANK, owner: 0, x: 140, y: 100 },
     ]);
     expect(orderFor(state, [1, 2, 7], 600, 600, 0)).toMatchObject({ units: [1, 2, 7] });

@@ -17,7 +17,14 @@ import Phaser from 'phaser';
 
 import { ORE_KEY, SCENERY_KEYS, TILE_KEYS, spriteKey } from '../../assets/sprites';
 import { MAP_TILES_X, MAP_TILES_Y, MAX_HP, TILE_PX } from '../../sim/constants';
-import { ENTITY_STATE, KIND, type Entity, type Kind, type SimState } from '../../sim/state';
+import {
+  ENTITY_STATE,
+  KIND,
+  isStructureKind,
+  type Entity,
+  type Kind,
+  type SimState,
+} from '../../sim/state';
 import { Effects } from './effects';
 import { jitterFor } from './jitter';
 import { drawOwnership } from './ownership';
@@ -54,8 +61,8 @@ const HEALTH_BAR_HEIGHT = 4;
 const MAX_HP_BY_KIND: Record<number, number> = {
   [KIND.BASE]: MAX_HP.base,
   [KIND.FACTORY]: MAX_HP.factory,
+  [KIND.BARRACKS]: MAX_HP.barracks,
   [KIND.WORKER]: MAX_HP.worker,
-  [KIND.SCOUT]: MAX_HP.scout,
   [KIND.TROOPER]: MAX_HP.trooper,
   [KIND.TANK]: MAX_HP.tank,
 };
@@ -217,7 +224,7 @@ export class WorldRenderer {
       const previous = this.previous.get(entity.id) ?? { x: entity.x, y: entity.y };
       // Jitter is applied to the DRAWN position only, after interpolation, so it
       // shifts the picture and never the simulated coordinate (T082).
-      const structure = entity.kind === KIND.BASE || entity.kind === KIND.FACTORY;
+      const structure = isStructureKind(entity.kind);
       const offset = structure ? { dx: 0, dy: 0 } : jitterFor(entity.id);
       const x = previous.x + (entity.x - previous.x) * alpha + offset.dx;
       const y = previous.y + (entity.y - previous.y) * alpha + offset.dy;
