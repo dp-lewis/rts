@@ -35,6 +35,44 @@ function empty(): Counters {
   };
 }
 
+/** Keeps a long session's history from growing without bound in localStorage. */
+const MAX_SAMPLES = 200;
+
+function asCount(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
+}
+
+function asSamples(value: unknown): number[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter((n): n is number => typeof n === 'number' && Number.isFinite(n)).slice(-MAX_SAMPLES);
+}
+
+/**
+ * Coerce whatever is in storage into the shape this class promises.
+ *
+ * A plain spread over `empty()` is not enough: it fills MISSING keys but happily
+ * accepts a present one of the wrong type, so a stored `"lots"` became
+ * `"lots" + 1` on the next increment and every counter downstream was a string or
+ * NaN — silently, because nothing reads these until a playtest does. Storage is
+ * outside this program's control (another tab, a hand edit, a partial write, an
+ * older build), so its contents are input and get validated like input.
+ */
+function hydrate(raw: unknown): Counters {
+  if (typeof raw !== 'object' || raw === null) {
+    return empty();
+  }
+  const value = raw as Record<string, unknown>;
+  return {
+    matchesStarted: asCount(value['matchesStarted']),
+    matchesCompleted: asCount(value['matchesCompleted']),
+    rematches: asCount(value['rematches']),
+    timeToFirstAction: asSamples(value['timeToFirstAction']),
+    durationTicks: asSamples(value['durationTicks']),
+  };
+}
+
 export class SessionCounters {
   private data: Counters = empty();
   private matchStartedAt = 0;
@@ -46,7 +84,7 @@ export class SessionCounters {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw !== null) {
-        this.data = { ...empty(), ...(JSON.parse(raw) as Partial<Counters>) };
+        this.data = hydrate(JSON.parse(raw));
       }
     } catch {
       this.data = empty();
@@ -70,17 +108,29 @@ export class SessionCounters {
     }
     this.firstActionRecorded = true;
     this.data.timeToFirstAction.push(Math.round(now - this.matchStartedAt));
+    this.trim();
     this.persist();
   }
 
   completeMatch(ticks: number): void {
     this.data.matchesCompleted += 1;
     this.data.durationTicks.push(ticks);
+    this.trim();
     this.persist();
   }
 
   snapshot(): Counters {
     return structuredClone(this.data);
+  }
+
+  /** Rematch is the retention loop, so these arrays would otherwise grow forever. */
+  private trim(): void {
+    if (this.data.timeToFirstAction.length > MAX_SAMPLES) {
+      this.data.timeToFirstAction = this.data.timeToFirstAction.slice(-MAX_SAMPLES);
+    }
+    if (this.data.durationTicks.length > MAX_SAMPLES) {
+      this.data.durationTicks = this.data.durationTicks.slice(-MAX_SAMPLES);
+    }
   }
 
   private persist(): void {

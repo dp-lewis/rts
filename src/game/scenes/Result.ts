@@ -20,8 +20,8 @@ const HEADLINE: Record<number, string> = {
   [VERDICT.DRAW]: 'Draw',
 };
 
-/** Ticks are the only clock the simulation has, and it is exact. */
-function formatDuration(ticks: number): string {
+/** Ticks are the only clock the simulation has, and it is exact. Exported for test. */
+export function formatDuration(ticks: number): string {
   const totalSeconds = Math.round((ticks * MS_PER_TICK) / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;

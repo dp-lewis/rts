@@ -2,7 +2,7 @@ schema_version: 3
 feature: simple-rts-game
 feature_description: "Make a simple RTS game — local single-player vs AI, client-side Phaser, deterministic fixed-timestep simulation."
 created_at: "2026-08-21"
-last_updated: "2026-08-22T14:00:00Z"
+last_updated: "2026-08-22T14:40:00Z"
 feature_mode: standard
 flow_mode: gated
 v2_native: true
@@ -122,6 +122,24 @@ phases:
       - {version: 5, milestone: "M3", reason: "ADR-001 Amendment 4 — gatherNodeId split out of targetId. targetId was holding two id spaces (entity ids and ore node ids) and combat cleared it out from under the economy the moment both existed."}
       - {version: 3, milestone: "M2", reason: "economy and movement wired into the tick. NOT bumped in the same edit at first: the corpus caught it as a REGRESSION (first divergence tick 100) rather than as staleness, which is the more useful failure. Bumped by hand, regenerated, hashes matched the regression's 'got' column exactly."}
     findings_for_gate:
+      - id: "M6M8-F1"
+        severity: "resolved"
+        title: "Pure logic sat at 0% coverage for the third milestone running"
+        detail: "SessionCounters is pure but for two localStorage calls, and formatDuration is entirely pure; both were untested because they live in directories full of Phaser and DOM classes. M6-F3 split placement.ts and buildbar.ts for exactly this reason and M7 recorded the lesson — then the very next milestone's new files repeated it. Testing them immediately found REV-016. 17 tests added."
+        lesson: "The pattern recurs because the directory, not the code, decides whether something looks testable. Worth a rule: anything pure gets its own module regardless of where it is used."
+      - id: "M6M8-F2"
+        severity: "open — accepted"
+        title: "The duration test made the unit suite five times slower"
+        detail: "1.2s to 6.57s, of which 5.39s is 30 full matches run at module scope in duration.test.ts. Accepted: 6.6s is fast in absolute terms and it buys executable verification of the product's central claim. Recorded with numbers so the next slow suite knows the budget. Escalation: move into beforeAll and gate the full 30 behind CI."
+      - id: "M6M8-F3"
+        severity: "open — accepted"
+        title: "Two clocks are mixed in the alert band"
+        detail: "The game passes Phaser's time.now, the E2E hook passes performance.now(), and the latch compares them. Correct by specification — rAF timestamps share performance.now()'s time origin and Phaser derives time.now from the rAF timestamp — but nothing says so at either call site, and a change to how the scene sources its clock would surface only as an intermittent E2E failure."
+      - id: "M6M8-F4"
+        severity: "resolved"
+        title: "code-review.md was stale and cost M6 real time"
+        detail: "REV-008 was fixed by the M3 corrective pass but still listed as open, so M6 planned work for it and found the fix already present. REV-006 and REV-007 were then fixed in M6 without their entries being updated either. All four now carry a status line at their original location, and the M6-M8 review carries a reconciliation table."
+        lesson: "A findings document that is only ever appended to becomes a list of things that MIGHT be true."
       - id: "M8-F1"
         severity: "resolved"
         title: "The first duration measurement was AI-versus-nobody"
@@ -349,6 +367,15 @@ phases:
       findings: {critical: 1, high: 2, medium: 4, low: 0, fixed: 6, acknowledged: 1}
       reviewed_by_model: null
       cross_model_findings: 0
+      m6_m8_review:
+        reviewed_at: "2026-08-22T14:40:00Z"
+        scope: "160d404..HEAD — 47 files, ~3830 insertions across M6, M7 and M8."
+        status: "APPROVED WITH CONDITIONS — 1 defect found and fixed, 3 accepted risks"
+        machine_gates: {lint: pass, types: pass, sca: pass, coverage: pass, e2e: pass}
+        findings: {critical: 0, high: 0, medium: 5, low: 2, fixed: 4, acknowledged: 3}
+        reviewed_by_model: null
+        cross_model_findings: 0
+        headline: "REV-016: SessionCounters accepted malformed stored data, so a corrupt localStorage value turned every counter into a string or NaN — silently, and these are precisely the numbers M9's playtest reads. Also recorded two suspicions that PROBING DISPROVED (pointer-handler accumulation across rematches, and an engine-level player-1 advantage), because a review reporting only its confirmations has no measurable false-positive rate."
       headline: "REV-009: the scene drained player commands for tick+1 while applyCommands only accepts state.tick, so every player order would have been silently discarded. Same defect class as the M3 review's 'the command layer never worked', one layer up, and inherited from plan.md's own sketch."
   verify:                 { status: pending }
   test_plan:              { status: pending }
@@ -400,6 +427,14 @@ contracts:
 
 task_log: []
 gates:
+  - phase: code_review
+    decision: "approved_with_conditions"
+    timestamp: "2026-08-22T14:40:00Z"
+    scope: "M6, M7, M8 (160d404..HEAD)"
+    notes: "0 CRITICAL, 0 HIGH. One genuine defect (REV-016, malformed stored counters poisoning every reading) found and fixed with 11 tests. 3 accepted: slow duration suite, mixed clocks in the alert band, framework-bound presentation at 0% unit coverage but covered by 42 E2E. Two suspicions were disproved by probing and recorded as such. Prior findings REV-005/006/007/008 reconciled — three were already fixed and the document had gone stale."
+    reviewed_by_model: null
+    cross_model_findings: 0
+    findings: {critical: 0, high: 0, medium: 5, low: 2, fixed: 4, acknowledged: 3}
   - phase: code_review
     decision: "approved_with_conditions"
     timestamp: "2026-08-22T11:45:00Z"

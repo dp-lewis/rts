@@ -192,6 +192,8 @@ an empty path from a *reachable* goal as "stay put" rather than "go straight".
 
 ### REV-005: `STAGES` claims to pin the pipeline contract but omits sudden death
 
+> **STILL OPEN** as of the M6–M8 review (2026-08-22).
+
 | Field | Value | |
 |-------|-------|-|
 | **Dimension** | Patterns · **Severity** MEDIUM · **File** `src/sim/step.ts` | |
@@ -202,6 +204,8 @@ Reordering them relative to `collectDamage`/`applyDamage` — which would change
 outcomes — is invisible to the very test written to make pipeline changes visible.
 
 ### REV-006: `collectDamage` mutates state despite documenting that it does not
+
+> **FIXED in M6** — doc corrected and the `cooldownTicks + 1` off-by-one repaired.
 
 | Field | Value | |
 |-------|-------|-|
@@ -216,6 +220,8 @@ around.
 
 ### REV-007: FR-012 has no command path at all
 
+> **FIXED in M6** — the `place` command. Corpus case 003 replays one.
+
 | Field | Value | |
 |-------|-------|-|
 | **Dimension** | Doc↔Code · **Severity** MEDIUM | |
@@ -226,6 +232,8 @@ command, so the requirement is unreachable. T039 delivered the validator without
 verb.
 
 ### REV-008: an out-of-range `kind` in a build command would NaN the simulation
+
+> **ALREADY FIXED** by the M3 corrective pass; this entry was stale until the M6–M8 review (REV-021).
 
 | Field | Value | |
 |-------|-------|-|
@@ -586,3 +594,202 @@ for; flagged rather than papered over with a mock that would assert its own stub
 - [x] Test coverage adequate for Must Have stories — with the `world.ts` gap noted above
 - [x] No security vulnerabilities in new code — no new attack surface (no network, no
       storage, no user-supplied strings; the feature is client-side and offline)
+
+---
+
+# Code Review — M6, M7, M8 (2026-08-22)
+
+> Reviewed delta: `160d404..HEAD` — 47 files, ~3830 insertions. Three milestones:
+> the input layer and the `place` command, the DOM migration and E2E suite, and the
+> balance tuning pass.
+> Status: **APPROVED WITH CONDITIONS** — 1 defect found and fixed, 3 accepted risks.
+
+> **Reviewer bias.** Self-review again. Findings were driven by executable probes
+> wherever possible — a coverage run, a browser probe, a timing measurement, and
+> tests written against untested logic — rather than by reading for intent. Two
+> suspicions were *disproved* by probing and are recorded as such, because a
+> review that only reports confirmations is not measuring its own false-positive
+> rate.
+
+## Machine gates
+
+| Gate | Result |
+|---|---|
+| Lint (`eslint .`) | ✅ PASS |
+| Types (`tsc --noEmit`) | ✅ PASS |
+| SCA (`npm audit --omit=dev`) | ✅ PASS — 0 vulnerabilities |
+| Coverage (`src/sim/**` ≥ 90/85/90/90) | ✅ PASS — 98.06% stmts, 93.46% branches |
+| E2E (42 specs, incl. axe WCAG-AA) | ✅ PASS against the tuned build |
+
+## Summary
+
+| Dimension | CRITICAL | HIGH | MEDIUM | LOW | Total |
+|-----------|:--------:|:----:|:------:|:---:|:-----:|
+| Quality | 0 | 0 | 2 | 1 | 3 |
+| Security | 0 | 0 | 0 | 0 | 0 |
+| Patterns | 0 | 0 | 0 | 1 | 1 |
+| Tests | 0 | 0 | 2 | 0 | 2 |
+| Doc↔Code | 0 | 0 | 1 | 0 | 1 |
+| **Total** | **0** | **0** | **5** | **2** | **7** |
+
+**Recommendation: PROCEED to M9.** No CRITICAL or HIGH. The one genuine defect is
+fixed and covered.
+
+## Findings
+
+### REV-016: corrupt stored counters silently poisoned every reading
+
+| Field | Value |
+|-------|-------|
+| **Dimension** | Quality · **Severity** MEDIUM · **File** `src/game/hud/counters.ts` |
+| **Rule** | Data from outside the program is input, and gets validated like input |
+
+**What:** `SessionCounters` loaded storage with `{ ...empty(), ...JSON.parse(raw) }`.
+A spread fills MISSING keys but accepts a PRESENT one of any type, so a stored
+`{"matchesStarted":"lots"}` survived, and the next `+= 1` produced the string
+`"lots1"`. Subsequent reads were strings or `NaN`.
+
+**Why it matters:** these are the numbers M8's tuning and M9's playtest are meant to
+read. A `NaN` time-to-first-action is silently wrong rather than obviously wrong, and
+nothing looks at these until a playtest does — by which point the session is spent.
+Storage is genuinely outside the program's control: another tab, a hand edit, a partial
+write, an older build.
+
+**Status:** ✅ FIXED. A `hydrate()` coercion validates every field.
+`tests/game/counters.test.ts` (11 cases) covers it, plus storage that throws on read and
+on write — private browsing and quota-exceeded both do.
+
+### REV-017: the counter arrays grew without bound in localStorage
+
+| Field | Value |
+|-------|-------|
+| **Dimension** | Quality · **Severity** LOW · **File** `src/game/hud/counters.ts` |
+
+**What:** `timeToFirstAction` and `durationTicks` appended per match and were persisted
+in full, forever.
+
+**Why it matters:** "for a bounded game the rematch button IS the retention loop" — the
+product is designed to be replayed in long sittings, and localStorage's failure mode on
+quota is a throw, not a warning.
+
+**Status:** ✅ FIXED. Capped at the 200 most recent samples; the aggregate counts are not
+samples and survive intact.
+
+### REV-018: pure logic sat at 0% because it lived beside framework code
+
+| Field | Value |
+|-------|-------|
+| **Dimension** | Tests · **Severity** MEDIUM · **Files** `hud/counters.ts`, `scenes/Result.ts` |
+
+**What:** `SessionCounters` is pure except for two `localStorage` calls, and
+`formatDuration` is entirely pure. Both were untested, reported at 0%, purely because
+they live in directories full of Phaser and DOM classes.
+
+**Why it matters:** this is the third instance of one pattern — M6-F3 split
+`placement.ts` and `buildbar.ts` for the same reason, and M7's finding was that a
+decision trapped beside a framework is a decision nobody can test. It recurred
+immediately in the next milestone's new files.
+
+**Status:** ✅ PARTIALLY FIXED. 17 tests added; `formatDuration` passed everything
+including the `6m 60s` rounding trap. The framework-bound remainder (`world.ts`,
+`Match.ts`, `main.ts`, `buildbar.ts`, `alert.ts`, `ghost.ts`) stays at 0% and is covered
+by E2E — see the accepted risk below.
+
+### REV-019: the M8 duration test made the unit suite five times slower
+
+| Field | Value |
+|-------|-------|
+| **Dimension** | Tests · **Severity** MEDIUM (accepted) · **File** `tests/sim/duration.test.ts` |
+
+**What:** 30 full matches run at module scope. The unit suite went from ~1.2 s to 6.57 s,
+of which 5.39 s is this file.
+
+**Why it matters:** this project's discipline depends on running the suite constantly.
+A 5× slowdown is how that habit erodes. Because the matches run in the `describe` body,
+they also execute during collection even when a single test in the file is selected.
+
+**Status:** ⚠️ ACCEPTED. 6.6 s is still fast in absolute terms, and what it buys is
+executable verification of the product's central claim. Recorded with the numbers so the
+next person to add a slow suite knows the budget they are spending. Escalation path if
+the suite grows: move the run into `beforeAll` and gate the full 30 behind CI.
+
+### REV-020: two clocks are mixed in the alert band
+
+| Field | Value |
+|-------|-------|
+| **Dimension** | Patterns · **Severity** LOW · **Files** `hud/alert.ts`, `main.ts` |
+
+**What:** the game calls `alerts.update(state, this.time.now)` with Phaser's clock; the
+E2E hook calls it with `performance.now()`. The latch compares the two.
+
+**Why it matters:** correct today, and by specification rather than luck — `requestAnimationFrame`
+timestamps are `DOMHighResTimeStamp` and share `performance.now()`'s time origin, and
+Phaser derives `time.now` from the rAF timestamp. But nothing says so at either call
+site, and a future change to how the scene sources its clock would break the latch in a
+way only an intermittent E2E failure would reveal.
+
+**Status:** ⚠️ ACCEPTED, noted here rather than papered over with a comment that would
+claim more certainty than the arrangement deserves.
+
+### REV-021: `code-review.md` listed REV-008 as open after it was fixed
+
+| Field | Value |
+|-------|-------|
+| **Dimension** | Doc↔Code · **Severity** MEDIUM · **File** `code-review.md` |
+
+**What:** REV-008 (an unchecked `kind` cast that would `NaN` the simulation) was fixed by
+the M3 corrective pass, but the review document was never updated. M6 planned work to
+fix it and discovered the fix already present — the test written for it passed on its
+first run.
+
+**Why it matters:** a stale review document costs a later milestone real time and, worse,
+invites someone to "fix" something twice. The same is now true of REV-005/REV-006:
+REV-006 was fixed in M6, REV-007 in M6, and neither entry says so.
+
+**Status:** ✅ FIXED below — see *Prior findings, reconciled*.
+
+## Suspicions that probing disproved
+
+Recorded because a review that reports only its confirmations has no measurable
+false-positive rate.
+
+- **Pointer handlers accumulating across rematches.** `MatchScene.create` re-runs
+  `installInput()` on every rematch, which would double-issue every command. Probed in
+  the browser: one right-click produced exactly one queued command both before and after
+  three rematches (`{"before":0,"after":1}`). Phaser clears scene input on shutdown.
+- **A systematic advantage to player 1.** M8's harness showed p1 winning 18/18 and a
+  probe appeared to confirm an engine-level asymmetry. Both were artefacts — the harness
+  had no second player, and the probe let p1's Base build a free Worker (pre-impl F-6)
+  while p0's did nothing. A traced mirrored duel kills both units on tick 145, O-6
+  exactly as designed.
+
+## Prior findings, reconciled
+
+| Finding | Status |
+|---|---|
+| REV-005 `STAGES` omits sudden death | **still open** — `armSuddenDeath` / `suddenDeathDamage` remain absent from the tuple `determinism.test.ts` asserts as the pipeline contract |
+| REV-006 `collectDamage` documented as pure while mutating | **fixed in M6** — doc corrected and the `cooldownTicks + 1` off-by-one repaired |
+| REV-007 FR-012 has no command path | **fixed in M6** — the `place` command; corpus case 003 now replays one |
+| REV-008 unchecked `kind` would `NaN` the simulation | **already fixed in the M3 corrective pass**; this document was stale |
+
+## Positive highlights
+
+- **M8 discarded its own first measurement.** The harness reported 1.5-minute matches
+  and p1 winning 18/18; recognising that as a broken instrument rather than a balance
+  result is the single most valuable thing that happened in these three milestones.
+- **The exit criterion became a test.** `duration.test.ts` fails the build outside the
+  6–10 band, so the product's central claim cannot quietly drift.
+- **Three pure decision functions** — `selectInRect`, `orderFor`, `placementAt` — take
+  simulation state and a point and import no Phaser, which is why M6's input layer is
+  tested at all.
+- **The a11y suite has a control test** asserting axe found real nodes, which is the
+  difference between a WCAG floor and a WCAG-shaped hole.
+
+## Review checklist
+
+- [x] All CRITICAL findings addressed — none found
+- [x] All HIGH findings addressed — none found
+- [x] Test coverage adequate for Must Have stories — `src/sim` 98.06%; framework-bound
+      presentation covered by 42 E2E specs
+- [x] No security vulnerabilities in new code — no network, no storage of user data, no
+      user-supplied strings rendered; the `?test=1` hook is asserted absent without the flag
