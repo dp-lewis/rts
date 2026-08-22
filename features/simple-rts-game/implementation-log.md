@@ -1437,3 +1437,47 @@ Three cheap presentation remedies, squarely T077's remit and not yet done:
 And two out of v1 scope, needing a change request rather than a patch: terrain
 decoration (the tile pack has unused trees and rivers) and defensive walls (a new
 mechanic, in no requirement).
+
+### T077 — the three cheap remedies
+
+All three round-1 presentation findings, all presentation-only. The simulation had
+been doing every one of these things correctly since M3; it simply never said so.
+
+**1. "It's not clear when things are building."** The only feedback was ore leaving the
+counter at COMPLETION — up to fifteen seconds after the click, with nothing in between.
+A progress bar now sits on the producer itself, driven by `progress / BUILD_TICKS`, and
+covers both cases: a Base or Factory producing a unit, and a structure building itself
+(`UNDER_CONSTRUCTION`). Amber, matching the ore counter, because the bar is spending.
+
+**2. "It's not clear when things are attacking, eg no lasers or explosions."** Beams are
+derived from `cooldown`, which the simulation sets to the full interval on the tick a
+unit fires and counts down from there — so it doubles as "how fresh is this shot"
+without the renderer detecting the firing edge itself. Edge detection would have needed
+a copy of last tick's cooldowns AND would have missed any shot fired on a frame that ran
+two ticks at once.
+
+Only the freshest third of a cooldown draws. That threshold is the whole design: without
+it the screen becomes a permanent web of lines between everything in range, which
+communicates less than nothing. Verified in the spike — a scout pair at 50% cooldown
+correctly shows no beam while the trooper and tank pairs beside them do.
+
+Deaths leave an expanding, fading blast, sized larger for structures. Recorded at the
+frame a sprite is retired, which IS the frame its entity died — there is no death event
+in sim state, and adding one would put presentation into the hash.
+
+**3. "The sprites don't turn."** Vehicles only. Kenney's infantry are drawn front-on, so
+rotating one lays a soldier on their side; the tank is drawn side-on with its barrel
+east, which is exactly Phaser's zero angle. The heading is eased rather than snapped and
+takes the SHORT way round — lerping raw radians makes a unit crossing the ±π boundary
+spin the long way for no reason a player could explain.
+
+The angle lives in a presentation map keyed by entity id, never in `Entity`. Facing
+changes nothing about what a unit does — `acquireTargets` has no arc — so a hashed
+field would affect no outcome and stale every corpus case.
+
+**Verified against the shipping renderer**, the same way the T081 underglow ring was:
+`scripts/spike-effects.*` seeds a fight directly, because a live match takes minutes to
+reach one. Progress bars were also confirmed in the real game on both a Base and a
+Factory. 354 unit + 42 E2E tests still green, and the corpus still reproduces — which is
+the check that matters here, since it would fail the moment any of this touched
+simulation state.

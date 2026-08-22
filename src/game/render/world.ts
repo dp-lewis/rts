@@ -17,7 +17,8 @@ import Phaser from 'phaser';
 
 import { ORE_KEY, TILE_KEYS, spriteKey } from '../../assets/sprites';
 import { MAP_TILES_X, MAP_TILES_Y, MAX_HP, TILE_PX } from '../../sim/constants';
-import { ENTITY_STATE, KIND, type Entity, type SimState } from '../../sim/state';
+import { ENTITY_STATE, KIND, type Entity, type Kind, type SimState } from '../../sim/state';
+import { Effects } from './effects';
 import { jitterFor } from './jitter';
 import { drawOwnership } from './ownership';
 
@@ -54,6 +55,13 @@ export class WorldRenderer {
   private selected: ReadonlySet<number> = new Set();
   private dragRect: { x0: number; y0: number; x1: number; y1: number } | undefined;
   private markers: { x: number; y: number; born: number; hostile: boolean }[] = [];
+  private readonly effects: Effects;
+  /** Interpolated draw positions this frame, so effects attach to what is drawn. */
+  private readonly drawn = new Map<number, { x: number; y: number }>();
+  /** Facing angle per entity — presentation only, never simulated. */
+  private readonly facing = new Map<number, number>();
+  /** Last known kind per entity, so a death can be sized after the entity is gone. */
+  private readonly kinds = new Map<number, Kind>();
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -65,6 +73,7 @@ export class WorldRenderer {
     this.ownership = scene.add.graphics().setDepth(10);
     this.health = scene.add.graphics().setDepth(30);
     this.overlay = scene.add.graphics().setDepth(40);
+    this.effects = new Effects(scene);
   }
 
   /**
@@ -125,6 +134,7 @@ export class WorldRenderer {
     this.ownership.clear();
 
     const live = new Set<number>();
+    this.drawn.clear();
 
     for (let i = 0; i < state.entities.length; i += 1) {
       const entity = state.entities[i]!;
@@ -141,17 +151,28 @@ export class WorldRenderer {
       const x = previous.x + (entity.x - previous.x) * alpha + offset.dx;
       const y = previous.y + (entity.y - previous.y) * alpha + offset.dy;
 
+      this.drawn.set(entity.id, { x, y });
       this.drawEntity(entity, x, y);
     }
 
+    this.effects.draw(state, this.drawn, now);
     this.drawOverlay(now);
 
     // A sprite whose entity died — or was never alive — must not linger.
     for (const [id, sprite] of this.sprites) {
       if (!live.has(id)) {
+        // The frame a sprite is retired IS the frame its entity died, so this is
+        // where an explosion belongs — no death event exists in sim state, and
+        // adding one would put presentation into the hash.
+        const kind = this.kinds.get(id);
+        if (kind !== undefined) {
+          this.effects.recordDeath(sprite.x, sprite.y, kind, now);
+        }
         sprite.destroy();
         this.sprites.delete(id);
         this.previous.delete(id);
+        this.facing.delete(id);
+        this.kinds.delete(id);
       }
     }
   }
@@ -195,6 +216,8 @@ export class WorldRenderer {
       this.sprites.set(entity.id, sprite);
     }
     sprite.setPosition(x, y);
+    this.kinds.set(entity.id, entity.kind);
+    this.faceTravel(entity, sprite, x, y);
 
     // A structure still going up is drawn faded — the state exists in the
     // simulation (UNDER_CONSTRUCTION) and would otherwise be invisible, which
@@ -203,6 +226,47 @@ export class WorldRenderer {
 
     drawOwnership(this.ownership, entity, x, y, this.selected.has(entity.id));
     this.drawHealth(entity, x, y);
+  }
+
+  /**
+   * Turn a vehicle to face where it is going — T077, from playtest round 1:
+   * "the sprites don't turn, e.g. the tank is always facing the same way".
+   *
+   * VEHICLES ONLY. Kenney's infantry are drawn front-on, so rotating one makes a
+   * soldier lie on their side; the tank is drawn side-on with its barrel to the
+   * east, which is exactly Phaser's zero-angle, so it rotates correctly.
+   *
+   * The angle is held HERE, in a presentation map keyed by entity id, and never
+   * in `Entity`. Facing changes nothing about what a unit does — combat is
+   * omnidirectional (`acquireTargets` has no arc) — so putting it in sim state
+   * would add a hashed field that affects nothing and stales every corpus case.
+   */
+  private faceTravel(entity: Entity, sprite: Phaser.GameObjects.Image, x: number, y: number): void {
+    if (entity.kind !== KIND.TANK) {
+      return;
+    }
+    const previous = this.previous.get(entity.id);
+    const current = this.facing.get(entity.id) ?? 0;
+
+    let target = current;
+    if (previous !== undefined) {
+      const dx = x - previous.x;
+      const dy = y - previous.y;
+      if (dx * dx + dy * dy > 0.25) {
+        target = Math.atan2(dy, dx);
+      }
+    }
+
+    // Ease toward the heading rather than snapping, and take the SHORT way round
+    // — lerping raw radians makes a unit crossing the -pi/+pi boundary spin the
+    // long way for no reason a player could explain.
+    let delta = target - current;
+    while (delta > Math.PI) delta -= Math.PI * 2;
+    while (delta < -Math.PI) delta += Math.PI * 2;
+
+    const next = current + delta * 0.2;
+    this.facing.set(entity.id, next);
+    sprite.setRotation(next);
   }
 
   private drawHealth(entity: Entity, x: number, y: number): void {

@@ -2,7 +2,7 @@ schema_version: 3
 feature: simple-rts-game
 feature_description: "Make a simple RTS game — local single-player vs AI, client-side Phaser, deterministic fixed-timestep simulation."
 created_at: "2026-08-21"
-last_updated: "2026-08-22T15:30:00Z"
+last_updated: "2026-08-22T16:10:00Z"
 feature_mode: standard
 flow_mode: gated
 v2_native: true
@@ -138,9 +138,10 @@ phases:
         title: "M9 is not scored"
         detail: "Exit criteria are >=4 of 5 players understanding the game unaided and >=3 of 5 winning at least one match on New to this. Round 1 returned design feedback and none of those measurements — no player count, no comprehension observation, no win/loss. T076 needs a scored re-run. The AI harness cannot substitute: sparring.ts drives player 0 with a mirrored copy of the SAME difficulty profile, so its win rate is ~50% by construction and says nothing about whether a human beats the easy AI."
       - id: "M9-F4"
-        severity: "open — T077"
-        title: "Three cheap presentation remedies from round 1, not yet done"
-        detail: "(1) Nothing indicates a unit is being produced, at either the Base or a Factory. (2) No combat feedback at all — no lasers, no explosions, only health bars changing. (3) Sprites never turn, so a tank faces the same way whatever it is doing. All three are presentation-only and squarely in T077's stated remit of cheap remedies."
+        severity: "resolved"
+        title: "Three cheap presentation remedies from round 1"
+        detail: "(1) Nothing indicated a unit was being produced — the only feedback was ore leaving the counter at COMPLETION, up to fifteen seconds after the click. (2) No combat feedback at all. (3) Sprites never turned. The simulation had been doing all three correctly since M3; it simply never said so."
+        resolution: "Progress bars on the producer (covers both a unit being trained and a structure building itself); beams derived from `cooldown`, which doubles as shot freshness so no edge detection is needed, drawn only on the freshest third so the screen shows shots rather than a permanent web of lines; fading blasts recorded at the frame a sprite is retired, since no death event exists in sim state and adding one would put presentation into the hash; vehicle-only rotation, eased and taking the short way round the +/-pi boundary, held in a presentation map rather than Entity because facing changes no outcome. Verified against the shipping renderer via scripts/spike-effects.*, as the T081 ring was."
       - id: "M9-F5"
         severity: "open — change request"
         title: "Two round-1 requests are outside v1 scope"
