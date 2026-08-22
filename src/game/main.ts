@@ -99,7 +99,7 @@ export function bootGame(): App {
     show('match');
     alerts.reset();
     buildBar.setArmed(undefined);
-    counters.startMatch(performance.now(), isRematch);
+    counters.startMatch(performance.now(), isRematch, difficulty);
 
     const config = {
       // A new seed per match, so a rematch is a different match rather than a
@@ -117,7 +117,7 @@ export function bootGame(): App {
           }
         },
         onVerdict: (verdict: Verdict, ticks: number) => {
-          counters.completeMatch(ticks);
+          counters.completeMatch(ticks, verdict);
           result.show(verdict, ticks);
           show('result');
         },

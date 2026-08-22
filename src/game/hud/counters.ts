@@ -21,8 +21,29 @@ export interface Counters {
   rematches: number;
   /** Milliseconds from match start to the player's first command, per match. */
   timeToFirstAction: number[];
+  /**
+   * Milliseconds from PAGE LOAD to the first command of the session.
+   *
+   * K2 is defined against page load, not match start, because it is a
+   * comprehension measure: the gate is part of what a first-timer has to
+   * understand, and time spent deciding there is time spent not playing. Only
+   * the first is kept — after that the player knows what the screen is.
+   */
+  timeToFirstActionFromLoad: number | null;
   /** Match durations in simulation ticks — exact, unlike a wall-clock reading. */
   durationTicks: number[];
+  /**
+   * Outcome per completed match: 1 victory, 2 defeat, 3 draw (`VERDICT`).
+   *
+   * M9's second exit criterion is "at least 3 of 5 players WIN at least one match
+   * on New to this", and completion alone cannot answer it. pre-impl F-3 is
+   * explicit about why this matters: comprehension does not prove the game is
+   * beatable, and an AI written by someone who knows the game is the most common
+   * way a solo project ships something unwinnable.
+   */
+  outcomes: number[];
+  /** Difficulty per completed match, so wins can be attributed to a level. */
+  difficulties: number[];
 }
 
 function empty(): Counters {
@@ -31,7 +52,10 @@ function empty(): Counters {
     matchesCompleted: 0,
     rematches: 0,
     timeToFirstAction: [],
+    timeToFirstActionFromLoad: null,
     durationTicks: [],
+    outcomes: [],
+    difficulties: [],
   };
 }
 
@@ -64,12 +88,17 @@ function hydrate(raw: unknown): Counters {
     return empty();
   }
   const value = raw as Record<string, unknown>;
+  const fromLoad = value['timeToFirstActionFromLoad'];
   return {
     matchesStarted: asCount(value['matchesStarted']),
     matchesCompleted: asCount(value['matchesCompleted']),
     rematches: asCount(value['rematches']),
     timeToFirstAction: asSamples(value['timeToFirstAction']),
+    timeToFirstActionFromLoad:
+      typeof fromLoad === 'number' && Number.isFinite(fromLoad) ? fromLoad : null,
     durationTicks: asSamples(value['durationTicks']),
+    outcomes: asSamples(value['outcomes']),
+    difficulties: asSamples(value['difficulties']),
   };
 }
 
@@ -77,6 +106,7 @@ export class SessionCounters {
   private data: Counters = empty();
   private matchStartedAt = 0;
   private firstActionRecorded = false;
+  private currentDifficulty = 1;
 
   constructor() {
     // Wrapped: localStorage throws outright in some privacy modes, and losing a
@@ -91,8 +121,9 @@ export class SessionCounters {
     }
   }
 
-  startMatch(now: number, isRematch: boolean): void {
+  startMatch(now: number, isRematch: boolean, difficulty = 1): void {
     this.matchStartedAt = now;
+    this.currentDifficulty = difficulty;
     this.firstActionRecorded = false;
     this.data.matchesStarted += 1;
     if (isRematch) {
@@ -108,13 +139,20 @@ export class SessionCounters {
     }
     this.firstActionRecorded = true;
     this.data.timeToFirstAction.push(Math.round(now - this.matchStartedAt));
+    if (this.data.timeToFirstActionFromLoad === null) {
+      // `performance.now()` is measured from page load by definition, so `now` IS
+      // the K2 reading with no bookkeeping of our own.
+      this.data.timeToFirstActionFromLoad = Math.round(now);
+    }
     this.trim();
     this.persist();
   }
 
-  completeMatch(ticks: number): void {
+  completeMatch(ticks: number, verdict: number): void {
     this.data.matchesCompleted += 1;
     this.data.durationTicks.push(ticks);
+    this.data.outcomes.push(verdict);
+    this.data.difficulties.push(this.currentDifficulty);
     this.trim();
     this.persist();
   }
@@ -130,6 +168,10 @@ export class SessionCounters {
     }
     if (this.data.durationTicks.length > MAX_SAMPLES) {
       this.data.durationTicks = this.data.durationTicks.slice(-MAX_SAMPLES);
+    }
+    if (this.data.outcomes.length > MAX_SAMPLES) {
+      this.data.outcomes = this.data.outcomes.slice(-MAX_SAMPLES);
+      this.data.difficulties = this.data.difficulties.slice(-MAX_SAMPLES);
     }
   }
 
