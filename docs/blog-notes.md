@@ -161,6 +161,21 @@ Honest notes on what was awkward.
 
 ---
 
+## The other half of the experiment
+
+This build was one arm of a two-arm comparison. The other — a rich PRD written with
+Claude first, then Spec Kit — is [`dp-lewis/rts-2`](https://github.com/dp-lewis/rts-2).
+
+See [`process-comparison.md`](./process-comparison.md) for the corrections, the cost
+that was only visible from inside this repo, and the finding both runs reached
+independently: **neither test suite caught its own worst bug — a human playing did.**
+
+Their one-line summary, which is fair: *"I built more game; Forge built a better one."*
+The addition from this side: Forge also built the one that was harder to change once
+the player disagreed with it.
+
+---
+
 ## Candidate angles for the post
 
 1. **"Your tests are green because they're not looking"** — the seven-instance table
@@ -171,3 +186,6 @@ Honest notes on what was awkward.
    and why a blocking human gate earns its place.
 4. **"Determinism as a build discipline"** — hashes, corpus, hand-bumped versions,
    and blast radius as a signal.
+5. **"Lock architecture hard, hold design loosely"** — the two-arm comparison gives
+   unusually clean evidence: run both kinds of decision through one lock and the
+   architecture never moves while the design changes three times.
