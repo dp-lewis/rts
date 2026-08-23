@@ -1,6 +1,6 @@
 schema_version: 1
 feature: simple-rts-game
-last_updated: "2026-08-21"
+last_updated: "2026-08-22"
 
 # Owned by product-spec (Phase 2): the `journeys:` block below.
 # `tests` fields are intentionally empty — test-plan / test-run own that column.
@@ -49,7 +49,7 @@ requirements:
     text: "Page load presents the difficulty gate and nothing else"
     stories: ["US-002"]
     tasks: ["T067"]
-    code: []
+    code: ["src/game/scenes/Gate.ts", "index.html"]
     tests: []
   - id: "FR-002"
     text: "Selecting a difficulty starts a match immediately"
@@ -61,157 +61,157 @@ requirements:
     text: "Simulation advances in fixed-timestep ticks, decoupled from render frames"
     stories: []
     tasks: ["T011", "T013", "T014", "T015", "T021", "T022", "T023", "T024", "T025", "T028", "T045", "T048", "T075"]
-    code: []
+    code: ["src/sim/step.ts", "src/sim/replay.ts", "src/sim/version.ts", "tests/replay/run-corpus.ts", "scripts/corpus-regen.ts", "src/game/loop.ts", "src/game/scenes/Match.ts", "tests/replay/corpus/003-tuned-baseline.json"]
     tests: []
   - id: "FR-004"
     text: "All player intent enters the simulation as commands queued for a future tick"
     stories: []
     tasks: ["T010", "T020"]
-    code: []
+    code: ["src/sim/commands.ts", "src/sim/step.ts"]
     tests: []
   - id: "FR-005"
     text: "All randomness derives from a seed held inside simulation state"
     stories: []
     tasks: ["T007", "T008", "T009", "T012", "T016", "T019"]
-    code: []
+    code: ["src/sim/rng.ts", "src/sim/hash.ts"]
     tests: []
   - id: "FR-006"
     text: "Starting workers auto-gather from tick 0 with no player input"
     stories: ["US-003"]
     tasks: ["T029", "T033"]
-    code: []
+    code: ["src/sim/economy.ts", "src/sim/step.ts"]
     tests: []
   - id: "FR-007"
     text: "Drag-rectangle selects all own units intersecting it"
     stories: ["US-004"]
     tasks: ["T053"]
-    code: []
+    code: ["src/game/input/select.ts"]
     tests: []
   - id: "FR-008"
     text: "Right-click issues move on ground, attack on enemy entity"
     stories: ["US-004"]
     tasks: ["T054"]
-    code: []
+    code: ["src/game/input/orders.ts"]
     tests: []
   - id: "FR-009"
     text: "Command issue is visually acknowledged within one rendered frame"
     stories: []
     tasks: ["T054"]
-    code: []
+    code: ["src/game/render/world.ts"]
     tests: []
   - id: "FR-010"
     text: "Build bar shows exactly 5 entries — 4 unit + 1 structure, visually separated — always visible, never nested"
     stories: ["US-005"]
     tasks: ["T056"]
-    code: []
+    code: ["src/game/hud/roster.ts", "src/game/hud/buildbar.ts"]
     tests: []
   - id: "FR-011"
     text: "Unaffordable build entries are greyed inline with cost shown"
     stories: ["US-005"]
     tasks: ["T056", "T063"]
-    code: []
+    code: ["src/game/hud/buildbar.ts"]
     tests: []
   - id: "FR-012"
     text: "Player may place additional Factories on valid ground"
     stories: ["US-006"]
     tasks: ["T035", "T039", "T055"]
-    code: []
+    code: ["src/sim/production.ts", "src/sim/commands.ts", "src/sim/step.ts", "src/game/input/placement.ts"]
     tests: []
   - id: "FR-013"
     text: "Invalid placement is indicated by ghost state, not an error dialog"
     stories: ["US-006"]
     tasks: ["T055", "T064"]
-    code: []
+    code: ["src/game/input/placement.ts", "src/game/render/ghost.ts"]
     tests: []
   - id: "FR-014"
     text: "Map is a fixed single screen: no scrolling, no camera, no minimap"
     stories: ["US-007"]
     tasks: ["T031", "T047", "T050"]
-    code: []
+    code: ["src/sim/grid.ts", "src/sim/constants.ts", "src/game/main.ts", "src/game/render/world.ts", "src/sim/setup.ts"]
     tests: []
   - id: "FR-015"
     text: "No fog of war; both bases visible from the first frame"
     stories: ["US-007"]
     tasks: ["T049", "T050"]
-    code: []
+    code: ["src/assets/sprites.ts", "src/game/render/world.ts"]
     tests: []
   - id: "FR-016"
     text: "Ore nodes hold finite amounts and visibly deplete"
     stories: ["US-008"]
     tasks: ["T030", "T033", "T057"]
-    code: []
+    code: ["src/sim/economy.ts", "src/game/hud/resources.ts"]
     tests: []
   - id: "FR-017"
     text: "Destroying the enemy Base wins; losing own Base loses"
     stories: ["US-008"]
     tasks: ["T038", "T041", "T065"]
-    code: []
+    code: ["src/sim/victory.ts", "src/game/scenes/Result.ts"]
     tests: []
   - id: "FR-018"
     text: "Every friendly unit carries a persistent non-colour ownership cue"
     stories: ["US-009"]
     tasks: ["T051", "T066"]
-    code: []
+    code: ["src/game/render/ownership.ts", "src/game/render/jitter.ts"]
     tests: []
   - id: "FR-019"
     text: "Result screen's primary action is Rematch"
     stories: ["US-010"]
     tasks: ["T068", "T069"]
-    code: []
+    code: ["src/game/scenes/Result.ts", "src/game/main.ts"]
     tests: []
   - id: "FR-020"
     text: "Units auto-acquire enemies in range; explicit orders override"
     stories: ["US-004"]
     tasks: ["T040"]
-    code: []
+    code: ["src/sim/combat.ts"]
     tests: []
   - id: "FR-021"
     text: "Target acquisition ties resolve by stable entity id"
     stories: []
     tasks: ["T034", "T040"]
-    code: []
+    code: ["src/sim/combat.ts"]
     tests: []
   - id: "FR-022"
     text: "A* open-set ties resolve by stable entity id"
     stories: []
     tasks: ["T026", "T032"]
-    code: []
+    code: ["src/sim/pathfind.ts"]
     tests: []
   - id: "FR-023"
     text: "Screen-edge indicator + audio cue when an owned entity takes damage"
     stories: ["US-011"]
     tasks: ["T070"]
-    code: []
+    code: ["src/sim/combat.ts", "src/sim/state.ts", "src/game/hud/alert.ts"]
     tests: []
   - id: "FR-024"
     text: "Honest fallback message when WebGL is unavailable"
     stories: ["US-012"]
     tasks: ["T061", "T071"]
-    code: []
+    code: ["src/game/main.ts", "index.html"]
     tests: []
   - id: "FR-025"
     text: "Local counters record time-to-first-action, duration, completion, rematch"
     stories: ["US-001", "US-008", "US-010"]
     tasks: ["T072"]
-    code: []
+    code: ["src/game/hud/counters.ts"]
     tests: []
   - id: "FR-026"
     text: "Difficulty gate is operable by keyboard alone"
     stories: ["US-002"]
     tasks: ["T062", "T067"]
-    code: []
+    code: ["src/game/scenes/Gate.ts", "src/game/ui/app.css"]
     tests: []
   - id: "FR-027"
     text: "Ore-node selection resolves by least squared distance, ties by ascending node id"
     stories: ["US-003"]
     tasks: ["T027", "T033"]
-    code: []
+    code: ["src/sim/economy.ts"]
     tests: []
   - id: "FR-028"
     text: "Simultaneous Base destruction on one tick resolves as an explicit Draw"
     stories: ["US-008"]
     tasks: ["T036", "T038", "T041"]
-    code: []
+    code: ["src/sim/victory.ts", "src/sim/combat.ts"]
     tests: []
   - id: "FR-029"
     text: "Difficulty is a field of initial simulation state and appears in the replay header"
@@ -223,24 +223,39 @@ requirements:
     text: "Selection tests against unit collision circles, not sprite bounds"
     stories: ["US-004"]
     tasks: ["T052", "T053"]
-    code: []
+    code: ["src/game/input/select.ts"]
     tests: []
   - id: "FR-031"
     text: "Valid placement = full footprint passable, in-bounds, unoccupied by structure or unit"
     stories: ["US-006"]
     tasks: ["T037", "T039"]
-    code: []
+    code: ["src/sim/production.ts"]
     tests: []
   - id: "FR-032"
     text: "When every ore node is depleted, sudden death arms; after a grace period all Bases take escalating damage until the match resolves (CR-001)"
     stories: ["US-008"]
     tasks: ["T078", "T041", "T073"]
-    code: []
+    code: ["src/sim/victory.ts", "src/sim/constants.ts"]
     tests: []
   - id: "FR-033"
     text: "Sudden-death damage shows a distinct indicator and does NOT trigger the under-attack indicator (CR-001)"
     stories: ["US-008"]
     tasks: ["T079", "T041", "T070"]
-    code: []
+    code: ["src/sim/victory.ts", "src/sim/combat.ts", "src/game/hud/alert.ts"]
     tests: []
 
+
+# Owned by implement (Phase 6, W5-C2): install-time supply-chain vetting.
+# Evidence and rationale in features/simple-rts-game/dependency-log.md.
+dependencies:
+  - {pkg: "phaser", version: "4.2.1", ecosystem: npm, scope: runtime, added_by_task: "T001", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "vite", version: "8.2.2", ecosystem: npm, scope: dev, added_by_task: "T001", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "typescript", version: "5.9.3", ecosystem: npm, scope: dev, added_by_task: "T001", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "@types/node", version: "22.20.1", ecosystem: npm, scope: dev, added_by_task: "T001", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "vitest", version: "4.1.11", ecosystem: npm, scope: dev, added_by_task: "T002", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "eslint", version: "10.9.0", ecosystem: npm, scope: dev, added_by_task: "T004", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "typescript-eslint", version: "8.67.0", ecosystem: npm, scope: dev, added_by_task: "T004", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "@eslint/js", version: "10.0.1", ecosystem: npm, scope: dev, added_by_task: "T004", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "@playwright/test", version: "1.62.1", ecosystem: npm, scope: dev, added_by_task: "T005", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "@axe-core/playwright", version: "4.13.0", ecosystem: npm, scope: dev, added_by_task: "T005", registry_exists: true, list: none, verdict: pass, confirmed_by_user: false}
+  - {pkg: "tsx", version: "4.23.12", ecosystem: npm, scope: dev, added_by_task: "T024", registry_exists: true, age_days: 3990, downloads_last_month: 348163294, list: none, verdict: pass, confirmed_by_user: false}

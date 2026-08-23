@@ -2,7 +2,7 @@ schema_version: 3
 feature: simple-rts-game
 feature_description: "Make a simple RTS game — local single-player vs AI, client-side Phaser, deterministic fixed-timestep simulation."
 created_at: "2026-08-21"
-last_updated: "2026-08-21T11:22:29Z"
+last_updated: "2026-08-22T18:15:00Z"
 feature_mode: standard
 flow_mode: gated
 v2_native: true
@@ -77,8 +77,333 @@ phases:
     scope: "focused — untested assumptions + consolidated risk register; architecture deliberately not re-treaded (covered by two Constitution Check gates)"
     digest_path: "pre-impl-review.md"
     findings: {high: 3, medium: 3, low: 1}
-  implement:              { status: pending }
-  code_review:            { status: pending }
+  implement:
+    status: milestone_complete
+    started_at: "2026-08-22T06:15:00Z"
+    milestone_completed_at: "2026-08-22T14:00:00Z"
+    digest_path: "implement/digest.md"
+    run_scope: "M7 (T058-T072) — nine E2E specs plus six screens. The HUD was migrated from Phaser to DOM at the kickoff gate: journeys.yml is authoritative and addresses every UI surface by DOM selector, and FR-026 plus the T066 axe floor are unsatisfiable inside a canvas. Prior runs scoped M0-M6 the same way."
+    milestones_complete: ["M0", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8"]
+    red_gate:
+      policy: per_milestone
+      policy_rationale: "Greenfield repo: no package.json, no Vitest, no src/. The 27 Test-first tasks span M0-M9 and reference modules that will not exist for days, so a single upfront Red would be 27 bare import errors — a vacuous Red. Instead T001/T002 (pure INFRA, zero product code) scaffold the runner, then each milestone's test block must be observed failing before its implementation block runs. Chosen by the user at the Phase 6 kickoff gate 2026-08-22."
+      status: confirmed_failing
+      tests: ["T003 (tests/lint/boundary.test.ts)", "T007-T014 (rng, hash, commands, determinism, roundtrip, headless)", "T026-T030 (pathfind, economy, ordering)", "T034-T038 + T078-T080 (combat, production, victory)", "T042-T043 (ai, replay difficulty header)"]
+      observed_at: "2026-08-22T06:17:37Z"
+      m8_note: "M8 has no Test-first: true task and no Red gate: it is a tuning pass, not a feature. The discipline it does carry is that the exit criterion became a TEST (tests/sim/duration.test.ts, 30 fixed-seed matches) rather than a number someone remembered, so a later edit that drifts out of the 6-10 band fails the build."
+      m7_note: "M7 carries NO Test-first: true task, but the nine E2E specs were written first against journeys.yml as a voluntary Red: 41 failed | 1 passed of 42, every failure a selector that did not exist. Green at 42/42 after the DOM migration and T067-T072. The single Red-state pass is `exposes no test hook without the flag`, trivially true while no hook existed and load-bearing now that one does."
+      m6_note: "T052 is the only Test-first: true task in M6 and the first since M4, so the gate was genuinely load-bearing here rather than voluntary. `selectInRect` stubbed to throw gave 12 failed | 1 passed of 13 collected; green at 15/15 after T053. The single Red-state pass asserts the function's arity, structural and green in both states."
+      m5_note: "Rejected a THIRD time for the M1 reason, and this time the test was already written when the run started. tests/game/loop.test.ts failed with 'Cannot find module ../../src/game/loop' and ZERO tests collected — a failure an empty file turns green. A signature-only src/game/loop.ts (every export present, advanceAccumulator throwing) moved it to 17 failed | 1 passed of 18 collected; green after T048 at 18/18. The single Red-state pass reads only the two constants and is green by design in both states, the same scoping control M0 used. Worth recording that M5 carries NO Test-first: true task in tasks.md — all 27 markers sit in M0-M4 and M6 — so the loop test was a voluntary extension of the discipline, and it immediately caught a defect the milestone would otherwise have shipped."
+      evidence: "5 failed | 1 passed. Each failure read 'X was planted in src/sim/... and ESLint reported no error. Rules that did fire: (none)'. Green after T004: 6 passed (6). The one pass in the Red state is the scoping control, green by design in both states."
+      m1_note: "Red rejected a SECOND time for the same reason: running the eight new test files against a repo with no src/sim modules produced bare 'Cannot find module' errors with zero new tests collected. Signature-only stubs (every export present, every body throwing) moved the failure to 43 collected tests failing on real calls. Writing the stubs also forced the whole M1 API surface to be settled before any logic existed. Green after T015-T025: 86 passed."
+      note: "The first Red draft was REJECTED as insufficient — it failed with 'ESLint returned no result' (no config file, so ESLint matched nothing), which would have gone green on an empty eslint.config.js. Rewritten to lint against a parser-only rule-free fallback so a rule-less config still fails."
+      skip_reason: null
+    tasks_completed: 80
+    tasks_total: 82
+    tasks_in_scope_this_run: 3
+    progressive_checkpoints: 17
+    progressive_warnings: 12
+    progressive_critical: 0
+    dependencies:
+      added: 11
+      vetted: 11
+      warned: 0
+      blocked: 0
+      log_path: "features/simple-rts-game/dependency-log.md"
+    sim_version: 12
+    sim_version_history:
+      - {version: 12, milestone: "CR-003", reason: "Ore scattered: eight nodes in four mirrored pairs at 520 each, replacing two of 3400 on the centre row, plus WORKER_CARRY_CAPACITY 10 -> 14. Depletion always worked but had nowhere to relocate TO. Retuned to median 6.40 / p90 10.64; sudden death now fires 8/24 where it fired 0/24, because total ore is finally low enough for the CR-001 backstop to be reachable."}
+      - {version: 11, milestone: "CR-002", reason: "Tech tree: Barracks added, Trooper gated behind it and Tank behind the Factory, Scout retired (KIND slot 3 permanently empty, never renumbered), and the opening stripped to a Base per side. Four locked requirements moved — FR-006, FR-010, FR-012 and the two-structures design decision — recorded in change-request-002.md rather than violated quietly. Retuned to median 7.78 / p90 10.84 and corpus regenerated."}
+      - {version: 10, milestone: "M9", reason: "The Factory made real. product-spec.md line 128 has always said the Factory trains Scout/Trooper/Tank with one pre-placed per side; neither half was implemented, so a playtester reported it as pointless and independently proposed the missing rule. canProduce added to step.ts, one Factory seeded per side, AI routed through Factories and taught to replace a lost one (closes M6-F8). Two producers in parallel dropped the median to 4.47, so base hp 10500->17000 and combat build times +25% brought it back to 6.24 with a TIGHTER spread than M8 achieved."}
+      - {version: 9, milestone: "M8", reason: "The balance tuning pass: base hp 1500->10500, build times +~70%, ore/node 1500->3400, and a sharper CR-001 ramp. Median match 1.6 -> 6.2 min, p90 2.0 -> 9.97. Every recorded hash in both existing cases moved, which is the expected size for a change to hp, build times AND the economy — unlike M6, which touched one case because 001 never fires a shot. Case 003 added in the same bump."}
+      - {version: 8, milestone: "M6", reason: "The `place` command (FR-012 / REV-007) joins the hashed command set, and REV-006's cooldown off-by-one changes combat timing. Deliberate regen: 001-baseline's hashes did not move at all (no shot is fired in that case) and 002-ai-vs-ai's matched the regression's `got` column exactly — one case, one checkpoint, the blast radius expected of a combat-timing change."}
+      - {version: 1, milestone: "M1", reason: "initial simulation behaviour"}
+      - {version: 2, milestone: "M2 start", reason: "destX/destY added to Entity and the hash (ADR-001 Amendment 2). Deliberate regen, all 4 recorded hashes changed — the expected size for two new hashed fields per entity."}
+      - {version: 7, milestone: "M4", reason: "AI opponent wired into stage 2. First milestone in which step() consumes the PRNG at all. ADR-001 Amendment 5 also added `pending` (scheduled AI commands) and `aiSeq` to the hash."}
+      - {version: 6, milestone: "M3 corrective pass", reason: "Code-review CRITICAL/HIGH fixes: build and move commands now function, blocked-goal pathing no longer beelines through structures, deposit is cell-adjacency. Behaviour changed substantially — the corpus case's three build commands were previously silent no-ops, so its recorded hashes had been encoding broken behaviour since M1."}
+      - {version: 4, milestone: "M3", reason: "ADR-001 Amendment 3 — queuedKind per entity, suddenDeathAt on state, and the two per-player indicator flags. The flags are hashed deliberately: FR-033 requires sudden-death damage NOT to read as under-attack, so they record what happened in the simulation rather than how it is drawn."}
+      - {version: 5, milestone: "M3", reason: "ADR-001 Amendment 4 — gatherNodeId split out of targetId. targetId was holding two id spaces (entity ids and ore node ids) and combat cleared it out from under the economy the moment both existed."}
+      - {version: 3, milestone: "M2", reason: "economy and movement wired into the tick. NOT bumped in the same edit at first: the corpus caught it as a REGRESSION (first divergence tick 100) rather than as staleness, which is the more useful failure. Bumped by hand, regenerated, hashes matched the regression's 'got' column exactly."}
+    findings_for_gate:
+      - id: "M9-F1"
+        severity: "resolved"
+        title: "The Factory did nothing, and a playtester found it before any test did"
+        detail: "product-spec.md line 128 specifies the Factory trains Scout/Trooper/Tank with one pre-placed per side. Neither half existed: createMatch seeded no Factory and queueBuild always named the Base, so a 200-ore structure was an ornament and the Scout had no role. Three of eight feedback items were this one defect, and the player proposed the missing rule unprompted — the strongest available evidence that the spec's design was right and the implementation drifted."
+        resolution: "canProduce enforced in step.ts (NOT the build bar — the AI issues commands through the same path and a UI-only rule would have gated only the player). Workers stay on the Base so pre-impl F-6's zero-cost floor is not put behind a structure. AI trains at a Factory and places a replacement when it has none, closing M6-F8."
+        lesson: "Every automated layer had a reason to miss it: the M6 review checked that placement created a structure and never asked what it does, E2E asserts the bar has five entries and not that they route anywhere, the AI never placed one, and M8 tuned an economy where 200 ore bought nothing. Phase 7 verify-full, which exists for exactly this drift, has still never run."
+      - id: "M9-F2"
+        severity: "resolved"
+        title: "An E2E test raced itself once the opening changed"
+        detail: "`expect.poll(factoryCount).toBe(1)` passed INSTANTLY once a Factory existed from tick 0, so the ore assertion following it ran before the placement command had drained. The absolute count only ever worked while the spec's own opening was missing. Now waits for a delta."
+      - id: "M9-F3"
+        severity: "resolved — round 2"
+        title: "M9 exit criteria met on the re-run"
+        detail: "Round 1 returned design feedback and none of the measurements. Round 2, against the build with a working Factory and the T077 feedback fixes, reported both: players understood what to do unaided (K1), and several won on New to this — the criterion pre-impl F-3 singled out, because comprehension alone does not prove the game is beatable and an AI written by someone who knows the game is the most common way a solo project ships something unwinnable."
+        caveat: "Reported qualitatively rather than tallied: no per-participant count, no stopwatch K2 reading, no counter export. The criteria are met on the observer's judgement, which is what a comprehension test ultimately is, but the numbers in metrics.md (K2 <30s, K3 >=70%, K5 >=40%) remain unmeasured. Recorded as met rather than as a scored table."
+      - id: "M9-F4"
+        severity: "resolved"
+        title: "Three cheap presentation remedies from round 1"
+        detail: "(1) Nothing indicated a unit was being produced — the only feedback was ore leaving the counter at COMPLETION, up to fifteen seconds after the click. (2) No combat feedback at all. (3) Sprites never turned. The simulation had been doing all three correctly since M3; it simply never said so."
+        resolution: "Progress bars on the producer (covers both a unit being trained and a structure building itself); beams derived from `cooldown`, which doubles as shot freshness so no edge detection is needed, drawn only on the freshest third so the screen shows shots rather than a permanent web of lines; fading blasts recorded at the frame a sprite is retired, since no death event exists in sim state and adding one would put presentation into the hash; vehicle-only rotation, eased and taking the short way round the +/-pi boundary, held in a presentation map rather than Entity because facing changes no outcome. Verified against the shipping renderer via scripts/spike-effects.*, as the T081 ring was."
+      - id: "M9-F5"
+        severity: "open — change request"
+        title: "Two round-1 requests are outside v1 scope"
+        detail: "Terrain decoration (the Kenney tile pack ships unused trees, rivers and crystals) and defensive walls to slow an attacker. Walls are a new mechanic present in no requirement; both need a change request rather than a patch."
+      - id: "M6M8-F1"
+        severity: "resolved"
+        title: "Pure logic sat at 0% coverage for the third milestone running"
+        detail: "SessionCounters is pure but for two localStorage calls, and formatDuration is entirely pure; both were untested because they live in directories full of Phaser and DOM classes. M6-F3 split placement.ts and buildbar.ts for exactly this reason and M7 recorded the lesson — then the very next milestone's new files repeated it. Testing them immediately found REV-016. 17 tests added."
+        lesson: "The pattern recurs because the directory, not the code, decides whether something looks testable. Worth a rule: anything pure gets its own module regardless of where it is used."
+      - id: "M6M8-F2"
+        severity: "open — accepted"
+        title: "The duration test made the unit suite five times slower"
+        detail: "1.2s to 6.57s, of which 5.39s is 30 full matches run at module scope in duration.test.ts. Accepted: 6.6s is fast in absolute terms and it buys executable verification of the product's central claim. Recorded with numbers so the next slow suite knows the budget. Escalation: move into beforeAll and gate the full 30 behind CI."
+      - id: "M6M8-F3"
+        severity: "open — accepted"
+        title: "Two clocks are mixed in the alert band"
+        detail: "The game passes Phaser's time.now, the E2E hook passes performance.now(), and the latch compares them. Correct by specification — rAF timestamps share performance.now()'s time origin and Phaser derives time.now from the rAF timestamp — but nothing says so at either call site, and a change to how the scene sources its clock would surface only as an intermittent E2E failure."
+      - id: "M6M8-F4"
+        severity: "resolved"
+        title: "code-review.md was stale and cost M6 real time"
+        detail: "REV-008 was fixed by the M3 corrective pass but still listed as open, so M6 planned work for it and found the fix already present. REV-006 and REV-007 were then fixed in M6 without their entries being updated either. All four now carry a status line at their original location, and the M6-M8 review carries a reconciliation table."
+        lesson: "A findings document that is only ever appended to becomes a list of things that MIGHT be true."
+      - id: "M8-F1"
+        severity: "resolved"
+        title: "The first duration measurement was AI-versus-nobody"
+        detail: "The harness reported 18 matches at a 1.54-minute median with player 1 winning 18 of 18 — on a perfectly mirrored map, which is not a balance result but a broken instrument. ai.ts states in its own header that it plays player 1 only and that an unattended match is one where player 0 never issues a command. Tuning against that number would have optimised a configuration the game never ships."
+        resolution: "Player 0 driven by reflecting the state across the map's vertical axis with owners swapped, planning for `player 1` in the mirror, and flipping the orders back. ai.ts left untouched — the single-AI design is deliberate. Extracted to tests/sim/sparring.ts and shared with the measurement script so the mirror exists once."
+        lesson: "An instrument's first output deserves more suspicion than its tenth."
+      - id: "M8-F2"
+        severity: "resolved — was a phantom"
+        title: "A reported asymmetry that turned out to be the probe's own fault"
+        detail: "A symmetry probe showed player 1 ending every mirrored fight one unit up, which looked like a systematic advantage to the side the human does not play. It was the probe: with no sparring partner inside it, p1's Base built a free Worker (pre-impl F-6) while p0's did nothing. Tracing a real mirrored duel showed both units dying on tick 145 — O-6 exactly as designed. The residual skew is the harness's zero-latency commands versus the AI's `pending` queue, not the game."
+        lesson: "A reported-and-wrong balance bug costs more than an unreported one. The trace was worth the twenty minutes."
+      - id: "M8-F3"
+        severity: "resolved"
+        title: "CR-001's backstop could not reach the matches that needed it"
+        detail: "After pass 4 the median was in band but one match ran 16.2 minutes — past p90 and past the product's own name. The cause was the TRIGGER, not the ramp: sudden death arms on global node depletion, and 4200 ore per node put depletion out of reach in precisely the stalemates the backstop exists for. Cutting to 3400 took p90 from 13.08 to 9.97 and raised sudden-death engagement from 4/24 to 7/30. The backstop had been tuned against 1500hp Bases and was far too slow against 10500."
+      - id: "M8-F4"
+        severity: "resolved"
+        title: "Two tests held tuning constants as magic numbers"
+        detail: "`builds itself to completion` looped 500 ticks against a Factory whose build time is now 520. `actually consumes the PRNG` ran 300 ticks, and the AI draws ONLY when choosing among affordable combat units — slower worker production meant it never reached that branch, so a determinism test failed because of build times. Both now derive their windows from constants.ts."
+      - id: "M8-F5"
+        severity: "open — for M9"
+        title: "The duration band is measured against a mirrored AI, not a human"
+        detail: "A good instrument for pacing, a poor one for balance, a proxy for a human in neither. If real players play very differently from this AI, these constants move again — and M9 is the first time anyone will find out."
+      - id: "M8-F6"
+        severity: "open — accepted"
+        title: "One match in thirty still runs to 15.3 minutes"
+        detail: "p90 sits at 9.97, comfortably inside the criterion, but the worst case is outside the promise the product name makes. Accepted rather than tuned away, because chasing the tail further would drag the median down out of the band."
+      - id: "M8-F7"
+        severity: "open — for M9"
+        title: "Difficulty barely separates by duration"
+        detail: "Medians are 6.3 / 5.9 / 6.3 across the three levels. Peak army size DOES separate cleanly (7 / 12 / 19), so the profiles are doing something — but whether the levels feel different is a question no harness can answer. Related to the M4 open item that difficulty tuning is unvalidated."
+      - id: "M8-F8"
+        severity: "open — informational"
+        title: "MAX_UNITS_PER_SIDE is decorative"
+        detail: "Peak observed is 19 against a ceiling of 30. Nothing enforces the constant and nothing approaches it, so it currently documents an intent rather than constraining anything."
+      - id: "M7-F1"
+        severity: "resolved"
+        title: "The HUD was unreachable by the authoritative journey and invisible to the a11y gate"
+        detail: "journeys.yml — which tasks.md names authoritative — addresses every UI surface by DOM selector and reserves the canvas for the world. M6 drew the build bar and ore counter inside Phaser, so four of the nine E2E specs addressed elements that did not exist. Worse, FR-026 (gate operable by keyboard with visible focus) has no implementation inside a canvas, and T066's axe WCAG-AA floor CANNOT SEE into a canvas — a canvas-drawn UI passes that gate by having nothing to audit. Same vacuous-green shape as M0's empty-config Red and M5's coverage report."
+        resolution: "HUD and all screens moved to DOM at the kickoff gate; the world stays in Phaser. a11y.spec.ts carries a control test asserting axe found real nodes, because a suite of zero-violation assertions is green over an empty DOM."
+        lesson: "An accessibility gate over a surface the auditor cannot read is not a weak gate, it is no gate."
+      - id: "M7-F2"
+        severity: "resolved"
+        title: "A one-in-three E2E flake that was a real ordering fact"
+        detail: "`damage from an enemy raises the indicator` failed while the sudden-death test beside it passed, with identical machinery. `underAttack` lives for exactly one tick — applyDamage clears both flags at the top of every tick and re-raises them from that tick's ledger. In the game that is safe because step and onFrame run in the SAME frame, so the flag is always observed by the frame that produced it. Applying damage from outside the loop broke that pairing: at 60Hz render against a 20Hz simulation, roughly one frame in three runs a step, and a step landing before any observation consumed the flag. Sudden death passed by luck."
+        resolution: "Fixed in the hook, not the game — the game's ordering was already correct. The hook makes the observation itself, at the moment the flag is true, through the real alert code. Confirmed with --repeat-each=6: 24 passed."
+      - id: "M7-F3"
+        severity: "resolved"
+        title: "A keyboard test was measuring the autofocus, not the tab order"
+        detail: "`every difficulty option is reachable by Tab` reported ['normal','hard','easy']. Gate.show() focuses the first option so a keyboard player starts inside the gate rather than tabbing through browser chrome, so the first Tab moves OFF it. Rewritten to walk from whatever already holds focus."
+      - id: "M7-F4"
+        severity: "open — for M8"
+        title: "The counters are recorded and never read"
+        detail: "SessionCounters persists to localStorage and feeds the F3 overlay, but nothing surfaces them. T074 needs twenty recorded match durations from the tuned build, and that is where they have to come from."
+      - id: "M7-F5"
+        severity: "open — watch"
+        title: "No corpus case covers the `place` command"
+        detail: "Added in M6 and hashed with an exhaustiveness guard, but absent from both recorded cases — so its encoding is asserted by unit test and never by the cross-platform corpus. T075 records a third case during M8 tuning and is the natural place to include a placement."
+      - id: "M7-F6"
+        severity: "open — informational"
+        title: "The axe floor covers four DOM surfaces and cannot cover the world"
+        detail: "Gate, result, fallback and the in-match HUD are audited. The canvas cannot be, so the world's accessibility claim rests entirely on FR-018's underglow ring — verified in greyscale by the T081 spike and pinned by unit tests, not by axe. Worth stating plainly rather than letting `zero critical violations` imply more than it covers."
+      - id: "M6-F1"
+        severity: "resolved"
+        title: "REV-006 was real: every damage-per-second figure was 6% low"
+        detail: "Measured before fixing — cooldownTicks 16, shots landing on ticks 1, 18, 35, 52, gaps of 17. Cooldown was set on the firing tick and only decremented from the next. The first replacement test COUNTED shots in a fixed window and passed against the broken code, because 4 shots land in 64 ticks under both a 16- and a 17-tick interval; the existing combat test had been failing the same way for two milestones. The gap has to be measured directly, not inferred from a count. M8 is a tuning pass and would have calibrated around the error."
+        lesson: "A test that counts events cannot see an off-by-one in the interval between them."
+      - id: "M6-F2"
+        severity: "resolved"
+        title: "M4-F2 closed — the hash switch had no exhaustiveness check"
+        detail: "COMMAND_TYPE_CODE is typed against Command['type'], so the code map already failed compilation for a new command type; the hole M4 warned about was the hash's switch statement, which had no default. It now narrows to `never`, making a command type with no hashing case a compile error. `place` was the first new command type since the warning and is what made closing it worth doing."
+      - id: "M6-F3"
+        severity: "resolved"
+        title: "A decision trapped in a Phaser module cannot be tested at all"
+        detail: "placement.ts and buildbar.ts each held a pure decision plus a Phaser class. Phaser needs `window`, so importing the pure function under Node threw ReferenceError before any test ran — FR-010's `exactly 5 entries` and FR-013's ghost states were unassertable for a reason unrelated to either. Split into render/ghost.ts and hud/roster.ts. Third time this codebase has learned it, after advanceAccumulator and orderFor, which were built the right way deliberately."
+      - id: "M6-F4"
+        severity: "resolved"
+        title: "Out-of-map placement was accepted because cellOf aliases rows"
+        detail: "cellOf derives a cell index arithmetically, so an x past the right edge wraps into the next ROW rather than going out of range — the index passed inBounds and a click off the map placed a structure elsewhere entirely. isValidPlacement guards its raw pixel arguments before converting for exactly this reason; the place handler now does the same. Caught by the test written for it."
+      - id: "M6-F5"
+        severity: "resolved"
+        title: "REV-008 was already fixed and the review document was stale"
+        detail: "step.ts validates isProducibleKind before setting queuedKind; the M3 corrective pass added it and code-review.md was never updated. The test written for the finding passed on its first run. Recorded rather than claimed as a fix."
+      - id: "M6-F6"
+        severity: "open — for M7"
+        title: "The placement ghost hides what is blocking the cell"
+        detail: "Drawn at depth 35 against sprites at 20, so hovering an occupied cell covers the thing making it invalid. The red state communicates `no` but not `because of that`. Cheap to fix by moving the ghost below the sprite layer."
+      - id: "M6-F7"
+        severity: "open — for M9 playtest"
+        title: "Units block placement, so ground near a Base is intermittently unbuildable"
+        detail: "Correct per T037 (unoccupied by structure OR unit), but workers milling around a Base make the most natural place to put a Factory the least reliable. Observed while playing: a click was refused because two workers walked into the target cell between hover and click. The ghost turned red correctly, so the feedback works; the question is whether the rule is right."
+      - id: "M6-F8"
+        severity: "open — for M7/M8"
+        title: "The AI never places structures, so FR-012 is exercised from one side only"
+        detail: "REV-007 is closed for the player. The opponent has no place behaviour, so no corpus case covers the new command and the AI still cannot expand its production. Related to the M4 open item about the AI never building Factories."
+      - id: "M5-F1"
+        severity: "resolved"
+        title: "The production build shipped no sprites, and every green build had hidden it"
+        detail: "`npm run build` was green from M0 and `npm run dev` rendered perfectly, but dist/ contained ZERO PNGs. Textures load by URL at run time rather than by import, so Vite never saw them; dev only worked because the dev server serves the project root. In production every texture would 404 and the match would render as Phaser's green missing-texture boxes on a blank field. M0 could not have caught it — there were no assets and no loader. What caught it was looking INSIDE dist/ instead of trusting the build's exit code."
+        resolution: "A closeBundle copy step that THROWS if the art pack is missing, chosen over relocating images/ to public/ because the pack's location is documented in plan.md and README.md. Verified by serving the real bundle through vite preview. tests/game/manifest.test.ts now checks every roster path against the filesystem, so a mistyped sprite number fails in milliseconds instead of drawing a green box in a moving match."
+        lesson: "A build's exit code says the bundler finished, not that the bundle works."
+      - id: "M5-F2"
+        severity: "resolved"
+        title: "Random jitter could not separate co-located units at ANY magnitude"
+        detail: "The T081 spike showed an enemy trooper sitting inside a friendly's ownership ring ~3 px away, so the ring read as the enemy's — the FR-018 cue INVERTED rather than weakened, which is worse than drawing no ring. The first fix raised the offset and tightened the ring; measurement showed raising the offset was useless. Worst-case separation between consecutive ids was 0.36 px at +/-11 and 0.66 px at +/-20 — nearly doubling the magnitude bought 0.3 px, because two independent uniform draws can coincide at any scale. 367 of 399 consecutive-id pairs landed inside one ring radius."
+        resolution: "Successive golden angles on a fixed-radius ellipse: consecutive ids sit ~137.5 degrees apart, giving a guaranteed 20.13 px separation against a 16.6 px ring. jitter.test.ts asserts the separation as a NUMBER against the ring radius, so restyling either cannot quietly re-break it."
+        lesson: "A screenshot that looks right proves one arrangement, not a property. The measurement is what showed the approach was unsound rather than under-tuned."
+      - id: "M5-F3"
+        severity: "resolved"
+        title: "M4-F1 answered: CommandQueue was never dead code, it was early"
+        detail: "The M4 gate left the choice as wire state.pending through the queue or delete it. Neither was right. plan.md's Command flow already names the caller — `this.queue.drain(this.sim.tick + 1)` — and that caller is MatchScene.update, which did not exist until T047. The two are different seams and both are load-bearing: state.pending holds the AI's scheduled commands and must live in hashed state so step() stays pure, while player intent arrives from OUTSIDE the simulation, buffers outside it, and enters through step()'s argument. Deleting the queue in M4 would have deleted the multiplayer seam Constitution II exists to preserve."
+        lesson: "\"Verified but unreachable\" is a real smell, but a milestone boundary is not proof of unreachability. The plan named the user two milestones ahead."
+      - id: "M5-F4"
+        severity: "resolved"
+        title: "Floating point made the tick rate depend on the monitor"
+        detail: "288 frames of a 144 Hz display sum to 1999.9999999999998 ms, one ulp short of the 40th tick boundary, so an exact >= comparison ran 39 ticks where 30 Hz ran 40 over identical wall time. RF-3 arriving by an unpredicted route: not delta leaking into step(), but delta never quite adding up. Fixed with a 1e-6 ms boundary epsilon SIZED FROM THE DRIFT — the accumulator is bounded at MAX_ACCUMULATOR_MS so each addition contributes at most ulp(250) ~ 5.7e-14 ms, and ten minutes at 144 Hz accumulates under 1e-8 ms."
+        lesson: "The test that caught it (144 Hz vs 30 Hz over the same wall time) was written before the implementation and is the only assertion in the file that could have."
+      - id: "M5-F5"
+        severity: "open — for M6"
+        title: "Jitter moves the drawn position up to 18 px from the simulated one"
+        detail: "The golden-angle offset is presentation-only and cannot touch a hash, but it does mean a unit is drawn up to 18 px from where it actually is on a 64 px tile. T052 already requires drag-select to test collision circles at SIMULATED positions rather than sprite bounds; that requirement is now load-bearing rather than merely tidy, because the two positions genuinely differ."
+      - id: "M5-F6"
+        severity: "open — watch"
+        title: "src/sim/setup.ts duplicates layout knowledge the corpus holds inline"
+        detail: "Corpus case 001 and the new standard opening describe the same mirrored 20x11 map in two places, and only the corpus copy is hashed. If the opening changes, 001 will not notice — it will keep certifying a layout the game no longer produces, which is exactly the failure M2-F2 already found once when 001 was testing a map the game could not produce."
+      - id: "M5-F7"
+        severity: "open — for M9"
+        title: "Structures carry no ownership ring"
+        detail: "Both bases use the same sprite, distinguished only by silhouette and screen position. Correct per FR-018, which scopes the cue to UNITS, and the difficulty gate will state the player is on the left. Untested against a first-time player under time pressure; M9's comprehension playtest is where it either holds or does not."
+      - id: "M5-F8"
+        severity: "open — informational"
+        title: "The bundle is 1.39 MB (364 kB gzipped), all Phaser"
+        detail: "Exceeds Vite's 500 kB warning. No NFR names a bundle budget and the plan's goal is first render under 3 s on a mid-tier laptop, which 364 kB gzipped meets on broadband. Flagged rather than fixed: code-splitting a single-scene game adds complexity for no measured gain, but nobody has measured cold load. T072's counters are where that number should come from."
+      - id: "M4-F1"
+        severity: "open — decide in M5 or delete"
+        title: "CommandQueue is now genuinely dead code"
+        detail: "createCommandQueue / enqueueCommand / drainCommands are fully tested and called by no production code. Before M4 a grep for their users in src/ returned nothing — the same 'verified but unreachable' shape the code review found twice in production code. M4 gave scheduling a real user, but via state.pending rather than the CommandQueue type, because the queue has to live IN hashed state to survive a pure step(). Either wire pending through it or delete both the type and its tests."
+      - id: "M4-F2"
+        severity: "open — watch"
+        title: "`pending` is the first variable-length hashed field"
+        detail: "A real departure from the fixed-width per-entity encoding. Handled by hashing length first and a type code before each payload, so a move and an attack carrying identical numbers cannot collide — but it is the one place where a future command type could be added without its fields being hashed, and no test would necessarily notice."
+      - id: "CR-M3-F5"
+        severity: "resolved"
+        title: "Removing the straight-line movement fallback exposed three further defects"
+        detail: "Fixing REV-004 deleted a lenient fallback that had been masking two latent bugs, and a third surfaced only once move orders worked at all. (1) findPath required a PASSABLE START, but units stand inside their Base's blocked cell constantly — with the beeline gone every worker was trapped and the whole economy stopped. Blocked must mean cannot be ENTERED, not cannot be left. (2) Deposit range was measured in pixels to the Base's x/y while movement is cell-based, so whenever a Base was not exactly cell-centred the worker stood as close as it was allowed, was still too far, and oscillated IDLE<->MOVING forever holding a full load — a silent livelock with no error and no progress. Deposit is now cell adjacency. (3) The economy re-targeted a worker on the same tick a move order was issued (commands are stage 1, economy is stage 3), so orders looked ignored; the loop only ever sets a destination together with a gatherNodeId, so moving WITHOUT one is now the predicate for 'under human orders'."
+        lesson: "Removing a lenient fallback is how you find out what it was hiding. All three were invisible while the beeline existed."
+      - id: "M3-F1"
+        severity: "resolved"
+        title: "A test HUNG instead of failing"
+        detail: "victory.test.ts used `while (verdict === NONE)` with no budget. Against an unimplemented victory stage it spun forever, synchronously, stalling the whole suite. Vitest's testTimeout CANNOT save you from this — a synchronous infinite loop blocks the event loop so the timeout never fires. In CI it would have burned the job timeout and reported nothing: no failing test name, no assertion, a dead job. The irony is exact: these are the CR-001 tests, whose entire purpose is that a match must terminate in bounded time."
+        resolution: "Replaced with runToVerdict(state, budget), which throws a named error when the budget is exhausted, so non-termination is an assertion failure with a message rather than a hang."
+      - id: "M3-F2"
+        severity: "resolved"
+        title: "The regression suite caught a real defect two milestones later"
+        detail: "targetId held two different id spaces: M2 economy stored the worker's ore node in it, M3 combat stores an enemy entity id and clears it every tick for any unit with no enemy in range. Wiring combat into the tick made an M2 economy test fail. Entity ids start at 1 and the sentinel is -1, so in most configurations the collision would have HIDDEN — surfacing later as a rare seed-dependent worker stall rather than an obvious break."
+        resolution: "Split gatherNodeId out of targetId (ADR-001 Amendment 4) rather than teaching combat to tiptoe around the economy's use of the field."
+      - id: "M3-F3"
+        severity: "resolved"
+        title: "TC-UNIT-008 was an M3 exit criterion with no test, and step() did not enforce FR-004"
+        detail: "plan.md lists TC-UNIT-008 (a command applies at its target tick, not on issue) among M3's exit criteria and nothing asserted it at the step() level. Worse, step() applied whatever commands it was handed regardless of tick, so FR-004 held only because every caller happened to filter correctly."
+        resolution: "applyCommands now skips commands whose tick is not the current tick; a test offers the same command every tick and asserts it takes effect exactly once. The corpus did not go stale, confirming the guard changes nothing for correct callers."
+      - id: "M3-F4"
+        severity: "open — for M8 tuning or M9 playtest"
+        title: "Workers auto-attack, which can starve the economy"
+        detail: "ATTACK.worker exists and FR-020 says units auto-acquire enemies in range, so a worker beside an enemy flips to ATTACKING every tick and stops gathering for as long as the enemy stands there. Correct per the letter of FR-020, but a contested ore node could quietly halt a player's entire economy. Not speculating a fix."
+      - id: "M2-F1"
+        severity: "resolved"
+        title: "The O-2 tie-break tests were passing for the wrong reason"
+        detail: "Deleting the A* tie-break entirely left all 10 pathfinding tests green. The open set is a linearly scanned array, so among equal f the first-PUSHED candidate wins and push order is fixed by the neighbour loop — the search was deterministic for a reason unrelated to FR-022, and every path-level assertion passed whether the comparator was total or absent. Path output cannot detect this because the property is invisible unless the open set's order varies, which it never does today and would the moment anyone swapped in a binary heap. Same class of error as M0's empty-config Red."
+        resolution: "Comparator exported as chooseBestOpen and tested directly against PERMUTED candidate order. Mutation-verified: tie-break deleted was 10 passed before, 3 failed after."
+      - id: "M2-F2"
+        severity: "resolved"
+        title: "The baseline corpus case was testing a layout the game cannot produce"
+        detail: "001-baseline was authored in M1 before a grid existed. Once M2 fixed the map at 20x11 tiles (1280x704 px), three of its six entities and one of its two ore nodes were off the map — player 1's economy and movement were entirely unexercised."
+        resolution: "Re-authored as a proper mirror across x=640 on cell centres. Both sides now gather from tick 0 with no input (p0 +60 ore, p1 +30 over 400 ticks); both same-tick command collisions preserved with the AI listed first so O-4 stays a real guard."
+      - id: "M2-F3"
+        severity: "informational"
+        title: "ADR-002 caught an undeclared behaviour change"
+        detail: "Wiring economy into the tick changed behaviour without a SIM_VERSION bump in the same edit. The corpus failed as a regression rather than staleness — the correct and more useful failure, since it says 'behaviour moved and you did not declare it'. After the hand bump the message switched to the stale path and regeneration produced hashes identical to the regression's 'got' column. The discipline worked without anyone remembering to apply it."
+      - id: "M1-F1"
+        severity: "resolved"
+        resolution: "ACCEPTED at the M1 gate 2026-08-22. ADR-001 Amendment 1 written into plan/adr/ADR-001-canonical-state-hash.md: fields 7 and 8 added to the hashed list, an Amendments section records what changed, why, how it was found, and how to revert, and the original field list is added to Alternatives rejected. Code comment in hash.ts updated to cite the amendment rather than propose it."
+        title: "ADR-001 amendment — hash covers difficulty and nextEntityId"
+        detail: "ADR-001 opens with 'exactly the simulation state' then lists fields omitting both. Neither is presentational or derived, so neither falls under the ADR's own 'what is NOT hashed' list — a drafting gap, not a deliberate exclusion. It matters: two states differing only in nextEntityId diverge at the next spawn, and difficulty is a field precisely so it can vary independently (FR-029). Implemented as a purely additive append AFTER the ADR's six fields; reverting is two lines plus one corpus:regen."
+      - id: "M1-F2"
+        severity: "deferred to M2 (decided)"
+        resolution: "DECIDED at the M1 gate 2026-08-22: M2 owns movement and pathfinding, so M2 chooses the field shape, adds it to Entity and the hash, amends ADR-001, bumps simVersion, and regenerates the corpus — all in one reviewed change. Adding destX/destY now would mean guessing a shape before pathfinding has a design."
+        title: "Data model has no destination field, so move orders cannot be recorded"
+        detail: "plan.md's Entity and ADR-001's hashed field list both omit one. step() handles attack and build; move hits an explicit commented case that does nothing. Inventing destX/destY in M1 would add a hashed field ahead of the milestone that owns movement, staling every corpus hash recorded in between. M2 must decide the field and amend ADR-001 in the same change."
+      - id: "M1-F3"
+        severity: "informational"
+        title: "The M0 boundary guard caught a real violation in M1 code"
+        detail: "src/sim/replay.ts:126 used new Date().toISOString() for createdAt — a wall-clock read inside the simulation, caught by no-restricted-globals one milestone after the rule was written. Fixed by making createdAt caller-supplied; corpus.test.ts now fails any case whose date is not an ISO date, because a caller-supplied field is a forgettable one."
+      - id: "M1-F4"
+        severity: "informational"
+        title: "navigator exists in Node 21+, so the lint ban on it is load-bearing"
+        detail: "headless.test.ts asserted typeof navigator === 'undefined'; it is 'object', reporting Node.js/24. A sim module reading navigator would not crash under test — it would silently return one value in Node and another in the browser. The runtime environment cannot catch this; only the lint rule can."
+    accepted_risks:
+      - id: "O-7-partial"
+        title: "Map/Set for-of guard is partial"
+        decision: "accepted"
+        decided_at: "2026-08-22T06:30:00Z"
+        detail: "no-restricted-syntax bans ForInStatement outright and catches the .keys()/.values()/.entries() idiom plus iteration of a Map/Set literal. Bare `for (const x of someMap)` on a Map-typed variable is NOT caught — a syntax selector has no type information. Rejected escalations: type-aware linting via projectService (several times slower on every CI run, before any sim code exists to justify it) and banning Map/Set outright in src/sim (A* needs an open set; would force a workaround in pathfinding, where determinism bugs are most expensive)."
+        mitigation: "The replay corpus (Constitution IV) fails the build when iteration order diverges across the CI matrix. Revisit only if O-7 actually bites; the escalation path is type-aware linting."
+    ci:
+      run_id: 32525241752
+      url: "https://github.com/dp-lewis/rts/actions/runs/32525241752"
+      commit: "99ec475"
+      verdict: "success — 4/4 jobs green"
+      jobs: ["ubuntu-latest node 22", "ubuntu-latest node 24", "macos-latest node 22", "macos-latest node 24"]
+      boundary_guard_evidence: "Every runner logged: 'Lint correctly rejected a planted Math.random() in src/sim/__ci_canary__.ts.' The exit criterion is enforced on every push, not witnessed once."
+      corpus_evidence: "FIRST cross-platform exact-bit hash agreement. The 001-baseline hashes were recorded locally on macOS/Node 24 and reproduced byte-identically on ubuntu/Node 22 and every other runner (13/13 corpus tests green on all four). This is the claim ADR-001 exists to make, and until this run it was untested."
+      note: "actions/checkout and setup-node bumped v4 -> v5; --passWithNoTests removed from the corpus step now that a real case exists, so an accidentally-empty corpus directory fails instead of passing silently."
+    open_tasks: []
+  code_review:
+    status: completed
+    completed_at: "2026-08-22T09:40:00Z"
+    scope: "M0-M3 (44/82 tasks). Reviewed at a milestone boundary by explicit request; implement.status is milestone_complete, not completed."
+    artifact: "code-review.md"
+    m5_review:
+      reviewed_at: "2026-08-22T11:45:00Z"
+      scope: "M5 delta (9 source files, ~640 LOC, 5 new test files). M4 was never separately reviewed; its files are included in this delta."
+      status: "RESOLVED — all 7 findings fixed or acknowledged in the same pass"
+      machine_gates: {lint: pass, types: pass, sca: pass, coverage: "FAIL -> fixed (REV-010)"}
+      findings: {critical: 1, high: 2, medium: 4, low: 0, fixed: 6, acknowledged: 1}
+      reviewed_by_model: null
+      cross_model_findings: 0
+      m6_m8_review:
+        reviewed_at: "2026-08-22T14:40:00Z"
+        scope: "160d404..HEAD — 47 files, ~3830 insertions across M6, M7 and M8."
+        status: "APPROVED WITH CONDITIONS — 1 defect found and fixed, 3 accepted risks"
+        machine_gates: {lint: pass, types: pass, sca: pass, coverage: pass, e2e: pass}
+        findings: {critical: 0, high: 0, medium: 5, low: 2, fixed: 4, acknowledged: 3}
+        reviewed_by_model: null
+        cross_model_findings: 0
+        headline: "REV-016: SessionCounters accepted malformed stored data, so a corrupt localStorage value turned every counter into a string or NaN — silently, and these are precisely the numbers M9's playtest reads. Also recorded two suspicions that PROBING DISPROVED (pointer-handler accumulation across rematches, and an engine-level player-1 advantage), because a review reporting only its confirmations has no measurable false-positive rate."
+      headline: "REV-009: the scene drained player commands for tick+1 while applyCommands only accepts state.tick, so every player order would have been silently discarded. Same defect class as the M3 review's 'the command layer never worked', one layer up, and inherited from plan.md's own sketch."
   verify:                 { status: pending }
   test_plan:              { status: pending }
   test_run:               { status: pending }
@@ -129,6 +454,21 @@ contracts:
 
 task_log: []
 gates:
+  - phase: code_review
+    decision: "approved_with_conditions"
+    timestamp: "2026-08-22T14:40:00Z"
+    scope: "M6, M7, M8 (160d404..HEAD)"
+    notes: "0 CRITICAL, 0 HIGH. One genuine defect (REV-016, malformed stored counters poisoning every reading) found and fixed with 11 tests. 3 accepted: slow duration suite, mixed clocks in the alert band, framework-bound presentation at 0% unit coverage but covered by 42 E2E. Two suspicions were disproved by probing and recorded as such. Prior findings REV-005/006/007/008 reconciled — three were already fixed and the document had gone stale."
+    reviewed_by_model: null
+    cross_model_findings: 0
+    findings: {critical: 0, high: 0, medium: 5, low: 2, fixed: 4, acknowledged: 3}
+  - phase: code_review
+    decision: "approved_with_conditions"
+    timestamp: "2026-08-22T11:45:00Z"
+    notes: "M5 delta review. 1 CRITICAL (command drain off-by-one) and 2 HIGH (coverage reporting concealed three 0% files; CI never ran coverage) all fixed and mutation-verified in the same pass. 4 MEDIUM: 3 fixed, 1 acknowledged (REV-015 setup.ts duplicates corpus 001 layout — tracked as M5-F6)."
+    reviewed_by_model: null
+    cross_model_findings: 0
+    findings: {critical: 1, high: 2, medium: 4, low: 0, fixed: 6, acknowledged: 1}
   - phase: problem_discovery
     decision: approved_with_conditions
     at: "2026-08-21T09:56:17Z"
@@ -249,6 +589,36 @@ gates:
       - "F-5 ABSORBED into T073 - tune toward a legibility ceiling of ~25-30 units per side. The ~60 figure arrived as a performance NFR and was never a design decision; 60 units on 220 cells is 27% map occupancy with no camera to zoom out of."
       - "F-6 ABSORBED into T039/T080 - a Base with no surviving Workers affords one at zero cost, removing a dead state where a player can neither act nor lose."
       - "F-7 ABSORBED as T081 - 30-minute greyscale spike before T051. The underglow ring is the entire WCAG 1.4.1 mitigation and the drawn sprite is materially smaller than its 64px canvas."
+  - phase: code_review
+    decision: approved_with_conditions
+    at: "2026-08-22T09:40:00Z"
+    conditions_cleared_at: "2026-08-22T10:20:00Z"
+    conditions_status: "ALL CLEARED — corrective pass. 197 tests green (was 179). SIM_VERSION 5 -> 6, corpus regenerated deliberately."
+    risk: medium
+    reviewed_by_model: null
+    cross_model_findings: 0
+    notes: "Machine gates all PASS (lint, types, 0/192 SCA, 95.05% stmts / 100% funcs). Ten findings: 2 CRITICAL, 3 HIGH, 4 MEDIUM, 1 LOW. Self-review — the same model wrote every line, so all four CRITICAL/HIGH findings were driven by executable probes rather than reading for intent."
+    findings:
+      critical: 2
+      high: 3
+      medium: 4
+      low: 1
+      fixed: 10
+      acknowledged: 0
+    root_cause: "No test drives the system through the command layer. Every M3 test hand-writes its preconditions into state — runProduction has 16 tests and all of them write queuedKind into a fixture, so nothing ever asked whether the only real-world producer of that field sets it. It does not. The production system is exhaustively verified and completely unreachable; 95% statements and 100% functions with the entry point to three of them broken."
+    conditions:
+      - "REV-001 CRITICAL — build commands never set queuedKind. Probe: 5000 ore, 400 ticks, 0 units produced, 0 ore spent, Base left in BUILDING state permanently. FR-011/FR-012/US-005/US-006 non-functional. MUST fix before M4."
+      - "REV-002 CRITICAL — a build command aimed at a Factory makes it re-run its own construction, because queuedKind -1 plus state BUILDING matches the self-construction branch. This is the progress-with-two-meanings hazard M3's own digest flagged, biting in the same milestone it was written down in. MUST fix before M4."
+      - "REV-003 HIGH — move commands unhandled; the comment justifying it says M2 will add the destination field, and M2 did (Amendment 2). Stale comment reads as justification. Probe: destX still -1 after 400 ticks. MUST fix before M6 input work."
+      - "REV-004 HIGH — a destination inside a blocked cell skips the pathfinder entirely and the unit beelines through obstacles. Fires on EVERY worker deposit trip, since Base cells are blocked. Probe: worker crossed a walled column at a blocked row."
+      - "REV-008 LOW but coupled — unchecked `queuedKind as Kind` cast NaNs the simulation on an out-of-range kind. Unreachable ONLY because REV-001 means queuedKind is never set from a command, so fixing REV-001 makes it reachable. Fix together."
+      - "TEST GAP (HIGH) — add command-layer end-to-end tests before M4. M4 makes the AI a second command source, so the seam that hid these defects is about to get twice the traffic."
+      - "CORPUS — 001-baseline.json contains two build commands that are silent no-ops, so its recorded hashes encode broken behaviour. Fixing REV-001 changes them legitimately; deliberate simVersion bump and regeneration required."
+    positive:
+      - "The 'would this test fail if the guard were deleted?' discipline has now paid three times (M0 empty config, M1 import Red, M2 tie-break deleted with all 10 tests still green). Very few codebases mutation-test their own guards by habit."
+      - "Determinism architecture is sound: per-field hash mutation sweep, corpus reporting FIRST divergence rather than terminal mismatch, and a regen script that refuses to touch current cases — each the harder correct choice over an easier one that would have looked identical when green."
+      - "ADR-001's four amendments record HOW each gap was found, not just what changed, including Amendment 4 admitting the regression suite caught a defect two milestones later."
+    spec_updates_suggested: "none — every finding is code failing to meet the spec, not the spec failing to describe the code"
 sync_runs:
   - at: "2026-08-21T11:22:29Z"
     scope: "quick — full chain after CR-001 application"

@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "id": "002-ai-vs-ai",
+  "description": "First corpus case with real gameplay. No player commands whatsoever — every action is the AI's, so these hashes are a signature of the opponent's decision-making and of the PRNG threading that M4 introduced. Difficulty 2 is recorded in the header (FR-029): replaying at any other level diverges, which is the point of difficulty being a field rather than part of the seed. M10: the tech tree. Scout retired (kind 3 is a permanently empty slot), a Barracks added per side, and every build command routed to the building that now makes its unit — Worker at the Base, Trooper at a Barracks, Tank at a Factory.",
+  "defect": null,
+  "createdAt": "2026-08-22",
+  "simVersion": 12,
+  "input": {
+    "seed": 90210,
+    "difficulty": 2,
+    "map": "inline",
+    "commands": [],
+    "setup": {
+      "players": [
+        {
+          "ore": 150
+        },
+        {
+          "ore": 150
+        }
+      ],
+      "nodes": [
+        {
+          "id": 0,
+          "x": 416,
+          "y": 352,
+          "remaining": 900
+        },
+        {
+          "id": 1,
+          "x": 864,
+          "y": 352,
+          "remaining": 900
+        }
+      ],
+      "entities": [
+        {
+          "id": 1,
+          "kind": 0,
+          "owner": 0,
+          "x": 160,
+          "y": 352
+        },
+        {
+          "id": 2,
+          "kind": 2,
+          "owner": 0,
+          "x": 224,
+          "y": 288
+        },
+        {
+          "id": 3,
+          "kind": 2,
+          "owner": 0,
+          "x": 224,
+          "y": 416
+        },
+        {
+          "id": 4,
+          "kind": 0,
+          "owner": 1,
+          "x": 1120,
+          "y": 352
+        },
+        {
+          "id": 5,
+          "kind": 2,
+          "owner": 1,
+          "x": 1056,
+          "y": 288
+        },
+        {
+          "id": 6,
+          "kind": 2,
+          "owner": 1,
+          "x": 1056,
+          "y": 416
+        },
+        {
+          "id": 7,
+          "kind": 6,
+          "owner": 0,
+          "x": 288,
+          "y": 352
+        },
+        {
+          "id": 8,
+          "kind": 6,
+          "owner": 1,
+          "x": 992,
+          "y": 352
+        }
+      ]
+    }
+  },
+  "expected": {
+    "finalTick": 1878,
+    "stateHash": "cef0da26e91e8d9b",
+    "checkpoints": [
+      {
+        "tick": 600,
+        "stateHash": "eee30e5f57e47ba8"
+      },
+      {
+        "tick": 1200,
+        "stateHash": "78dd37b754aba192"
+      },
+      {
+        "tick": 1800,
+        "stateHash": "6deba88cc28a1ba5"
+      }
+    ]
+  }
+}

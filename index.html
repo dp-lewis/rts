@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ten Minute War</title>
+    <link rel="stylesheet" href="/src/game/ui/app.css" />
+  </head>
+  <body>
+    <!--
+      The screens and the HUD are DOM; only the world is canvas.
+
+      That split is required, not stylistic. `journeys.yml` is authoritative and
+      addresses every UI surface by a DOM selector, and two requirements are
+      unsatisfiable inside a canvas: FR-026 wants the gate operable by keyboard
+      with visible focus (a canvas has no focusable elements), and T066 wants an
+      axe WCAG-AA floor with zero critical violations (axe cannot see into a
+      canvas, so a canvas-only UI would pass by having nothing to audit).
+    -->
+    <main id="app">
+      <section id="gate" class="screen gate" data-testid="difficulty-gate" hidden>
+        <h1>Ten Minute War</h1>
+        <p class="tagline">A complete RTS skirmish, in about ten minutes.</p>
+        <div class="options" role="group" aria-label="Choose a difficulty">
+          <button type="button" class="option" data-testid="difficulty-easy" data-difficulty="0">
+            <span class="option-title">New to this</span>
+            <span class="option-note">The AI takes it slow</span>
+          </button>
+          <button type="button" class="option" data-testid="difficulty-normal" data-difficulty="1">
+            <span class="option-title">I've played RTS before</span>
+            <span class="option-note">A fair fight</span>
+          </button>
+          <button type="button" class="option" data-testid="difficulty-hard" data-difficulty="2">
+            <span class="option-title">Bring it</span>
+            <span class="option-note">The AI does not wait</span>
+          </button>
+        </div>
+      </section>
+
+      <section id="match" class="screen match" hidden>
+        <div class="hud-top">
+          <span class="ore"><span data-testid="ore-counter">0</span> ore</span>
+          <span class="nodes" data-testid="node-status"></span>
+        </div>
+
+        <div id="stage" class="stage"></div>
+
+        <!--
+          role="status" so a screen reader announces the alert when it appears.
+          Two separate elements, never one relabelled: CR-001 is explicit that a
+          Base dying to sudden death must not be reported as under attack.
+        -->
+        <div
+          class="edge-alert"
+          data-testid="under-attack-indicator"
+          role="status"
+          aria-live="polite"
+          hidden
+        >
+          Your base is under attack
+        </div>
+        <div
+          class="edge-alert sudden"
+          data-testid="sudden-death-indicator"
+          role="status"
+          aria-live="polite"
+          hidden
+        >
+          Ore exhausted — all bases are taking damage
+        </div>
+
+        <!-- Selecting one of your buildings shows what it trains. Empty and
+             hidden until then; the permanent bar below is never empty. -->
+        <div id="production" class="production" data-testid="production-panel"
+             role="group" aria-label="Selected building" hidden></div>
+
+        <div id="build-bar" class="build-bar" data-testid="build-bar" role="group"
+             aria-label="Build"></div>
+      </section>
+
+      <section id="result" class="screen result" data-testid="result-screen" hidden>
+        <h1 data-testid="result-outcome"></h1>
+        <p class="duration" data-testid="match-duration"></p>
+        <div class="result-actions">
+          <button type="button" class="primary" data-testid="rematch">Rematch</button>
+          <button type="button" class="secondary" data-testid="change-difficulty">
+            Change difficulty
+          </button>
+        </div>
+      </section>
+
+      <section id="webgl-fallback" class="screen fallback" data-testid="webgl-fallback" hidden>
+        <h1>This game needs WebGL</h1>
+        <p>
+          Your browser could not start WebGL, which this game uses to draw the map. Nothing is
+          wrong with your machine — WebGL is often switched off in browser settings, or disabled
+          when hardware acceleration is turned off.
+        </p>
+        <p>Try enabling hardware acceleration in your browser settings, then reload this page.</p>
+      </section>
+    </main>
+
+    <script type="module" src="/src/game/index.ts"></script>
+  </body>
+</html>

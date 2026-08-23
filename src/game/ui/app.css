@@ -1,0 +1,356 @@
+/*
+ * The DOM shell around the canvas — M7.
+ *
+ * Colours are checked against WCAG-AA contrast on the surfaces they sit on,
+ * because T066 fails the build on a serious violation and "close enough" here
+ * would surface as a red CI run rather than as an opinion.
+ */
+
+:root {
+  --bg: #12141c;
+  --ink: #e6e8ef;
+  --ink-dim: #b6bccd; /* 7.0:1 on --bg; #9ca3af would fail AA at this size */
+  --accent: #8ee9ff;
+  --primary: #ff9a3c;
+  --danger: #ef4444;
+  --panel: #1b1f2b;
+  --line: #39405a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden; /* FR-014: one fixed screen, so nothing may scroll */
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+#app {
+  height: 100%;
+}
+
+.screen[hidden] {
+  display: none;
+}
+
+/* ── Difficulty gate — FR-001: this and nothing else ───────────────────────── */
+
+.gate {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.gate h1 {
+  margin: 0;
+  font-size: 40px;
+  letter-spacing: 0.5px;
+}
+
+.tagline {
+  margin: 0 0 28px;
+  color: var(--ink-dim);
+}
+
+.options {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 260px;
+  padding: 22px 20px;
+  text-align: left;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.option-title {
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.option-note {
+  color: var(--ink-dim);
+  font-size: 14px;
+}
+
+.option:hover {
+  border-color: var(--accent);
+}
+
+/*
+ * FR-026 wants focus VISIBLE. Declared explicitly rather than left to the UA
+ * default, because a later `outline: none` reset would leave the gate perfectly
+ * operable by keyboard and completely unusable without a mouse — the exact
+ * failure `focus is VISIBLE, not merely present` exists to catch.
+ */
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ── Match ─────────────────────────────────────────────────────────────────── */
+
+.match {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stage canvas {
+  display: block;
+}
+
+.hud-top {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  z-index: 2;
+  display: flex;
+  gap: 18px;
+  align-items: baseline;
+  pointer-events: none;
+}
+
+.ore {
+  font-size: 20px;
+  color: #fbbf24;
+}
+
+.nodes {
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+
+.edge-alert {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border: 6px solid var(--danger);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 14px;
+  color: var(--ink);
+  font-weight: 600;
+  text-shadow: 0 1px 3px #000;
+}
+
+.edge-alert[hidden] {
+  display: none;
+}
+
+.edge-alert.sudden {
+  border-color: #a855f7;
+}
+
+/* ── Build bar — FR-010: exactly five, flat, always visible ────────────────── */
+
+.build-bar {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  gap: 6px;
+  padding: 10px 14px;
+  background: rgba(18, 20, 28, 0.92);
+}
+
+.build-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 108px;
+  padding: 8px 10px;
+  text-align: left;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+}
+
+/* The structure sits apart from the four units — FR-010's "visually separated". */
+.build-entry.placed {
+  margin-left: 22px;
+}
+
+.build-entry[aria-disabled='true'] {
+  border-color: var(--line);
+  color: var(--ink-dim);
+  cursor: default;
+}
+
+.build-entry[aria-pressed='true'] {
+  border-color: var(--ink);
+  border-width: 2px;
+}
+
+.build-cost {
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+/* ── Result — FR-019: Rematch is primary and largest ───────────────────────── */
+
+.result,
+.fallback {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 24px;
+}
+
+.result h1 {
+  margin: 0;
+  font-size: 46px;
+}
+
+.duration {
+  margin: 0 0 22px;
+  color: var(--ink-dim);
+}
+
+.result-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.primary {
+  width: 340px;
+  height: 84px;
+  font-size: 24px;
+  font-weight: 700;
+  background: var(--primary);
+  color: #1e1e22;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.secondary {
+  width: 200px;
+  height: 40px;
+  font-size: 15px;
+  background: transparent;
+  color: var(--ink-dim);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.fallback {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.fallback p {
+  color: var(--ink-dim);
+  line-height: 1.55;
+}
+
+/* Developer tool (T072), toggled with F3. Never shown by default. */
+.debug-overlay {
+  position: absolute;
+  top: 44px;
+  left: 14px;
+  z-index: 5;
+  margin: 0;
+  padding: 10px 12px;
+  background: rgba(10, 12, 18, 0.88);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--accent);
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  pointer-events: none;
+}
+
+.debug-overlay[hidden] {
+  display: none;
+}
+
+/* Empty unless an entry has a reason beyond cost — reserved so the bar never
+   changes height mid-match. */
+.build-note {
+  font-size: 11px;
+  color: #fbbf24;
+  min-height: 13px;
+}
+
+/*
+ * The selected building's production panel — an OVERLAY, not a row.
+ *
+ * It was in the document flow, which made showing it shrink `.stage`; Phaser's
+ * FIT scaling then recomputed and the whole canvas jumped every time a building
+ * was selected. Taking it out of flow means the playfield is a constant size for
+ * the life of a match, whatever the panel is doing.
+ *
+ * Anchored to the bottom-left above the build bar, so it appears NEAR the
+ * buildings a player has just clicked rather than across the middle of the fight.
+ */
+.production {
+  position: absolute;
+  left: 14px;
+  bottom: 84px;
+  z-index: 5;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(12, 14, 20, 0.94);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
+.production[hidden] {
+  display: none;
+}
+
+.panel-title {
+  min-width: 84px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.panel-status {
+  font-size: 12px;
+  color: var(--ink-dim);
+}

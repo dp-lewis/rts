@@ -171,13 +171,13 @@ No secondary persona. Competitive RTS players are explicitly not served.
 | FR-003 | Simulation advances in fixed-timestep ticks, decoupled from render frames | Must | Constitution §I |
 | FR-004 | All player intent enters the simulation as commands queued for a future tick | Must | Constitution §II |
 | FR-005 | All randomness derives from a seed held inside simulation state | Must | Constitution §I |
-| FR-006 | Starting workers auto-gather from tick 0 with no player input | Must | US-003 |
+| FR-006 | ~~Starting workers auto-gather from tick 0~~ → **Workers gather from the moment they exist; a match starts with none** *(CR-002)* | Must | US-003 |
 | FR-007 | Drag-rectangle selects all own units intersecting it | Must | US-004 |
 | FR-008 | Right-click issues move on ground, attack on enemy entity | Must | US-004 |
 | FR-009 | Command issue is visually acknowledged within one rendered frame | Must | Presentation-layer only; must not affect sim timing |
-| FR-010 | Build bar shows exactly 5 entries — 4 unit + 1 structure, visually separated — always visible, never nested | Must | US-005 |
+| FR-010 | ~~Exactly 5 entries — 4 unit + 1 structure~~ → **Permanent bar carries the placeable structures, always visible and never nested; units appear on the building that trains them** *(CR-002)* | Must | US-005 |
 | FR-011 | Unaffordable build entries are greyed inline with cost shown | Must | US-005 |
-| FR-012 | Player may place additional Factories on valid ground | Must | US-006 |
+| FR-012 | Player may place additional **Barracks and Factories** on valid ground *(CR-002)* | Must | US-006 |
 | FR-013 | Invalid placement is indicated by ghost state, not an error dialog | Must | US-006 |
 | FR-014 | Map is a fixed single screen: no scrolling, no camera, no minimap | Must | US-007 |
 | FR-015 | No fog of war; both bases visible from the first frame | Must | US-007 |
