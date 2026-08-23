@@ -1,0 +1,83 @@
+name: Deploy to Pages
+
+# Publishes the playable build to GitHub Pages.
+#
+# Deliberately gated on the same checks CI runs, rather than just building. This
+# is the artifact strangers actually play, and a green `vite build` says the
+# bundler finished, not that the game works — M5 shipped a bundle containing zero
+# sprites while the build was green and `npm run dev` looked perfect.
+on:
+  push:
+    branches: [main]
+  # So a deploy can be re-run without an empty commit — useful when the failure
+  # was in Pages rather than in the code.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time. `cancel-in-progress: false` on purpose: cancelling a
+# half-finished deployment is how a site ends up serving a mix of two builds.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      # Constitution IV. If the recorded matches no longer reproduce, the build
+      # is not the game that was tested, whatever else passes.
+      - name: Replay corpus
+        run: npx vitest run tests/replay
+
+      - name: Build
+        run: npm run build
+
+      # The art pack is copied into dist by a Vite plugin rather than imported,
+      # so nothing in the bundler's graph would notice it going missing. Checked
+      # here because a sprite-less deploy renders as green boxes on a blank field
+      # and looks like a broken site rather than a broken build.
+      - name: Verify the bundle contains its art
+        run: |
+          count=$(find dist/images -name '*.png' | wc -l)
+          echo "PNG files in dist: $count"
+          if [ "$count" -lt 100 ]; then
+            echo "::error::dist/images has $count PNGs — the art pack did not make it into the bundle"
+            exit 1
+          fi
+          test -f dist/index.html
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
