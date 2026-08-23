@@ -176,6 +176,15 @@ the player disagreed with it.
 
 ---
 
+## The collaboration itself
+
+[`collaboration-notes.md`](./collaboration-notes.md) records what the agent caught
+versus what it missed, the human decision points, and the pace. The asymmetry is
+sharp: **every agent catch was one number disagreeing with another; every miss
+required looking at the game or asking whether a thing had a purpose.**
+
+---
+
 ## Candidate angles for the post
 
 1. **"Your tests are green because they're not looking"** — the seven-instance table
@@ -186,6 +195,10 @@ the player disagreed with it.
    and why a blocking human gate earns its place.
 4. **"Determinism as a build discipline"** — hashes, corpus, hand-bumped versions,
    and blast radius as a signal.
-5. **"Lock architecture hard, hold design loosely"** — the two-arm comparison gives
+5. **"The agent is a good proofreader of its own reasoning and a poor judge of
+   whether the thing is any good"** — the caught/missed table. Probably the
+   strongest angle if the post is about working with an agent rather than about
+   spec-driven development.
+6. **"Lock architecture hard, hold design loosely"** — the two-arm comparison gives
    unusually clean evidence: run both kinds of decision through one lock and the
    architecture never moves while the design changes three times.

@@ -145,6 +145,8 @@ stale recording.
 
 - `docs/blog-notes.md` — how this was built, what went wrong, and what a
   playtester found that seven milestones of automated checks did not
+- `docs/collaboration-notes.md` — what the agent caught, what it missed, and who
+  found what
 - `docs/process-comparison.md` — this game was one arm of a two-arm experiment;
   the other used a rich PRD first. What each process bought, and what it cost
 - `features/simple-rts-game/` — the full trail: research, product spec, plan, two
